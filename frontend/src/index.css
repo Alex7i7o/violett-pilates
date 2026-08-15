@@ -1,0 +1,39 @@
+/* Developed by FireSeed - Fueling Innovation */
+@import "tailwindcss";
+
+@theme {
+  --color-violett-900: #2A1C5A;
+  --color-violett-800: #34236F;
+  --color-violett-700: #4D368C;
+  --color-violett-600: #644A9F;
+  --color-violett-500: #7C5C96;
+  --color-violett-400: #9B7DA8;
+  --color-violett-300: #C7A4C7;
+  --color-violett-200: #D9A7C1;
+  --color-violett-100: #F4EBF1;
+  --color-violett-50: #FDFBFD;
+  
+  --color-background: #FAFAFA;
+  --color-card: #FFFFFF;
+  --color-foreground: #2B1A53;
+  --color-muted: #71717A;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  --shadow-glass: 0 10px 40px -10px rgba(42, 28, 90, 0.1);
+  --shadow-soft: 0 4px 20px -2px rgba(42, 28, 90, 0.05);
+}
+
+:root {
+  --background: #FAFAFA;
+  --foreground: #2B1A53;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
