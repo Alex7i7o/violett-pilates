@@ -19,6 +19,7 @@ class ClientProfileView(APIView):
         if not suscripcion:
             return Response({
                 "name": f"{user.nombre} {user.apellido}",
+                "rol": user.rol,
                 "activePlan": "Sin plan activo",
                 "remainingClasses": 0,
                 "totalClasses": 0,
@@ -34,6 +35,7 @@ class ClientProfileView(APIView):
         
         return Response({
             "name": f"{user.nombre} {user.apellido}",
+            "rol": user.rol,
             "activePlan": suscripcion.plan.nombre,
             "remainingClasses": suscripcion.clases_restantes,
             "totalClasses": suscripcion.plan.cantidad_clases,
@@ -59,8 +61,12 @@ class TurnosDisponiblesView(APIView):
         serializer = TurnoSerializer(turnos, many=True, context={'request': request})
         return Response(serializer.data)
 
+from rest_framework.throttling import ScopedRateThrottle
+
 class BookTurnoView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'reserva'
 
     @transaction.atomic
     def post(self, request):

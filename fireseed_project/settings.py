@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.NoCacheMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -156,13 +157,24 @@ SITE_ID = 1
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
-    )
+    ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/min',
+        'user': '100/min',
+        'reserva': '10/min',
+        'auth': '5/min'
+    }
 }
 
 REST_AUTH = {
     'USE_JWT': True,
     'JWT_AUTH_COOKIE': 'fireseed-auth',
     'JWT_AUTH_REFRESH_COOKIE': 'fireseed-refresh-token',
+    'REGISTER_SERIALIZER': 'core.serializers.CustomRegisterSerializer',
 }
 
 ACCOUNT_EMAIL_VERIFICATION = 'none'

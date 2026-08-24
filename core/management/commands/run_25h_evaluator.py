@@ -82,6 +82,32 @@ def evaluar_clases():
     if evaluados > 0:
         print(f"[{now.strftime('%H:%M:%S')}] Evaluador automático: se procesaron {evaluados} clases.")
 
+def notificar_profesores_diario():
+    """
+    Simula el envío de las clases del día siguiente a cada profesor.
+    Se ejecutará idealmente una vez al día por la noche.
+    """
+    now = timezone.now()
+    tomorrow = now.date() + datetime.timedelta(days=1)
+    
+    turnos_manana = Turno.objects.filter(
+        fecha=tomorrow,
+        estado='PROGRAMADO',
+        profesor__isnull=False
+    ).order_by('hora_inicio')
+    
+    profesores_turnos = {}
+    for t in turnos_manana:
+        if t.profesor not in profesores_turnos:
+            profesores_turnos[t.profesor] = []
+        profesores_turnos[t.profesor].append(t)
+        
+    for profesor, turnos in profesores_turnos.items():
+        print(f"\n[NOTIFICACIÓN PROFESOR] Hola {profesor.nombre}, mañana dictarás:")
+        for t in turnos:
+            print(f"  - {t.hora_inicio.strftime('%H:%M')} : {t.clase.nombre}")
+        print("¡Que tengas un excelente día de clases!\n")
+
 @util.close_old_connections
 def delete_old_job_executions(max_age=604_800):
     DjangoJobExecution.objects.delete_old_job_executions(max_age)
@@ -104,6 +130,15 @@ class Command(BaseCommand):
         logger.info("Added job 'evaluar_clases'.")
 
         scheduler.add_job(
+            notificar_profesores_diario,
+            trigger=CronTrigger(minute="*/5"),
+            id="notificar_profesores",
+            max_instances=1,
+            replace_existing=True,
+        )
+        logger.info("Added job 'notificar_profesores'.")
+
+        scheduler.add_job(
             delete_old_job_executions,
             trigger=CronTrigger(day_of_week="mon", hour="00", minute="00"),
             id="delete_old_job_executions",
@@ -113,9 +148,9 @@ class Command(BaseCommand):
         logger.info("Added weekly job: 'delete_old_job_executions'.")
 
         try:
-            print("🚀 Iniciando motor de automatizaciones (APScheduler)...")
+            print("Iniciando motor de automatizaciones (APScheduler)...")
             scheduler.start()
         except KeyboardInterrupt:
-            print("🛑 Deteniendo APScheduler...")
+            print("Deteniendo APScheduler...")
             scheduler.shutdown()
             print("APScheduler detenido.")

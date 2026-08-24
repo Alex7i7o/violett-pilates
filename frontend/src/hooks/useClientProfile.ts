@@ -12,6 +12,7 @@ export interface Recurrencia {
 
 export interface ClientProfile {
   name: string
+  rol: string
   activePlan: string
   remainingClasses: number
   totalClasses: number
