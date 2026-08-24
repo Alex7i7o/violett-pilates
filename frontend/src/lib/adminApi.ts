@@ -69,3 +69,5 @@ export const getAdminAlumnos = (search: string = '') => api.get<UsuarioAdmin[]>(
 export const createAdminAlumno = (data: any) => api.post('/admin/alumnos/', data);
 export const getAdminAlumnoDetalle = (id: string) => api.get<UsuarioAdmin>(`/admin/alumnos/${id}/`);
 export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/admin/alumnos/${id}/asignar-plan/`, { plan_id });
+
+export const getAdminClases = () => api.get('/admin/clases/');

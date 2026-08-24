@@ -128,6 +128,18 @@ class Suscripcion(models.Model):
     class Meta:
         db_table = 'suscripciones'
 
+class PlantillaTurno(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='plantillas')
+    profesor = models.ForeignKey(Profesor, on_delete=models.SET_NULL, null=True, blank=True, related_name='plantillas')
+    dia_semana = models.IntegerField() # 1=Lunes..7=Domingo
+    hora_inicio = models.TimeField()
+    hora_fin = models.TimeField()
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'plantillas_turno'
+
 class Turno(models.Model):
     ESTADO_CHOICES = (
         ('PROGRAMADO', 'Programado'),
@@ -136,6 +148,7 @@ class Turno(models.Model):
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plantilla = models.ForeignKey(PlantillaTurno, on_delete=models.SET_NULL, null=True, blank=True, related_name='turnos_generados')
     clase = models.ForeignKey(Clase, on_delete=models.CASCADE, related_name='turnos')
     profesor = models.ForeignKey(Profesor, on_delete=models.SET_NULL, null=True, blank=True, related_name='turnos')
     fecha = models.DateField()

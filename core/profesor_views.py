@@ -2,8 +2,8 @@ from rest_framework import views, status, permissions
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Sum
-from .models import Turno, Profesor
-from .serializers import AdminTurnoSerializer # We can reuse this one for the dashboard
+from .models import Turno, Profesor, PlantillaTurno
+from .serializers import AdminTurnoSerializer, PlantillaTurnoSerializer
 import datetime
 
 class IsProfesorPermission(permissions.IsAuthenticated):
@@ -65,12 +65,19 @@ class ProfesorDashboardView(views.APIView):
             fecha__gte=today,
             estado='PROGRAMADO'
         ).order_by('fecha', 'hora_inicio')
+        
+        # Horarios fijos sin profesor asignado
+        plantillas_libres = PlantillaTurno.objects.filter(
+            profesor__isnull=True,
+            is_active=True
+        ).order_by('dia_semana', 'hora_inicio')
 
         return Response({
             "horas_mes": horas_dictadas,
             "turnos_hoy": AdminTurnoSerializer(turnos_hoy, many=True).data,
             "turnos_semana": AdminTurnoSerializer(turnos_semana, many=True).data,
             "turnos_libres": AdminTurnoSerializer(turnos_libres, many=True).data,
+            "plantillas_libres": PlantillaTurnoSerializer(plantillas_libres, many=True).data,
         })
 
 
@@ -96,3 +103,29 @@ class AssignClaseView(views.APIView):
         turno.save()
 
         return Response({"detail": "Turno asignado exitosamente."})
+
+class AssignPlantillaView(views.APIView):
+    permission_classes = [IsProfesorPermission]
+
+    def post(self, request, plantilla_id):
+        user = request.user
+        try:
+            profesor = user.profesor_profile
+        except Profesor.DoesNotExist:
+            return Response({'detail': 'Perfil no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            plantilla = PlantillaTurno.objects.get(id=plantilla_id, is_active=True)
+        except PlantillaTurno.DoesNotExist:
+            return Response({'detail': 'Plantilla no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if plantilla.profesor is not None:
+            return Response({'detail': 'Este horario fijo ya tiene profesor.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        plantilla.profesor = profesor
+        plantilla.save()
+
+        # Auto-asignar turnos futuros generados por esta plantilla que an no tengan profesor
+        Turno.objects.filter(plantilla=plantilla, fecha__gte=timezone.now().date(), profesor__isnull=True).update(profesor=profesor)
+
+        return Response({'detail': 'Plantilla asignada exitosamente.'})

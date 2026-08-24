@@ -16,10 +16,11 @@ export function AdminLayout() {
   };
 
   const navItems = [
-    { name: 'Hoy', path: '/admin/agenda' },
+    { name: 'Agenda', path: '/admin/agenda' },
+    { name: 'Esquema', path: '/admin/esquema' },
     { name: 'Alumnos', path: '/admin/alumnos' },
     { name: 'Profesores', path: '/admin/profesores' },
-    { name: 'Paquetes', path: '/admin/planes' },
+    { name: 'Planes', path: '/admin/planes' }
   ];
 
   return (

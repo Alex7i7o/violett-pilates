@@ -5,11 +5,13 @@ from rest_framework.decorators import action
 from django.utils.dateparse import parse_date
 import datetime
 
-from .models import Profesor, Turno, Reserva, Usuario, Suscripcion, Plan, ConfiguracionGlobal
+from .models import Profesor, Turno, Reserva, Usuario, Suscripcion, Plan, ConfiguracionGlobal, PlantillaTurno, Clase
 from .serializers import (
     ProfesorSerializer, 
     AdminTurnoSerializer, 
     AdminUsuarioSerializer,
+    PlantillaTurnoSerializer,
+    ClaseSerializer
 )
 
 class IsStaffPermission(IsAuthenticated):
@@ -175,3 +177,13 @@ class AdminAlumnoViewSet(viewsets.ModelViewSet):
             estado='ACTIVO'
         )
         return Response({"status": "ok", "suscripcion_id": nueva_sub.id})
+
+class PlantillaTurnoViewSet(viewsets.ModelViewSet):
+    queryset = PlantillaTurno.objects.filter(is_active=True)
+    serializer_class = PlantillaTurnoSerializer
+    permission_classes = [IsStaffPermission]
+
+class ClaseViewSet(viewsets.ModelViewSet):
+    queryset = Clase.objects.filter(is_active=True)
+    serializer_class = ClaseSerializer
+    permission_classes = [IsStaffPermission]

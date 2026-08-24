@@ -16,6 +16,7 @@ export function ProfesorDashboard() {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [changingPwd, setChangingPwd] = useState(false);
+  const [bolsaTab, setBolsaTab] = useState<'SUELTOS' | 'FIJOS'>('SUELTOS');
 
   const fetchDashboard = async () => {
     try {
@@ -154,35 +155,96 @@ export function ProfesorDashboard() {
         {/* Right Column: Bolsa de Trabajo */}
         <div>
           <section>
-            <h3 className="text-xl font-bold text-foreground mb-4">Bolsa de Clases</h3>
-            <p className="text-sm text-muted mb-4">Clases sin profesor asignado. Puedes tomarlas si tienes disponibilidad.</p>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-foreground">Bolsa de Trabajo</h3>
+            </div>
             
-            {data.turnos_libres.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted text-sm">
-                  No hay clases libres en este momento.
-                </CardContent>
-              </Card>
+            <div className="flex gap-2 mb-4 bg-violett-50 p-1 rounded-xl border border-violett-100">
+              <button 
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-colors ${bolsaTab === 'SUELTOS' ? 'bg-white shadow-sm text-violett-900' : 'text-muted hover:text-foreground'}`}
+                onClick={() => setBolsaTab('SUELTOS')}
+              >
+                Sueltos
+              </button>
+              <button 
+                className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-colors ${bolsaTab === 'FIJOS' ? 'bg-white shadow-sm text-violett-900' : 'text-muted hover:text-foreground'}`}
+                onClick={() => setBolsaTab('FIJOS')}
+              >
+                Fijos
+              </button>
+            </div>
+
+            {bolsaTab === 'SUELTOS' ? (
+              <AnimatePresence mode="wait">
+                <motion.div key="sueltos" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
+                  <p className="text-sm text-muted mb-4">Clases sin profesor asignado. Puedes tomarlas si tienes disponibilidad.</p>
+                  
+                  {data.turnos_libres.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted text-sm">
+                        No hay clases libres en este momento.
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-3">
+                      {data.turnos_libres.map((t: any) => (
+                        <Card key={t.id} className="bg-emerald-50/50 border-emerald-100 hover:shadow-sm transition-all">
+                          <CardContent className="p-4 flex flex-col gap-3">
+                            <div>
+                              <p className="font-bold text-emerald-900">{t.fecha} | {t.hora_inicio.slice(0,5)}</p>
+                              <p className="text-emerald-700 text-sm font-medium">{t.clase_nombre}</p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleAssign(t.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                            >
+                              Dar esta clase
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             ) : (
-              <div className="grid gap-3">
-                {data.turnos_libres.map((t: any) => (
-                  <Card key={t.id} className="bg-emerald-50/50 border-emerald-100 hover:shadow-sm transition-all">
-                    <CardContent className="p-4 flex flex-col gap-3">
-                      <div>
-                        <p className="font-bold text-emerald-900">{t.fecha} | {t.hora_inicio.slice(0,5)}</p>
-                        <p className="text-emerald-700 text-sm font-medium">{t.clase_nombre}</p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleAssign(t.id)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
-                      >
-                        Dar esta clase
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div key="fijos" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}>
+                  <p className="text-sm text-muted mb-4">Horarios fijos semanales sin profesor asignado. Puedes tomarlos de forma permanente.</p>
+                  
+                  {data.plantillas_libres?.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted text-sm">
+                        No hay horarios fijos libres.
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-3">
+                      {data.plantillas_libres?.map((p: any) => {
+                        const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                        return (
+                          <Card key={p.id} className="bg-blue-50/50 border-blue-100 hover:shadow-sm transition-all">
+                            <CardContent className="p-4 flex flex-col gap-3">
+                              <div>
+                                <p className="font-bold text-blue-900">Todos los {dias[p.dia_semana-1]} | {p.hora_inicio.slice(0,5)}</p>
+                                <p className="text-blue-700 text-sm font-medium">{p.clase_nombre}</p>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleAssignPlantilla(p.id)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                              >
+                                Tomar horario fijo
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             )}
           </section>
         </div>

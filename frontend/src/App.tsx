@@ -8,6 +8,7 @@ import { api } from './lib/api'
 
 import { AdminLayout } from './layouts/AdminLayout'
 import { AgendaAdmin } from './pages/admin/AgendaAdmin'
+import { PlantillasAdmin } from './pages/admin/PlantillasAdmin'
 import { AlumnosAdmin } from './pages/admin/AlumnosAdmin'
 import { ProfesoresAdmin } from './pages/admin/ProfesoresAdmin'
 import { PlanesAdmin } from './pages/admin/PlanesAdmin'
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="agenda" replace />} />
           <Route path="agenda" element={<AgendaAdmin />} />
+          <Route path="esquema" element={<PlantillasAdmin />} />
           <Route path="alumnos" element={<AlumnosAdmin />} />
           <Route path="profesores" element={<ProfesoresAdmin />} />
           <Route path="planes" element={<PlanesAdmin />} />

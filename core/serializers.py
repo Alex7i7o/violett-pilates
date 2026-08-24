@@ -1,6 +1,6 @@
 # Developed by FireSeed - Fueling Innovation
 from rest_framework import serializers
-from .models import Turno, Reserva, Suscripcion, Recurrencia
+from .models import Turno, Reserva, Suscripcion, Recurrencia, PlantillaTurno
 
 class TurnoSerializer(serializers.ModelSerializer):
     date = serializers.DateField(source='fecha')
@@ -73,7 +73,7 @@ class RecurrenciaSerializer(serializers.ModelSerializer):
         model = Recurrencia
         fields = ['id', 'dia_semana', 'time', 'classType', 'is_active']
 
-from .models import Profesor, Usuario
+from .models import Profesor, Usuario, Clase, Plan
 
 class ProfesorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -87,6 +87,20 @@ class AdminReservaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reserva
         fields = ['id', 'alumno_id', 'alumno_nombre', 'alumno_apellido', 'estado', 'es_recurrente']
+
+class ClaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Clase
+        fields = '__all__'
+
+class PlantillaTurnoSerializer(serializers.ModelSerializer):
+    clase_nombre = serializers.CharField(source='clase.nombre', read_only=True)
+    profesor_nombre = serializers.CharField(source='profesor.nombre', read_only=True)
+    profesor_apellido = serializers.CharField(source='profesor.apellido', read_only=True)
+
+    class Meta:
+        model = PlantillaTurno
+        fields = '__all__'
 
 class AdminTurnoSerializer(serializers.ModelSerializer):
     profesor = ProfesorSerializer(read_only=True)

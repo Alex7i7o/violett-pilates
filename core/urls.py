@@ -5,15 +5,17 @@ from .views import TurnosDisponiblesView, BookTurnoView, CancelTurnoView, Client
 from .admin_views import (
     ProfesorViewSet, AdminTurnoViewSet, AdminAlumnoViewSet, 
     AdminAgendaView, AdminReservaAsistenciaView,
-    PlanViewSet
+    PlanViewSet, PlantillaTurnoViewSet, ClaseViewSet
 )
-from .profesor_views import ProfesorDashboardView, AssignClaseView
+from .profesor_views import ProfesorDashboardView, AssignClaseView, AssignPlantillaView
 
 router = DefaultRouter()
 router.register(r'admin/profesores', ProfesorViewSet, basename='admin-profesores')
 router.register(r'admin/turnos', AdminTurnoViewSet, basename='admin-turnos')
 router.register(r'admin/alumnos', AdminAlumnoViewSet, basename='admin-alumnos')
 router.register(r'admin/planes', PlanViewSet, basename='admin-planes')
+router.register(r'admin/plantillas', PlantillaTurnoViewSet, basename='admin-plantillas')
+router.register(r'admin/clases', ClaseViewSet, basename='admin-clases')
 
 urlpatterns = [
     path('auth/registration/', include('dj_rest_auth.registration.urls')),
@@ -32,4 +34,5 @@ urlpatterns = [
     
     path('profesor/dashboard/', ProfesorDashboardView.as_view(), name='profesor_dashboard'),
     path('profesor/turnos/<uuid:turno_id>/assign/', AssignClaseView.as_view(), name='profesor_assign'),
+    path('profesor/plantillas/<uuid:plantilla_id>/assign/', AssignPlantillaView.as_view(), name='profesor_plantilla_assign'),
 ] + router.urls
