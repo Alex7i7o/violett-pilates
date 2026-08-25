@@ -1,6 +1,9 @@
 /* Developed by FireSeed - Fueling Innovation */
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
 import { useClientProfile } from './hooks/useClientProfile'
@@ -17,6 +20,7 @@ import { ProfesorLayout } from './layouts/ProfesorLayout'
 import { ProfesorDashboard } from './pages/profesor/ProfesorDashboard'
 
 function AppRoutes() {
+  const location = useLocation()
   const { profile, loading, error, refetch } = useClientProfile()
 
   const handleLogout = async () => {
@@ -72,7 +76,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={
         <div className="min-h-screen flex flex-col bg-background">
-          <header className="bg-card shadow-sm border-b border-violet-100 sticky top-0 z-40">
+          <header className="bg-white/70 backdrop-blur-xl saturate-150 border-b border-violett-100/50 shadow-sm sticky top-0 z-40">
             <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-violet-900 flex items-center justify-center text-white font-bold italic">V</div>
@@ -86,7 +90,16 @@ function AppRoutes() {
             </div>
           </header>
           <main className="flex-1 w-full p-4 md:p-8">
-            <Dashboard />
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.32, 0.72, 0, 1] } }}
+                exit={{ opacity: 0, transition: { duration: 0.15 } }}
+              >
+                <Dashboard />
+              </motion.div>
+            </AnimatePresence>
           </main>
           <footer className="py-8 mt-12 bg-white border-t border-violet-100 text-center">
             <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">
@@ -100,11 +113,23 @@ function AppRoutes() {
   )
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
+
 function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Toaster position="top-right" richColors />
+        <AppRoutes />
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 

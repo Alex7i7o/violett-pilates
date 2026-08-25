@@ -79,7 +79,7 @@ class AdminAgendaView(views.APIView):
         else:
             fecha = parse_date(fecha_str)
 
-        turnos = Turno.objects.filter(fecha=fecha, estado__in=['PROGRAMADO', 'CONFIRMADO', 'COMPLETADO']).order_by('hora_inicio')
+        turnos = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas__usuario').filter(fecha=fecha, estado__in=['PROGRAMADO', 'CONFIRMADO', 'COMPLETADO']).order_by('hora_inicio')
         serializer = AdminTurnoSerializer(turnos, many=True)
         return Response(serializer.data)
 
@@ -91,7 +91,7 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         turno = self.get_object()
-        reservas = Reserva.objects.filter(turno=turno, estado='CONFIRMADA')
+        reservas = Reserva.objects.select_related('usuario', 'turno').filter(turno=turno, estado='CONFIRMADA')
         for reserva in reservas:
             reserva.estado = 'CANCELADA_TIEMPO'
             reserva.save()
@@ -179,7 +179,7 @@ class AdminAlumnoViewSet(viewsets.ModelViewSet):
         return Response({"status": "ok", "suscripcion_id": nueva_sub.id})
 
 class PlantillaTurnoViewSet(viewsets.ModelViewSet):
-    queryset = PlantillaTurno.objects.filter(is_active=True)
+    queryset = PlantillaTurno.objects.select_related('clase', 'profesor').filter(is_active=True)
     serializer_class = PlantillaTurnoSerializer
     permission_classes = [IsStaffPermission]
 

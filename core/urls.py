@@ -1,7 +1,7 @@
 # Developed by FireSeed - Fueling Innovation
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, CancelRecurrenciaView, GoogleLogin
+from .views import ClientHistoryView, TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, CancelRecurrenciaView, GoogleLogin
 from .admin_views import (
     ProfesorViewSet, AdminTurnoViewSet, AdminAlumnoViewSet, 
     AdminAgendaView, AdminReservaAsistenciaView,

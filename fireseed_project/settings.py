@@ -129,7 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
 USE_I18N = True
 
@@ -177,6 +177,8 @@ REST_AUTH = {
     'USE_JWT': True,
     'JWT_AUTH_COOKIE': 'fireseed-auth',
     'JWT_AUTH_REFRESH_COOKIE': 'fireseed-refresh-token',
+    'JWT_AUTH_SECURE': not DEBUG,
+    'JWT_AUTH_SAMESITE': 'Lax',
     'REGISTER_SERIALIZER': 'core.serializers.CustomRegisterSerializer',
 }
 
@@ -203,3 +205,26 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     }
 }
+
+# --- SECURITY & PRODUCTION COOKIES (FASE 3) ---
+# En producción, si DEBUG es False, se aplican políticas estrictas de cookies (HTTPS)
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # HSTS settings (descomentar al usar dominio definitivo)
+    # SECURE_HSTS_SECONDS = 31536000 
+    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # SECURE_HSTS_PRELOAD = True
+
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    # "https://midominio.com",
+]
+
+# Update REST_AUTH with secure cookies

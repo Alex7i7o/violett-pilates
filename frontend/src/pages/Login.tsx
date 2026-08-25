@@ -115,7 +115,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               </div>
               <div>
                 <label className="text-sm font-semibold text-foreground">Contraseña</label>
-                <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 mt-1 focus:outline-none focus:ring-2 focus:ring-violett-500" minLength={8} placeholder="Mínimo 8 caracteres" />
+                <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 mt-1 focus:outline-none focus:ring-2 focus:ring-violett-500" minLength={8} placeholder="MÃ­nimo 8 caracteres" />
               </div>
               <div>
                 <label className="text-sm font-semibold text-foreground">Teléfono (WhatsApp)</label>
@@ -128,7 +128,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
               <div>
                 <label className="text-sm font-semibold text-foreground">Contacto de Emergencia</label>
-                <input type="text" value={contacto} onChange={e=>setContacto(e.target.value)} placeholder="Ej: Mam� (1145...)" className="w-full p-2.5 rounded-xl border border-violett-200 mt-1 focus:outline-none focus:ring-2 focus:ring-violett-500" />
+                <input type="text" value={contacto} onChange={e=>setContacto(e.target.value)} placeholder="Ej: Mamá (1145...)" className="w-full p-2.5 rounded-xl border border-violett-200 mt-1 focus:outline-none focus:ring-2 focus:ring-violett-500" />
               </div>
               <div>
                 <label className="text-sm font-semibold text-foreground">Notas Médicas o Lesiones</label>

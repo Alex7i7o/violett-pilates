@@ -23,36 +23,57 @@ class ProfesorDashboardView(views.APIView):
         now = timezone.now()
         today = now.date()
         
-        # Start and end of current week (Monday to Sunday)
+        # Parse optional month and year
+        req_month = request.query_params.get('month')
+        req_year = request.query_params.get('year')
+        
+        if req_month and req_year:
+            target_month = int(req_month)
+            target_year = int(req_year)
+            # Find start and end of target month
+            start_of_target_month = datetime.date(target_year, target_month, 1)
+            # Next month calculation
+            if target_month == 12:
+                next_month_start = datetime.date(target_year + 1, 1, 1)
+            else:
+                next_month_start = datetime.date(target_year, target_month + 1, 1)
+            end_of_target_month = next_month_start - datetime.timedelta(days=1)
+            
+            # If target month is current month, limit to today for 'horas_dictadas' to be precise, or show whole month?
+            # User wants "las que cuentan para el contador de clases" which usually means past/completed ones in that month.
+            limit_date = min(end_of_target_month, today)
+        else:
+            start_of_target_month = today.replace(day=1)
+            limit_date = today
+
+        # Start and end of current week (Monday to Sunday) for current schedule
         start_of_week = today - datetime.timedelta(days=today.weekday())
         end_of_week = start_of_week + datetime.timedelta(days=6)
 
-        # Start of current month
-        start_of_month = today.replace(day=1)
 
         # Horas totales este mes (contabilizadas por turnos COMPLETADOS o PROGRAMADOS ya confirmados para él)
         # Asumiendo cada turno dura 'duracion_minutos' que por defecto era 60 o podemos simplemente contar turnos.
         # Contaremos turnos y asumiremos 1 hora por turno para simplificar, o extraeremos horas de la BD.
         # Wait, Turno model has no duracion_minutos, but Clase does?
         # Let's just count turnos * 1 hour for now, or use Turno.hora_inicio/fin diff.
-        turnos_mes = Turno.objects.filter(
+        turnos_mes = Turno.objects.select_related('clase', 'profesor').filter(
             profesor=profesor,
-            fecha__gte=start_of_month,
-            fecha__lte=today,
+            fecha__gte=start_of_target_month,
+            fecha__lte=limit_date,
             estado__in=['PROGRAMADO', 'COMPLETADO']
-        )
+        ).order_by('-fecha', '-hora_inicio')
         
         horas_dictadas = len(turnos_mes) # Simplified 1h per class
 
         # Hoy
-        turnos_hoy = Turno.objects.filter(
+        turnos_hoy = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas').filter(
             profesor=profesor,
             fecha=today,
             estado='PROGRAMADO'
         ).order_by('hora_inicio')
 
         # Esta semana (excluyendo hoy para no duplicar en UI)
-        turnos_semana = Turno.objects.filter(
+        turnos_semana = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas').filter(
             profesor=profesor,
             fecha__gt=today,
             fecha__lte=end_of_week,
@@ -60,20 +81,27 @@ class ProfesorDashboardView(views.APIView):
         ).order_by('fecha', 'hora_inicio')
 
         # Clases sin asignar (futuras a partir de hoy)
-        turnos_libres = Turno.objects.filter(
+        turnos_libres = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas').filter(
             profesor__isnull=True,
             fecha__gte=today,
             estado='PROGRAMADO'
         ).order_by('fecha', 'hora_inicio')
         
         # Horarios fijos sin profesor asignado
-        plantillas_libres = PlantillaTurno.objects.filter(
+        plantillas_libres = PlantillaTurno.objects.select_related('clase', 'profesor').filter(
             profesor__isnull=True,
             is_active=True
         ).order_by('dia_semana', 'hora_inicio')
 
+        mis_plantillas = PlantillaTurno.objects.select_related('clase', 'profesor').filter(
+            profesor=profesor,
+            is_active=True
+        ).order_by('dia_semana', 'hora_inicio')
+
         return Response({
+            "mis_plantillas": PlantillaTurnoSerializer(mis_plantillas, many=True).data,
             "horas_mes": horas_dictadas,
+            "turnos_mes_historial": AdminTurnoSerializer(turnos_mes, many=True).data,
             "turnos_hoy": AdminTurnoSerializer(turnos_hoy, many=True).data,
             "turnos_semana": AdminTurnoSerializer(turnos_semana, many=True).data,
             "turnos_libres": AdminTurnoSerializer(turnos_libres, many=True).data,

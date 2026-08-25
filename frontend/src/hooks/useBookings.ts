@@ -1,6 +1,7 @@
-/* Developed by FireSeed - Fueling Innovation */
-import { useState, useEffect, useCallback } from 'react'
+﻿/* Developed by FireSeed - Fueling Innovation */
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { toast } from 'sonner'
 
 export interface Turno {
   id: string
@@ -11,51 +12,56 @@ export interface Turno {
   totalSpots: number
   isBookedByMe: boolean
   isRecurring: boolean
+  allowsRecurring: boolean
 }
 
 export function useBookings() {
-  const [turnos, setTurnos] = useState<Turno[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchTurnos = useCallback(async () => {
-    try {
-      setLoading(true)
+  const { data: turnos = [], isLoading: loading, error: queryError, refetch } = useQuery<Turno[]>({
+    queryKey: ['turnos'],
+    queryFn: async () => {
       const response = await api.get('/turnos/')
-      setTurnos(response.data)
-    } catch (err: any) {
-      console.error('Error fetching turnos:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      return response.data
     }
-  }, [])
+  })
 
-  useEffect(() => {
-    fetchTurnos()
-  }, [fetchTurnos])
-
-  const bookTurno = async (turnoId: string, recurring: boolean) => {
-    try {
+  const bookMutation = useMutation({
+    mutationFn: async ({ turnoId, recurring }: { turnoId: string, recurring: boolean }) => {
       await api.post('/reservas/book/', { turno_id: turnoId, is_recurring: recurring })
-      // Re-fetch to get updated state from server
-      await fetchTurnos()
-    } catch (err: any) {
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['turnos'] })
+      queryClient.invalidateQueries({ queryKey: ['clientProfile'] }) // also refresh available spots
+      toast.success('¡Clase reservada con éxito!')
+    },
+    onError: (err: any) => {
       console.error('Error booking turno:', err)
-      alert(err.response?.data?.detail || "No se pudo reservar el turno.")
+      toast.error(err.response?.data?.detail || "No se pudo reservar el turno.")
     }
-  }
+  })
 
-  const cancelTurno = async (turnoId: string) => {
-    try {
+  const cancelMutation = useMutation({
+    mutationFn: async (turnoId: string) => {
       await api.post('/reservas/cancel/', { turno_id: turnoId })
-      // Re-fetch to get updated state from server
-      await fetchTurnos()
-    } catch (err: any) {
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['turnos'] })
+      queryClient.invalidateQueries({ queryKey: ['clientProfile'] })
+      toast.success('Clase cancelada.')
+    },
+    onError: (err: any) => {
       console.error('Error cancelling turno:', err)
-      alert(err.response?.data?.detail || "No se pudo cancelar el turno.")
+      toast.error(err.response?.data?.detail || "No se pudo cancelar el turno.")
     }
-  }
+  })
 
-  return { turnos, loading, error, bookTurno, cancelTurno, refetch: fetchTurnos }
+  return { 
+    turnos, 
+    loading, 
+    error: queryError ? queryError.message : null, 
+    bookTurno: (id: string, rec: boolean) => bookMutation.mutateAsync({ turnoId: id, recurring: rec }), 
+    cancelTurno: (id: string) => cancelMutation.mutateAsync(id), 
+    refetch 
+  }
 }

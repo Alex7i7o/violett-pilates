@@ -7,9 +7,7 @@ const Card = React.forwardRef<HTMLDivElement, HTMLMotionProps<"div">>(
   ({ className, ...props }, ref) => (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      /* Inherits variants from parent */
       className={cn(
         "rounded-2xl border border-violett-100 bg-card text-foreground shadow-soft overflow-hidden",
         className

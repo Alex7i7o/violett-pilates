@@ -21,6 +21,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         console.error('Session expired. Please log in again.');
+        // window.location.href = '/';
         // Optionally trigger a logout event here
         return Promise.reject(refreshError);
       }

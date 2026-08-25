@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { InputField } from '../../components/ui/InputField';
+import { SelectField } from '../../components/ui/SelectField';
+import { toast } from "sonner";
 import { getAdminProfesores, createAdminProfesor, updateAdminProfesor, deleteAdminProfesor } from '../../lib/adminApi';
 import type { Profesor } from '../../lib/adminApi';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -17,6 +21,7 @@ export function ProfesoresAdmin() {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [especialidad, setEspecialidad] = useState('');
   const [color, setColor] = useState('#4a306d');
@@ -55,13 +60,16 @@ export function ProfesoresAdmin() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar este profesor?')) return;
     try {
       await deleteAdminProfesor(id);
-      fetchProfesores();
+      fetchData();
     } catch (e) {
-      alert("Error eliminando profesor");
+      toast.error("Error eliminando profesor")
     }
+  };
+
+  const promptDelete = (id: string) => {
+    setProfesorToDelete(id);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,7 +81,7 @@ export function ProfesoresAdmin() {
       setShowModal(false);
       fetchProfesores();
     } catch (err) {
-      alert("Error guardando");
+      toast.error("Error guardando")
     }
   };
 
@@ -162,20 +170,8 @@ export function ProfesoresAdmin() {
           </div>
           <div className="grid grid-cols-2 gap-4">
                       <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1">Fecha Nacimiento</label>
-              <input type="date" value={fechaNacimiento} onChange={e=>setFechaNacimiento(e.target.value)} className="w-full p-2 border rounded-xl" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Sexo</label>
-              <select value={sexo} onChange={e=>setSexo(e.target.value)} className="w-full p-2 border rounded-xl bg-white">
-                <option value="">Seleccionar</option>
-                <option value="F">Femenino</option>
-                <option value="M">Masculino</option>
-                <option value="O">Otro</option>
-                <option value="N">Prefiero no decirlo</option>
-              </select>
-            </div>
+            <InputField label="Fecha Nacimiento" type="date" value={fechaNacimiento} onChange={e=>setFechaNacimiento(e.target.value)} />
+            <SelectField label="Sexo" value={sexo} onChange={e=>setSexo(e.target.value)} options={[{value:'F',label:'Femenino'},{value:'M',label:'Masculino'},{value:'O',label:'Otro'},{value:'N',label:'Prefiero no decirlo'}]} />
           </div>
           <div>
             <label className="block text-sm font-semibold mb-1">Especialidad</label>
@@ -192,6 +188,17 @@ export function ProfesoresAdmin() {
           </div>
         </form>
       </Modal>
+      <ConfirmModal
+        isOpen={!!profesorToDelete}
+        onClose={() => setProfesorToDelete(null)}
+        onConfirm={() => {
+          if (profesorToDelete) handleDelete(profesorToDelete);
+        }}
+        title="Eliminar Profesor"
+        message="Seguro que deseas eliminar este profesor? Se reasignarán sus clases."
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </motion.div>
   );
 }

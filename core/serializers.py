@@ -10,10 +10,14 @@ class TurnoSerializer(serializers.ModelSerializer):
     totalSpots = serializers.IntegerField(source='clase.cupo_maximo', read_only=True)
     isBookedByMe = serializers.SerializerMethodField()
     isRecurring = serializers.SerializerMethodField()
+    allowsRecurring = serializers.SerializerMethodField()
 
     class Meta:
         model = Turno
-        fields = ['id', 'date', 'time', 'classType', 'availableSpots', 'totalSpots', 'isBookedByMe', 'isRecurring']
+        fields = ['id', 'date', 'time', 'classType', 'availableSpots', 'totalSpots', 'isBookedByMe', 'isRecurring', 'allowsRecurring']
+
+    def get_allowsRecurring(self, obj):
+        return bool(obj.plantilla_id)
 
     def get_isBookedByMe(self, obj):
         user = self.context.get('request').user

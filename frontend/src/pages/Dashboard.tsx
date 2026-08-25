@@ -1,8 +1,12 @@
 /* Developed by FireSeed - Fueling Innovation */
 import React, { useState } from 'react'
+import { toast } from 'sonner';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useClientProfile } from '../hooks/useClientProfile'
+import { motion } from 'framer-motion'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
 import { BookingGrid } from '../components/booking/BookingGrid'
 import { CancelModal } from '../components/booking/CancelModal'
 import { useBookings, type Turno } from '../hooks/useBookings'
@@ -33,6 +37,29 @@ export function Dashboard() {
   const { profile, loading: profileLoading, refetch: refetchProfile } = useClientProfile()
   const { turnos, loading: bookingsLoading, bookTurno, cancelTurno, refetch: refetchTurnos } = useBookings()
   const [selectedTurnoToCancel, setSelectedTurnoToCancel] = useState<Turno | null>(null)
+  const [recurrenciaToCancel, setRecurrenciaToCancel] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historial, setHistorial] = useState<any[]>([]);
+  const [historialLoading, setHistorialLoading] = useState(false);
+
+  const fetchHistorial = async () => {
+    if (historial.length > 0) return;
+    try {
+      setHistorialLoading(true);
+      const res = await api.get('/reservas/historial/');
+      setHistorial(res.data);
+    } catch (e) {
+      toast.error('Error cargando historial');
+    } finally {
+      setHistorialLoading(false);
+    }
+  };
+
+  const toggleHistory = () => {
+    if (!showHistory) fetchHistorial();
+    setShowHistory(!showHistory);
+  };
+
 
   const handleBook = async (id: string, recurring: boolean) => {
     await bookTurno(id, recurring)
@@ -46,14 +73,18 @@ export function Dashboard() {
   }
 
   const handleCancelRecurrencia = async (id: string) => {
-    if (!window.confirm('¿Estás seguro de cancelar tu horario fijo permanentemente? Esto cancelará todas tus reservas futuras para este horario.')) return
     try {
       await api.post('/recurrencias/cancel/', { id })
       refetchProfile()
       refetchTurnos()
+      toast.success("Horario fijo cancelado exitosamente.");
     } catch (err: any) {
-      alert("Error al cancelar el horario fijo.")
+      toast.error("Error al cancelar el horario fijo.")
     }
+  }
+
+  const promptCancelRecurrencia = (id: string) => {
+    setRecurrenciaToCancel(id);
   }
 
   if (profileLoading || bookingsLoading) {
@@ -65,7 +96,7 @@ export function Dashboard() {
   const myUpcomingBookings = turnos.filter(t => t.isBookedByMe)
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-200 ease-out">
       
       {/* Header Profile */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -115,7 +146,7 @@ export function Dashboard() {
                     <div className="flex justify-between items-center">
                       <Badge variant="secondary">Fijo Semanal</Badge>
                       <button 
-                        onClick={() => handleCancelRecurrencia(rec.id)}
+                        onClick={() => promptCancelRecurrencia(rec.id)}
                         className="text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
                       >
                         Baja definitiva
@@ -169,12 +200,42 @@ export function Dashboard() {
 
       {/* Grilla de Reservas */}
       <div className="pt-4 border-t border-violett-100">
+        <div className="flex justify-end mb-4">
+          <Button variant="outline" size="sm" onClick={toggleHistory}>
+            {showHistory ? "Ver Agenda Disponible" : "Ver clases a las que asistí"}
+          </Button>
+        </div>
+        {!showHistory ? (
         <BookingGrid 
           turnos={turnos}
           loading={bookingsLoading}
           onBook={handleBook}
           onCancel={handleCancel}
         />
+        ) : (
+          <div className="space-y-4">
+            {historialLoading ? (
+               <div className="text-center text-muted py-8">Cargando historial...</div>
+            ) : historial.length === 0 ? (
+               <div className="text-center text-muted py-8">No has asistido a clases este mes aún.</div>
+            ) : (
+               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                 {historial.map((h: any) => (
+                   <Card key={h.id} className="border-l-4 border-l-violett-500 opacity-80">
+                     <CardContent className="p-4">
+                       <p className="font-bold text-foreground text-lg">{h.fecha}</p>
+                       <p className="text-sm text-muted mb-2">{h.hora_inicio} - {h.hora_fin}</p>
+                       <div className="flex justify-between items-end">
+                         <p className="text-violett-900 font-medium">{h.clase_nombre}</p>
+                         <Badge variant="secondary" className="bg-gray-100 text-gray-700">{h.estado_reserva}</Badge>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 ))}
+               </div>
+            )}
+          </div>
+        )}
       </div>
 
       <CancelModal 
@@ -184,6 +245,20 @@ export function Dashboard() {
         onConfirm={handleCancel}
       />
 
+      <ConfirmModal
+        isOpen={!!recurrenciaToCancel}
+        onClose={() => setRecurrenciaToCancel(null)}
+        onConfirm={() => {
+          if (recurrenciaToCancel) handleCancelRecurrencia(recurrenciaToCancel);
+        }}
+        title="Cancelar Horario Fijo"
+        message="¿Estás seguro de cancelar tu horario fijo permanentemente?
+
+Esto cancelará todas tus reservas futuras para este horario."
+        confirmText="Sí, cancelar"
+        cancelText="Mantener horario"
+        isDestructive={true}
+      />
     </div>
   )
 }

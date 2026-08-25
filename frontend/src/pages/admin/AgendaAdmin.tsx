@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Skeleton } from "../../components/ui/Skeleton";
+import { toast } from "sonner";
 import { Modal } from '../../components/ui/Modal';
 import { getAdminAgenda, updateAsistencia, createAdminTurno, getAdminClases, getAdminProfesores } from '../../lib/adminApi';
 import type { TurnoAdmin } from '../../lib/adminApi';
@@ -47,7 +49,7 @@ export function AgendaAdmin() {
       await updateAsistencia(reservaId, estado);
       fetchAgenda();
     } catch (e) {
-      alert("Error actualizando asistencia");
+      toast.error("Error actualizando asistencia")
     }
   };
 
@@ -64,7 +66,7 @@ export function AgendaAdmin() {
       setIsModalOpen(false);
       fetchAgenda();
     } catch (e) {
-      alert("Error creando el turno puntual");
+      toast.error("Error creando el turno puntual")
     }
   };
 
@@ -89,7 +91,9 @@ export function AgendaAdmin() {
       </Card>
 
       {loading ? (
-        <p className="text-muted py-4">Cargando turnos...</p>
+        <div className="space-y-4 mt-4">
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
       ) : turnos.length === 0 ? (
         <p className="text-muted py-4">No hay turnos para esta fecha.</p>
       ) : (

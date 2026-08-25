@@ -22,17 +22,21 @@ export function BookingModal({ isOpen, onClose, turno, onConfirm }: BookingModal
           <p className="text-lg font-bold text-violett-900">{turno.classType}</p>
         </div>
         
-        <p className="text-muted text-sm">
-          ¿Cómo te gustaría reservar este turno? Puedes anotarte solo para este día, o fijar este horario todas las semanas.
+                <p className="text-muted text-sm">
+          {turno.allowsRecurring 
+            ? '¿Cómo te gustaría reservar este turno? Puedes anotarte solo para este día, o fijar este horario todas las semanas.' 
+            : 'Esta clase es puntual. Solo puedes reservar para esta fecha específica.'}
         </p>
 
         <div className="flex flex-col gap-3">
           <Button onClick={() => onConfirm(turno.id, false)} className="w-full">
             Reserva Puntual (Solo esta clase)
           </Button>
-          <Button onClick={() => onConfirm(turno.id, true)} variant="outline" className="w-full">
-            Reserva Recurrente (Fijo semanal)
-          </Button>
+          {turno.allowsRecurring && (
+            <Button onClick={() => onConfirm(turno.id, true)} variant="outline" className="w-full">
+              Reserva Recurrente (Fijo semanal)
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

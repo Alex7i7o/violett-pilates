@@ -73,7 +73,13 @@ export function BookingGrid({
   }, [availableDates, activeDate])
 
   if (loading) {
-    return <div className="p-8 text-center text-muted">Cargando agenda...</div>
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <Skeleton key={i} className="h-32 w-full" />
+        ))}
+      </div>
+    )
   }
 
   const handleConfirmBook = (id: string, isRecurring: boolean) => {
@@ -132,14 +138,21 @@ export function BookingGrid({
 
       {/* Grid */}
       <div className="min-h-[300px]">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {displayedTurnos.length > 0 ? (
             <motion.div 
               key={activeDate}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3 }}
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.05 }
+                },
+                exit: { opacity: 0, y: -10, transition: { duration: 0.15, ease: "easeOut" } }
+              }}
+              initial="hidden"
+              animate="show"
+              exit="exit"
               className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
             >
               <div className="col-span-full mb-2">
@@ -149,7 +162,8 @@ export function BookingGrid({
               </div>
               
               {displayedTurnos.map((turno) => (
-                <Card key={turno.id} className={`transition-all hover:shadow-md ${turno.isBookedByMe ? "border-violett-400 bg-violett-50/30" : ""}`}>
+                <motion.div key={turno.id} variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { type: "spring", duration: 0.4, bounce: 0.1 } } }}>
+                <Card className={`transition-all hover:shadow-md ${turno.isBookedByMe ? "border-violett-400 bg-violett-50/30" : ""}`}>
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <div>
@@ -158,6 +172,11 @@ export function BookingGrid({
                       </div>
                       {turno.isBookedByMe && <Badge variant="secondary">Mi Reserva</Badge>}
                       {!turno.isBookedByMe && turno.availableSpots === 0 && <Badge variant="destructive">Lleno</Badge>}
+                      {!turno.isBookedByMe && turno.availableSpots > 0 && (
+                        turno.allowsRecurring 
+                          ? <Badge variant="secondary" className="bg-violett-100 text-violett-800">Clase fija</Badge> 
+                          : <Badge variant="outline" className="border-gray-300 text-gray-500">Puntual</Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -182,6 +201,7 @@ export function BookingGrid({
                     </div>
                   </CardContent>
                 </Card>
+                </motion.div>
               ))}
             </motion.div>
           ) : (

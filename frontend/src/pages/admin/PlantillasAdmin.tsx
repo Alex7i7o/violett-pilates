@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { toast } from "sonner";
 import { api } from '../../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -13,6 +15,7 @@ export function PlantillasAdmin() {
   const [clases, setClases] = useState<any[]>([]);
   const [profesores, setProfesores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [plantillaToDelete, setPlantillaToDelete] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -68,18 +71,21 @@ export function PlantillasAdmin() {
       setIsModalOpen(false);
       fetchData();
     } catch (e) {
-      alert("Error creando plantilla");
+      toast.error("Error creando plantilla")
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar este esquema? Los turnos ya generados seguirán existiendo, pero no se generarán nuevos.')) return;
     try {
       await api.delete(`/admin/plantillas/${id}/`);
-      fetchData();
+      fetchPlantillas();
     } catch (e) {
-      alert("Error eliminando plantilla");
+      toast.error("Error eliminando plantilla")
     }
+  };
+
+  const promptDelete = (id: string) => {
+    setPlantillaToDelete(id);
   };
 
   if (loading) return <p className="text-muted p-4">Cargando esquema semanal...</p>;
@@ -113,7 +119,7 @@ export function PlantillasAdmin() {
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-bold">{p.hora_inicio.slice(0,5)}</span>
-                          <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">&times;</button>
+                          <button onClick={() => promptDelete(p.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">&times;</button>
                         </div>
                         <p className="text-violett-900 font-medium truncate" title={p.clase_nombre}>{p.clase_nombre}</p>
                         {p.profesor ? (
@@ -125,10 +131,9 @@ export function PlantillasAdmin() {
                     </Card>
                   ))
                 )}
-              </div>
-            </div>
-          );
-        })}
+              </div>    </div>
+  );
+})}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Horario Fijo">
@@ -203,6 +208,20 @@ export function PlantillasAdmin() {
         </form>
       </Modal>
 
+
+                  <ConfirmModal
+        isOpen={!!plantillaToDelete}
+        onClose={() => setPlantillaToDelete(null)}
+        onConfirm={() => {
+          if (plantillaToDelete) handleDelete(plantillaToDelete);
+        }}
+        title="Eliminar Esquema Semanal"
+        message="¿Seguro que deseas eliminar este esquema?
+
+Los turnos ya generados seguirán existiendo, pero no se generarán nuevos autómaticamente."
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </motion.div>
   );
 }

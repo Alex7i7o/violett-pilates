@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import { toast } from "sonner";
 import { api } from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -13,6 +15,7 @@ export function PlanesAdmin() {
   const [nombre, setNombre] = useState('');
   const [cantidadClases, setCantidadClases] = useState(8);
   const [precio, setPrecio] = useState(0);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   const fetchPlanes = async () => {
     try {
@@ -61,18 +64,21 @@ export function PlanesAdmin() {
       handleCancel();
       fetchPlanes();
     } catch (e) {
-      alert("Error al guardar el plan");
+      toast.error("Error al guardar el plan")
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este plan?')) return;
     try {
       await api.delete(`/admin/planes/${id}/`);
       fetchPlanes();
     } catch (e) {
-      alert("Error al eliminar");
+      toast.error("Error al eliminar")
     }
+  };
+
+  const promptDelete = (id: string) => {
+    setPlanToDelete(id);
   };
 
   return (
@@ -136,7 +142,7 @@ export function PlanesAdmin() {
                       <td className="py-4 px-6 text-right font-bold text-violett-700">${plan.precio}</td>
                       <td className="py-4 px-6 text-center space-x-2">
                         <Button size="sm" variant="outline" onClick={() => handleEdit(plan)}>Modificar</Button>
-                        <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={() => handleDelete(plan.id)}>Borrar</Button>
+                        <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white" onClick={() => promptDelete(plan.id)}>Borrar</Button>
                       </td>
                     </motion.tr>
                   ))}
@@ -149,6 +155,17 @@ export function PlanesAdmin() {
           </div>
         </CardContent>
       </Card>
+      <ConfirmModal
+        isOpen={!!planToDelete}
+        onClose={() => setPlanToDelete(null)}
+        onConfirm={() => {
+          if (planToDelete) handleDelete(planToDelete);
+        }}
+        title="Eliminar Plan"
+        message="Seguro que deseas eliminar este plan?"
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </motion.div>
   );
 }

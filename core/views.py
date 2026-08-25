@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils import timezone
+import datetime
 from django.db import transaction
 from .models import Turno, Reserva, Suscripcion, Recurrencia
 from .serializers import TurnoSerializer, BookTurnoSerializer, CancelTurnoSerializer, RecurrenciaSerializer
@@ -30,7 +31,7 @@ class ClientProfileView(APIView):
             
         dias_restantes = (suscripcion.fecha_vencimiento - timezone.now().date()).days
         
-        recurrencias = Recurrencia.objects.filter(usuario=user, is_active=True)
+        recurrencias = Recurrencia.objects.select_related('clase', 'usuario').filter(usuario=user, is_active=True)
         recurrencias_data = RecurrenciaSerializer(recurrencias, many=True).data
         
         return Response({
@@ -54,7 +55,7 @@ class TurnosDisponiblesView(APIView):
         current_time = now.time()
         
         from django.db.models import Q
-        turnos = Turno.objects.filter(
+        turnos = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas').filter(
             Q(fecha__gt=today) | Q(fecha=today, hora_inicio__gt=current_time),
             estado='PROGRAMADO'
         ).order_by('fecha', 'hora_inicio')
@@ -99,6 +100,8 @@ class BookTurnoView(APIView):
             return Response({"detail": "No tienes un plan activo o clases restantes."}, status=status.HTTP_400_BAD_REQUEST)
             
         if is_recurring:
+            if not getattr(turno, 'plantilla_id', None):
+                return Response({"detail": "Esta clase es puntual y no admite reserva recurrente."}, status=status.HTTP_400_BAD_REQUEST)
             weekday = turno.fecha.isoweekday()
             active_recs = Recurrencia.objects.filter(
                 clase=turno.clase,
@@ -123,7 +126,7 @@ class BookTurnoView(APIView):
             )
 
             # Find all available future turnos matching the criteria
-            future_turnos = Turno.objects.filter(
+            future_turnos = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas').filter(
                 clase=turno.clase,
                 hora_inicio=turno.hora_inicio,
                 fecha__gte=turno.fecha,
@@ -271,3 +274,54 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = 'http://localhost:5173'
     client_class = OAuth2Client
+
+class ClientHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        now = timezone.now()
+        today = now.date()
+        
+        req_month = request.query_params.get('month')
+        req_year = request.query_params.get('year')
+        
+        if req_month and req_year:
+            target_month = int(req_month)
+            target_year = int(req_year)
+            start_date = datetime.date(target_year, target_month, 1)
+            if target_month == 12:
+                end_date = datetime.date(target_year + 1, 1, 1) - datetime.timedelta(days=1)
+            else:
+                end_date = datetime.date(target_year, target_month + 1, 1) - datetime.timedelta(days=1)
+            limit_date = min(end_date, today)
+        else:
+            start_date = today.replace(day=1)
+            limit_date = today
+
+        # Clases que el usuario ya tuvo este mes (o hasta la fecha límite)
+        # Filtramos por reservas pasadas o de hoy pero con horario finalizado
+        current_time = now.time()
+        
+        reservas = Reserva.objects.select_related('turno', 'turno__clase', 'turno__profesor').filter(
+            usuario=user,
+            turno__fecha__gte=start_date,
+            turno__fecha__lte=limit_date,
+            estado__in=['CONFIRMADA', 'TOMADA', 'AUSENTE', 'CANCELADA_TARDIA']
+        ).order_by('-turno__fecha', '-turno__hora_inicio')
+
+        # Filter out future classes of today
+        historial = []
+        for r in reservas:
+            if r.turno.fecha < today or (r.turno.fecha == today and r.turno.hora_fin < current_time):
+                historial.append({
+                    "id": r.id,
+                    "turno_id": r.turno.id,
+                    "fecha": r.turno.fecha.strftime("%Y-%m-%d"),
+                    "hora_inicio": r.turno.hora_inicio.strftime("%H:%M"),
+                    "hora_fin": r.turno.hora_fin.strftime("%H:%M"),
+                    "clase_nombre": r.turno.clase.nombre,
+                    "estado_reserva": r.estado
+                })
+
+        return Response(historial)

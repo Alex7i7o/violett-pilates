@@ -1,5 +1,5 @@
-/* Developed by FireSeed - Fueling Innovation */
-import { useState, useEffect, useCallback } from 'react'
+﻿/* Developed by FireSeed - Fueling Innovation */
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
 export interface Recurrencia {
@@ -22,28 +22,19 @@ export interface ClientProfile {
 }
 
 export function useClientProfile() {
-  const [profile, setProfile] = useState<ClientProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchProfile = useCallback(async () => {
-    try {
-      setLoading(true)
+  const { data: profile = null, isLoading: loading, error: queryError, refetch } = useQuery<ClientProfile>({
+    queryKey: ['clientProfile'],
+    queryFn: async () => {
       const response = await api.get('/profile/')
-      setProfile(response.data)
-      setError(null)
-    } catch (err: any) {
-      console.error('Error fetching profile:', err)
-      setError(err.message)
-      setProfile(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+      return response.data
+    },
+    retry: false, // Don't retry on 401
+  })
 
-  useEffect(() => {
-    fetchProfile()
-  }, [fetchProfile])
-
-  return { profile, loading, error, refetch: fetchProfile }
+  return { 
+    profile, 
+    loading, 
+    error: queryError ? queryError.message : null, 
+    refetch 
+  }
 }

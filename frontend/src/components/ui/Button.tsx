@@ -1,19 +1,17 @@
-/* Developed by FireSeed - Fueling Innovation */
 import * as React from "react"
-import { motion, type HTMLMotionProps } from "framer-motion"
 import { cn } from "../../lib/utils"
 
-export interface ButtonProps extends HTMLMotionProps<"button"> {
-  variant?: 'default' | 'outline' | 'ghost' | 'link'
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'outline' | 'ghost' | 'link' | 'destructive'
   size?: 'default' | 'sm' | 'lg' | 'icon'
-  asChild?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', asChild = false, ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
     
     const variants = {
       default: "bg-violett-900 text-white hover:bg-violett-800 shadow-soft",
+      destructive: "bg-red-500 text-white hover:bg-red-600 shadow-soft",
       outline: "border border-violett-200 bg-transparent hover:bg-violett-50 text-violett-900",
       ghost: "hover:bg-violett-50 text-violett-900",
       link: "text-violett-600 underline-offset-4 hover:underline",
@@ -27,13 +25,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     return (
-      <motion.button
+      <button
         ref={ref}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ duration: 0.2 }}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violett-500 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-[transform,background-color,border-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violett-500 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
           variants[variant],
           sizes[size],
           className

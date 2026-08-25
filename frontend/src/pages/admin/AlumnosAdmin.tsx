@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from "sonner";
 import { getAdminAlumnos, createAdminAlumno, asignarPlanAlumno } from '../../lib/adminApi';
 import type { UsuarioAdmin } from '../../lib/adminApi';
 import { api } from '../../lib/api';
@@ -6,6 +7,8 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
+import { InputField } from '../../components/ui/InputField';
+import { SelectField } from '../../components/ui/SelectField';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function AlumnosAdmin() {
@@ -70,11 +73,11 @@ export function AlumnosAdmin() {
     setAssigning(true);
     try {
       await asignarPlanAlumno(selectedAlumno.id, selectedPlanId);
-      alert('Plan asignado correctamente. El plan anterior ha sido vencido.');
+      toast.success('Plan asignado correctamente. El plan anterior ha sido vencido.')
       setSelectedAlumno(null);
       fetchAlumnos();
     } catch (e) {
-      alert('Error asignando plan');
+      toast.error('Error asignando plan')
     } finally {
       setAssigning(false);
     }
@@ -88,12 +91,12 @@ export function AlumnosAdmin() {
         nombre: newNombre, apellido: newApellido, email: newEmail,
         telefono: newTelefono, contacto_emergencia: newContacto, notas_medicas: newNotas, fecha_nacimiento: newFechaNacimiento || null, sexo: newSexo || null
       });
-      alert('Alumno creado exitosamente. La contraseña por defecto es "violett123".');
+      toast.success('Alumno creado exitosamente. La contraseña por defecto es "violett123".')
       setShowNewModal(false);
       setNewNombre(''); setNewApellido(''); setNewEmail(''); setNewTelefono(''); setNewContacto(''); setNewNotas(''); setNewFechaNacimiento(''); setNewSexo('');
       fetchAlumnos();
     } catch (e: any) {
-      alert('Error creando alumno. Asegurate de que el email no esté ya registrado.');
+      toast.error('Error creando alumno. Asegurate de que el email no esté ya registrado.')
     } finally {
       setCreating(false);
     }
