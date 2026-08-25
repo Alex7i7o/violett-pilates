@@ -18,14 +18,7 @@ export function PlantillasAdmin() {
   const [plantillaToDelete, setPlantillaToDelete] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    clase: '',
-    profesor: '',
-    dia_semana: '1',
-    hora_inicio: '10:00',
-    hora_fin: '11:00'
-  });
-
+  
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -57,21 +50,20 @@ export function PlantillasAdmin() {
     } catch(e) {}
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+    const handleCreate = async (data: PlantillaFormData) => {
     try {
-      const payload = {
-        clase: formData.clase,
-        dia_semana: parseInt(formData.dia_semana),
-        hora_inicio: formData.hora_inicio,
-        hora_fin: formData.hora_fin,
-        profesor: formData.profesor || null
-      };
-      await api.post('/admin/plantillas/', payload);
+      if (editId) {
+        await api.put(`/admin/plantillas/${editId}/`, data);
+        toast.success('Horario actualizado');
+      } else {
+        await api.post('/admin/plantillas/', data);
+        toast.success('Horario creado exitosamente');
+      }
       setIsModalOpen(false);
       fetchData();
     } catch (e) {
-      toast.error("Error creando plantilla")
+      console.error(e);
+      toast.error('Error al guardar el horario');
     }
   };
 
@@ -137,75 +129,28 @@ export function PlantillasAdmin() {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Horario Fijo">
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Día de la semana</label>
-            <select 
-              value={formData.dia_semana}
-              onChange={e => setFormData({...formData, dia_semana: e.target.value})}
-              className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white"
-            >
-              {DIAS.map((d, i) => <option key={i+1} value={i+1}>{d}</option>)}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Hora Inicio</label>
-              <input 
-                type="time" 
-                required 
-                value={formData.hora_inicio} 
-                onChange={e => setFormData({...formData, hora_inicio: e.target.value})} 
-                className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Hora Fin</label>
-              <input 
-                type="time" 
-                required 
-                value={formData.hora_fin} 
-                onChange={e => setFormData({...formData, hora_fin: e.target.value})} 
-                className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" 
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Clase</label>
-            <select 
-              required 
-              value={formData.clase} 
-              onChange={e => setFormData({...formData, clase: e.target.value})} 
-              className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white" 
-            >
-              <option value="">Selecciona una clase</option>
-              {clases.map(c => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Profesor Asignado (Opcional)</label>
-            <select 
-              value={formData.profesor}
-              onChange={e => setFormData({...formData, profesor: e.target.value})}
-              className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white"
-            >
-              <option value="">Dejar libre (Bolsa de trabajo)</option>
-              {profesores.map(p => (
-                <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-violett-100">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit">Guardar Horario</Button>
-          </div>
-        </form>
+        {editId ? (
+          <PlantillaForm 
+            initialData={{ 
+              dia_semana: plantillas.find(p => p.id === editId)?.dia_semana.toString() || '1', 
+              hora_inicio: plantillas.find(p => p.id === editId)?.hora_inicio || '09:00', 
+              hora_fin: plantillas.find(p => p.id === editId)?.hora_fin || '10:00', 
+              clase_nombre: plantillas.find(p => p.id === editId)?.clase_nombre || 'Mat Pilates', 
+              profesor_id: plantillas.find(p => p.id === editId)?.profesor || '' 
+            }}
+            profesores={profesores}
+            onSubmit={handleCreate} 
+            onCancel={() => setIsModalOpen(false)} 
+            isSubmitting={false} 
+          />
+        ) : (
+          <PlantillaForm 
+            profesores={profesores}
+            onSubmit={handleCreate} 
+            onCancel={() => setIsModalOpen(false)} 
+            isSubmitting={false} 
+          />
+        )}
       </Modal>
 
 

@@ -27,7 +27,7 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-background font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-violett-100 flex flex-col">
+      <aside className="w-64 bg-card border-r border-violett-100 flex flex-col sticky top-0 h-screen overflow-y-auto custom-scrollbar">
         <div className="p-6 pb-2">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-violett-900 flex items-center justify-center text-white font-bold italic">V</div>

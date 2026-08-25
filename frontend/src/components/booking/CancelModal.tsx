@@ -12,23 +12,31 @@ interface CancelModalProps {
 }
 
 export function CancelModal({ isOpen, onClose, turno, onConfirm }: CancelModalProps) {
+  const [cachedTurno, setCachedTurno] = React.useState<Turno | null>(turno)
+  
+  React.useEffect(() => {
+    if (turno) setCachedTurno(turno)
+  }, [turno])
+
+  const displayTurno = turno || cachedTurno
+
   const isLateCancellation = useMemo(() => {
-    if (!turno) return false
-    const [year, month, day] = turno.date.split('-').map(Number)
-    const [hours, minutes] = turno.time.split(':').map(Number)
+    if (!displayTurno) return false
+    const [year, month, day] = displayTurno.date.split('-').map(Number)
+    const [hours, minutes] = displayTurno.time.split(':').map(Number)
     const turnoDate = new Date(year, month - 1, day, hours, minutes)
     const now = new Date()
     const diffHours = (turnoDate.getTime() - now.getTime()) / (1000 * 60 * 60)
     return diffHours < 24
-  }, [turno])
+  }, [displayTurno])
 
-  if (!turno) return null
+  if (!displayTurno) return null
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cancelar Reserva">
       <div className="space-y-6">
         <p className="text-muted text-sm">
-          Estás a punto de cancelar tu clase de <strong>{turno.classType}</strong> del día {turno.date} a las {turno.time}.
+          Estás a punto de cancelar tu clase de <strong>{displayTurno.classType}</strong> del día {displayTurno.date} a las {displayTurno.time}.
         </p>
 
         {isLateCancellation && (
@@ -45,7 +53,7 @@ export function CancelModal({ isOpen, onClose, turno, onConfirm }: CancelModalPr
 
         <div className="flex gap-3 justify-end mt-4">
           <Button onClick={onClose} variant="outline" className="w-full">Atrás</Button>
-          <Button onClick={() => onConfirm(turno.id)} variant="destructive" className="w-full">
+          <Button onClick={() => onConfirm(displayTurno.id)} variant="destructive" className="w-full">
             Sí, cancelar clase
           </Button>
         </div>

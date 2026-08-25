@@ -5,6 +5,7 @@ import type { UsuarioAdmin } from '../../lib/adminApi';
 import { api } from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { AlumnoForm, type AlumnoFormData } from '../../components/admin/AlumnoForm';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { InputField } from '../../components/ui/InputField';
@@ -25,13 +26,9 @@ export function AlumnosAdmin() {
 
   // Nuevo Alumno Modal State
   const [showNewModal, setShowNewModal] = useState(false);
-  const [newNombre, setNewNombre] = useState('');
-  const [newApellido, setNewApellido] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newTelefono, setNewTelefono] = useState('');
-  const [newContacto, setNewContacto] = useState('');
-  const [newNotas, setNewNotas] = useState('');
-  const [newFechaNacimiento, setNewFechaNacimiento] = useState('');
+    const [newApellido, setNewApellido] = useState('');
+      const [newContacto, setNewContacto] = useState('');
+    const [newFechaNacimiento, setNewFechaNacimiento] = useState('');
   const [newSexo, setNewSexo] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -83,20 +80,16 @@ export function AlumnosAdmin() {
     }
   }
 
-  const handleCreateAlumno = async (e: React.FormEvent) => {
-    e.preventDefault();
+    const handleCreateAlumno = async (data: AlumnoFormData) => {
     setCreating(true);
     try {
-      await createAdminAlumno({
-        nombre: newNombre, apellido: newApellido, email: newEmail,
-        telefono: newTelefono, contacto_emergencia: newContacto, notas_medicas: newNotas, fecha_nacimiento: newFechaNacimiento || null, sexo: newSexo || null
-      });
-      toast.success('Alumno creado exitosamente. La contraseña por defecto es "violett123".')
+      await api.post('/admin/alumnos/', data);
+      toast.success('Alumna creada exitosamente');
+      fetchData();
       setShowNewModal(false);
-      setNewNombre(''); setNewApellido(''); setNewEmail(''); setNewTelefono(''); setNewContacto(''); setNewNotas(''); setNewFechaNacimiento(''); setNewSexo('');
-      fetchAlumnos();
     } catch (e: any) {
-      toast.error('Error creando alumno. Asegurate de que el email no esté ya registrado.')
+      console.error(e);
+      toast.error('Error al crear alumna. ' + (e.response?.data?.detail || ''));
     } finally {
       setCreating(false);
     }
@@ -224,40 +217,13 @@ export function AlumnosAdmin() {
 
       {/* Modal Nueva Alumna */}
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="Nueva Alumna">
-        <form onSubmit={handleCreateAlumno} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Nombre</label>
-              <input type="text" required value={newNombre} onChange={e=>setNewNombre(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Apellido</label>
-              <input type="text" required value={newApellido} onChange={e=>setNewApellido(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Email</label>
-            <input type="email" required value={newEmail} onChange={e=>setNewEmail(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Teléfono</label>
-            <input type="text" value={newTelefono} onChange={e=>setNewTelefono(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Contacto de Emergencia</label>
-            <input type="text" value={newContacto} onChange={e=>setNewContacto(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Notas Médicas / Lesiones</label>
-            <textarea value={newNotas} onChange={e=>setNewNotas(e.target.value)} rows={2} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500"></textarea>
-          </div>
-          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-violett-100">
-            <Button type="button" variant="outline" onClick={() => setShowNewModal(false)}>Cancelar</Button>
-            <Button type="submit" disabled={creating}>
-              {creating ? 'Guardando...' : 'Crear Alumna'}
-            </Button>
-          </div>
-        </form>
+        <AlumnoForm 
+          planes={planes} 
+          onSubmit={handleCreateAlumno} 
+          onCancel={() => setShowNewModal(false)} 
+          isSubmitting={creating} 
+          submitLabel="Crear Alumna" 
+        />
       </Modal>
     </motion.div>
   );

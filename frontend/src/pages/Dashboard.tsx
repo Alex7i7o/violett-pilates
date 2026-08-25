@@ -9,29 +9,14 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { BookingGrid } from '../components/booking/BookingGrid'
 import { CancelModal } from '../components/booking/CancelModal'
+import { ClientProfileHeader } from '../components/dashboard/ClientProfileHeader'
+import { ClientRecurringClasses } from '../components/dashboard/ClientRecurringClasses'
+import { ClientUpcomingClasses } from '../components/dashboard/ClientUpcomingClasses'
+import { ReviewForm } from '../components/ui/ReviewForm'
 import { useBookings, type Turno } from '../hooks/useBookings'
 import { api } from '../lib/api'
 
-const formatUpcomingDate = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  const weekdayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long' })
-  const weekday = weekdayFormatter.format(date)
-  const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1)
-  
-  const monthFormatter = new Intl.DateTimeFormat('es-AR', { month: 'short' })
-  const monthShort = monthFormatter.format(date).replace('.', '')
-  const capitalizedMonth = monthShort.charAt(0).toUpperCase() + monthShort.slice(1)
-  
-  const paddedDay = String(day).padStart(2, '0')
-  return `${capitalizedWeekday} ${paddedDay} ${capitalizedMonth}`
-}
 
-const formatExpirationDate = (dateStr: string) => {
-  if (!dateStr) return ''
-  const [year, month, day] = dateStr.split('-')
-  return `${day}-${month}-${year}`
-}
 
 export function Dashboard() {
   const { profile, loading: profileLoading, refetch: refetchProfile } = useClientProfile()
@@ -93,110 +78,14 @@ export function Dashboard() {
 
   if (!profile) return null
 
-  const myUpcomingBookings = turnos.filter(t => t.isBookedByMe)
-
-  return (
+    return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-200 ease-out">
       
-      {/* Header Profile */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Hola, {profile.name}</h1>
-          <p className="text-muted mt-1">Bienvenida de nuevo a Violett Pilates.</p>
-        </div>
-        <Badge variant={profile.daysUntilExpiration < 7 ? "destructive" : "secondary"} className="text-sm px-4 py-1">
-          Vence en {profile.daysUntilExpiration} días
-        </Badge>
-      </div>
+      <ClientProfileHeader profile={profile} />
 
-      {/* Plan Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-br from-violett-900 to-violett-700 text-white border-none shadow-glass">
-          <CardHeader>
-            <CardTitle className="text-white/90 text-lg">Mi Plan Actual</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{profile.activePlan}</p>
-            <p className="text-violett-200 mt-2 text-sm">Válido hasta el {formatExpirationDate(profile.expirationDate)}</p>
-          </CardContent>
-        </Card>
+      <ClientRecurringClasses recurrencias={profile.recurrencias} onCancelClick={promptCancelRecurrencia} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg text-muted">Clases Disponibles</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-violett-900">{profile.remainingClasses}</span>
-            <span className="text-muted font-medium">de {profile.totalClasses}</span>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Mi Horario Fijo */}
-      {profile.recurrencias && profile.recurrencias.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Mi Horario Fijo / Recurrente</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {profile.recurrencias.map(rec => {
-              const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados', 'Domingos']
-              const dayName = days[rec.dia_semana - 1]
-              return (
-                <Card key={rec.id} className="border-l-4 border-l-violett-700 bg-violett-50/50">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <Badge variant="secondary">Fijo Semanal</Badge>
-                      <button 
-                        onClick={() => promptCancelRecurrencia(rec.id)}
-                        className="text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
-                      >
-                        Baja definitiva
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xl font-bold text-foreground mb-1">{rec.classType}</p>
-                    <p className="text-muted text-sm">Todos los {dayName}</p>
-                    <p className="text-muted text-sm font-medium">• {rec.time} hs</p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Mis Próximas Clases Confirmadas */}
-      {myUpcomingBookings.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Mis Próximas Clases Confirmadas</h2>
-          <div className="flex gap-3 overflow-x-auto pb-4 snap-x">
-            {myUpcomingBookings.map(turno => (
-              <Card key={turno.id} className="min-w-[280px] snap-start border-l-4 border-l-violett-500">
-                <CardHeader className="pb-2">
-                  <Badge className="w-fit" variant={turno.isRecurring ? "secondary" : "default"}>
-                    {turno.isRecurring ? "Clase fija" : "Puntual"}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-xl font-bold text-foreground mb-1">{turno.classType}</p>
-                      <p className="text-muted text-sm">{formatUpcomingDate(turno.date)}</p>
-                      <p className="text-muted text-sm font-medium">• {turno.time} hs</p>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedTurnoToCancel(turno)}
-                      className="text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+      <ClientUpcomingClasses turnos={turnos} onCancelClick={setSelectedTurnoToCancel} />
 
       {/* Grilla de Reservas */}
       <div className="pt-4 border-t border-violett-100">
@@ -221,7 +110,7 @@ export function Dashboard() {
             ) : (
                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                  {historial.map((h: any) => (
-                   <Card key={h.id} className="border-l-4 border-l-violett-500 opacity-80">
+                   <Card key={h.id} className="opacity-80 relative overflow-hidden bg-gray-50/50">
                      <CardContent className="p-4">
                        <p className="font-bold text-foreground text-lg">{h.fecha}</p>
                        <p className="text-sm text-muted mb-2">{h.hora_inicio} - {h.hora_fin}</p>
@@ -237,6 +126,9 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Reseñas */}
+      <ReviewForm />
 
       <CancelModal 
         isOpen={!!selectedTurnoToCancel}

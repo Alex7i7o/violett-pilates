@@ -7,6 +7,7 @@ import { getAdminProfesores, createAdminProfesor, updateAdminProfesor, deleteAdm
 import type { Profesor } from '../../lib/adminApi';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { ProfesorForm, type ProfesorFormData } from '../../components/admin/ProfesorForm';
 import { Modal } from '../../components/ui/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,12 +19,9 @@ export function ProfesoresAdmin() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
   
-  const [nombre, setNombre] = useState('');
-  const [apellido, setApellido] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [especialidad, setEspecialidad] = useState('');
+    const [apellido, setApellido] = useState('');
+    const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
+    const [especialidad, setEspecialidad] = useState('');
   const [color, setColor] = useState('#4a306d');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [sexo, setSexo] = useState('');
@@ -72,16 +70,20 @@ export function ProfesoresAdmin() {
     setProfesorToDelete(id);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const data = { nombre, apellido, telefono, email, especialidad, color_identificador: color, fecha_nacimiento: fechaNacimiento || null, sexo: sexo || null };
+    const handleSubmit = async (data: ProfesorFormData) => {
     try {
-      if (isEditing && currentId) await updateAdminProfesor(currentId, data);
-      else await createAdminProfesor(data);
+      if (editId) {
+        await api.put(`/admin/profesores/${editId}/`, data);
+        toast.success('Profesor actualizado');
+      } else {
+        await api.post('/admin/profesores/', data);
+        toast.success('Profesor creado');
+      }
       setShowModal(false);
-      fetchProfesores();
-    } catch (err) {
-      toast.error("Error guardando")
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al guardar el profesor');
     }
   };
 
@@ -149,44 +151,22 @@ export function ProfesoresAdmin() {
       </Card>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={isEditing ? 'Modificar Profesor' : 'Nuevo Profesor'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Nombre</label>
-              <input type="text" required value={nombre} onChange={e=>setNombre(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Apellido</label>
-              <input type="text" required value={apellido} onChange={e=>setApellido(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Email</label>
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-foreground">Teléfono</label>
-            <input type="text" value={telefono} onChange={e=>setTelefono(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-                      <div className="grid grid-cols-2 gap-4">
-            <InputField label="Fecha Nacimiento" type="date" value={fechaNacimiento} onChange={e=>setFechaNacimiento(e.target.value)} />
-            <SelectField label="Sexo" value={sexo} onChange={e=>setSexo(e.target.value)} options={[{value:'F',label:'Femenino'},{value:'M',label:'Masculino'},{value:'O',label:'Otro'},{value:'N',label:'Prefiero no decirlo'}]} />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">Especialidad</label>
-              <input type="text" value={especialidad} onChange={e=>setEspecialidad(e.target.value)} placeholder="Ej. Pilates" className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Color</label>
-              <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-full h-11 px-1 py-1 rounded-xl cursor-pointer border border-violett-200" />
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-violett-100">
-            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
-            <Button type="submit">Guardar</Button>
-          </div>
-        </form>
+        {editId ? (
+          <ProfesorForm 
+            initialData={{ nombre: profesores.find(p => p.id === editId)?.nombre || '', email: profesores.find(p => p.id === editId)?.email || '', telefono: profesores.find(p => p.id === editId)?.telefono || '', color: profesores.find(p => p.id === editId)?.color || '#6d28d9' }} 
+            onSubmit={handleSubmit} 
+            onCancel={() => setShowModal(false)} 
+            isSubmitting={false} 
+            submitLabel="Actualizar Profesor" 
+          />
+        ) : (
+          <ProfesorForm 
+            onSubmit={handleSubmit} 
+            onCancel={() => setShowModal(false)} 
+            isSubmitting={false} 
+            submitLabel="Crear Profesor" 
+          />
+        )}
       </Modal>
       <ConfirmModal
         isOpen={!!profesorToDelete}

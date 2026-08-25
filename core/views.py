@@ -6,7 +6,7 @@ from rest_framework import status
 from django.utils import timezone
 import datetime
 from django.db import transaction
-from .models import Turno, Reserva, Suscripcion, Recurrencia
+from .models import Turno, Reserva, Suscripcion, Recurrencia, Resena
 from .serializers import TurnoSerializer, BookTurnoSerializer, CancelTurnoSerializer, RecurrenciaSerializer
 from .services import cancelar_reserva
 
@@ -325,3 +325,27 @@ class ClientHistoryView(APIView):
                 })
 
         return Response(historial)
+
+class CrearResenaView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        puntuacion = request.data.get('puntuacion')
+        comentario = request.data.get('comentario', '')
+
+        if not puntuacion:
+            return Response({'detail': 'La puntuacion es obligatoria.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            puntuacion = int(puntuacion)
+            if puntuacion < 1 or puntuacion > 5:
+                raise ValueError
+        except ValueError:
+            return Response({'detail': 'La puntuacion debe ser un numero entre 1 y 5.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        Resena.objects.create(
+            usuario=request.user,
+            puntuacion=puntuacion,
+            comentario=comentario
+        )
+        return Response({'detail': 'Resena guardada exitosamente.'}, status=status.HTTP_201_CREATED)

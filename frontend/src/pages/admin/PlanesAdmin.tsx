@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { api } from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PlanForm, type PlanFormData } from '../../components/admin/PlanForm';
 
 export function PlanesAdmin() {
   const [planes, setPlanes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const [nombre, setNombre] = useState('');
-  const [cantidadClases, setCantidadClases] = useState(8);
-  const [precio, setPrecio] = useState(0);
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   const fetchPlanes = async () => {
@@ -34,46 +31,47 @@ export function PlanesAdmin() {
   }, []);
 
   const handleEdit = (plan: any) => {
-    setIsEditing(true);
     setCurrentId(plan.id);
-    setNombre(plan.nombre);
-    setCantidadClases(plan.cantidad_clases);
-    setPrecio(plan.precio);
   };
 
   const handleCancel = () => {
-    setIsEditing(false);
     setCurrentId(null);
-    setNombre('');
-    setCantidadClases(8);
-    setPrecio(0);
-  };
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (data: PlanFormData) => {
     try {
-      if (isEditing && currentId) {
+      if (currentId) {
         await api.put(`/admin/planes/${currentId}/`, {
-          nombre, cantidad_clases: cantidadClases, precio, is_active: true
+          nombre: data.nombre,
+          cantidad_clases: data.clases_por_mes,
+          precio: data.precio
         });
+        toast.success('Plan actualizado');
       } else {
         await api.post('/admin/planes/', {
-          nombre, cantidad_clases: cantidadClases, precio, is_active: true
+          nombre: data.nombre,
+          cantidad_clases: data.clases_por_mes,
+          precio: data.precio
         });
+        toast.success('Plan creado');
       }
       handleCancel();
       fetchPlanes();
     } catch (e) {
-      toast.error("Error al guardar el plan")
+      console.error(e);
+      toast.error('Error al guardar el plan');
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await api.delete(`/admin/planes/${id}/`);
+      toast.success("Plan eliminado");
       fetchPlanes();
     } catch (e) {
-      toast.error("Error al eliminar")
+      toast.error("Error al eliminar");
+    } finally {
+      setPlanToDelete(null);
     }
   };
 
@@ -87,31 +85,17 @@ export function PlanesAdmin() {
 
       <Card>
         <CardContent className="pt-6">
-          <h3 className="font-bold text-lg mb-4 text-foreground">{isEditing ? 'Editar Plan' : 'Crear Nuevo Plan'}</h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="col-span-1 md:col-span-2">
-              <label className="block text-sm font-semibold mb-1 text-foreground">Nombre</label>
-              <input type="text" required value={nombre} onChange={e => setNombre(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Clases</label>
-              <input type="number" required min="1" value={cantidadClases} onChange={e => setCantidadClases(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Precio</label>
-              <input type="number" required min="0" step="0.01" value={precio} onChange={e => setPrecio(Number(e.target.value))} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
-            </div>
-            <div className="col-span-1 md:col-span-4 flex justify-end gap-3 mt-2">
-              {isEditing && (
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancelar
-                </Button>
-              )}
-              <Button type="submit">
-                {isEditing ? 'Guardar Cambios' : 'Crear Plan'}
-              </Button>
-            </div>
-          </form>
+          <h3 className="font-bold text-lg mb-4 text-foreground">{currentId ? 'Editar Plan' : 'Crear Nuevo Plan'}</h3>
+          <PlanForm 
+            initialData={currentId ? { 
+              nombre: planes.find(p => p.id === currentId)?.nombre || '', 
+              clases_por_mes: planes.find(p => p.id === currentId)?.cantidad_clases || 0, 
+              precio: planes.find(p => p.id === currentId)?.precio || 0 
+            } : null} 
+            onSubmit={handleSubmit} 
+            onCancel={handleCancel} 
+            isEditing={!!currentId} 
+          />
         </CardContent>
       </Card>
 

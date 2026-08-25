@@ -1,7 +1,7 @@
 # Developed by FireSeed - Fueling Innovation
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ClientHistoryView, TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, CancelRecurrenciaView, GoogleLogin
+from .views import ClientHistoryView, TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, CancelRecurrenciaView, GoogleLogin, CrearResenaView
 from .admin_views import (
     ProfesorViewSet, AdminTurnoViewSet, AdminAlumnoViewSet, 
     AdminAgendaView, AdminReservaAsistenciaView,
@@ -35,4 +35,5 @@ urlpatterns = [
     path('profesor/dashboard/', ProfesorDashboardView.as_view(), name='profesor_dashboard'),
     path('profesor/turnos/<uuid:turno_id>/assign/', AssignClaseView.as_view(), name='profesor_assign'),
     path('profesor/plantillas/<uuid:plantilla_id>/assign/', AssignPlantillaView.as_view(), name='profesor_plantilla_assign'),
+    path('resenas/', CrearResenaView.as_view(), name='crear-resena'),
 ] + router.urls

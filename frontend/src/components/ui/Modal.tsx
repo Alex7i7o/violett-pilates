@@ -14,11 +14,17 @@ interface ModalProps {
 export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
   React.useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.paddingRight = '0px';
+      document.body.style.overflow = 'unset';
     }
-    return () => { document.body.style.overflow = 'unset' }
+    return () => { 
+      document.body.style.paddingRight = '0px';
+      document.body.style.overflow = 'unset'; 
+    }
   }, [isOpen])
 
   return (
@@ -27,24 +33,22 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: 0.25, ease: "easeOut" } }}
-            exit={{ opacity: 0, transition: { duration: 0.15, ease: "linear" } }}
+            animate={{ opacity: 1, transition: { duration: 0.3, ease: "easeOut" } }}
+            exit={{ opacity: 0, transition: { duration: 0.35, ease: "easeInOut" } }}
             className="fixed inset-0 bg-violett-900/40 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ 
               opacity: 1, 
               scale: 1, 
-              y: 0, 
-              transition: { type: "spring", duration: 0.25, bounce: 0.15 } 
+              transition: { type: "spring", bounce: 0.3, duration: 0.45 } 
             }}
             exit={{ 
               opacity: 0, 
-              scale: 0.95, 
-              y: 10, 
-              transition: { duration: 0.15, ease: "easeOut" } 
+              scale: 0.92, 
+              transition: { type: "spring", bounce: 0, duration: 0.35 } 
             }}
             className={cn(
               "relative z-50 w-full max-w-lg overflow-hidden rounded-2xl bg-card shadow-glass sm:w-[90%]",

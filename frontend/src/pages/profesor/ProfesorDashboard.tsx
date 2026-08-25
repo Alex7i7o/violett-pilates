@@ -9,9 +9,16 @@ import { Badge } from '../../components/ui/Badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { ProfesorTabHoy } from '../../components/profesor/ProfesorTabHoy';
+import { ProfesorTabMes } from '../../components/profesor/ProfesorTabMes';
+import { ProfesorTabProximos } from '../../components/profesor/ProfesorTabProximos';
+import { ProfesorTabRecurrentes } from '../../components/profesor/ProfesorTabRecurrentes';
+import { ProfesorBolsaTrabajo } from '../../components/profesor/ProfesorBolsaTrabajo';
+import { type ProfesorDashboardData } from '../../types/profesor';
+
 
 export function ProfesorDashboard() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ProfesorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Password change state
@@ -170,184 +177,26 @@ export function ProfesorDashboard() {
                 {/* Left Column: Contenido por Tab */}
         <div className="lg:col-span-2 space-y-6">
           <AnimatePresence mode="wait">
-            {activeTab === 'hoy' && (
-              <motion.div key="hoy" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-                <section>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-foreground">Clases de Hoy</h3>
-              {pastHoy.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => setShowPast(!showPast)}>
-                  {showPast ? 'Ocultar clases dadas' : 'Ver clases dadas'}
-                </Button>
-              )}
-            </div>
-            
-            {displayHoy.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted">
-                  No tienes más clases para hoy.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                <AnimatePresence>
-                  {displayHoy.map((t: any) => {
-                    const isPast = t.hora_fin.slice(0,5) < currentHHMM;
-                    return (
-                      <motion.div key={t.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                        <Card className={`border-l-4 ${isPast ? 'border-l-gray-400 opacity-60' : 'border-l-violett-600'}`}>
-                          <CardContent className="flex justify-between items-center p-4">
-                            <div>
-                              <p className="font-bold text-foreground text-lg">{t.hora_inicio.slice(0,5)} - {t.hora_fin.slice(0,5)}</p>
-                              <p className={`${isPast ? 'text-gray-600' : 'text-violett-900'} font-medium`}>{t.clase_nombre}</p>
-                            </div>
-                            <Badge variant="default" className={`${isPast ? 'bg-gray-200 text-gray-700' : 'bg-violett-100 text-violett-900'} border-none`}>
-                              {isPast ? 'Dada' : `${t.cupo_actual} cupos libres`}
-                            </Badge>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            )}
-          </section>
-              </motion.div>
-            )}
-            
+            {activeTab === 'hoy' && <ProfesorTabHoy data={data} formatFecha={formatFecha} />}
             {activeTab === 'mes' && (
-              <motion.div key="mes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-                <div className="bg-white border border-violett-100 px-6 py-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm">
-                  <div>
-                    <h3 className="text-lg font-bold text-violett-900 mb-3">Filtro de Historial</h3>
-                    <div className="flex items-center gap-3">
-                      <select 
-                        className="border border-violett-200 rounded-xl px-3 py-2 text-sm bg-white text-violett-900 focus:outline-none focus:ring-2 focus:ring-violett-500"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                      >
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i+1} value={i+1}>
-                            {new Date(2000, i).toLocaleString('es-ES', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())}
-                          </option>
-                        ))}
-                      </select>
-                      <select 
-                        className="border border-violett-200 rounded-xl px-3 py-2 text-sm bg-white text-violett-900 focus:outline-none focus:ring-2 focus:ring-violett-500"
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(Number(e.target.value))}
-                      >
-                        {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-violett-50 px-5 py-3 rounded-xl flex items-center gap-4">
-                    <div className="w-10 h-10 bg-violett-900 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-soft">
-                      {data.horas_mes}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-violett-900 uppercase tracking-wider">Clases Dictadas</p>
-                      <p className="text-xs text-violett-600">En este mes</p>
-                    </div>
-                  </div>
-                </div>
-                <section>
-            <h3 className="text-xl font-bold text-foreground mb-4">Clases Dictadas en el Mes</h3>
-            {(!data.turnos_mes_historial || data.turnos_mes_historial.length === 0) ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted">
-                  No hay clases dictadas en este mes.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {data.turnos_mes_historial.map((t: any) => (
-                  <Card key={t.id} className="border-l-4 border-l-violett-600">
-                    <CardContent className="flex justify-between items-center p-4">
-                      <div>
-                        <p className="font-bold text-foreground">{formatFecha(t.fecha)}</p>
-                        <p className="text-muted text-sm">{t.hora_inicio.slice(0,5)} - {t.hora_fin.slice(0,5)} hs</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-violett-900 font-medium">{t.clase_nombre}</p>
-                        <Badge variant="outline" className="mt-1">{t.estado}</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <ProfesorTabMes 
+                data={data} 
+                selectedMonth={selectedMonth} 
+                setSelectedMonth={setSelectedMonth} 
+                selectedYear={selectedYear} 
+                setSelectedYear={setSelectedYear} 
+                formatFecha={formatFecha} 
+              />
             )}
-          </section>
-              </motion.div>
-            )}
-
             {activeTab === 'proximos' && (
-              <motion.div key="proximos" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-                <section>
-            <h3 className="text-xl font-bold text-foreground mb-4">Próximos Días</h3>
-            {data.turnos_semana.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted">
-                  No tienes más clases programadas esta semana.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {data.turnos_semana.map((t: any) => (
-                  <Card key={t.id}>
-                    <CardContent className="flex justify-between items-center p-4">
-                      <div>
-                        <p className="font-bold text-foreground">{formatFecha(t.fecha)}</p>
-                        <p className="text-muted text-sm">{t.hora_inicio.slice(0,5)} - {t.hora_fin.slice(0,5)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-violett-900 font-medium">{t.clase_nombre}</p>
-                        <p className="text-xs text-muted mt-1">{t.cupo_actual} cupos libres</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <ProfesorTabProximos 
+                data={data} 
+                formatFecha={formatFecha} 
+                showPast={showPast} 
+                setShowPast={setShowPast} 
+              />
             )}
-          </section>
-              </motion.div>
-            )}
-
-            {activeTab === 'recurrentes' && (
-              <motion.div key="recurrentes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-                <section>
-            <h3 className="text-xl font-bold text-foreground mb-4">Mis Clases Recurrentes</h3>
-            {data.mis_plantillas && data.mis_plantillas.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted">
-                  No tienes horarios fijos semanales asignados.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {data.mis_plantillas?.map((p: any) => (
-                  <Card key={p.id}>
-                    <CardContent className="flex justify-between items-center p-4">
-                      <div>
-                        <Badge variant="secondary" className="mb-2">Fija Semanal</Badge>
-                        <p className="font-bold text-foreground">Todos los {formatDayOfWeek(p.dia_semana)}s</p>
-                        <p className="text-muted text-sm">{p.hora_inicio.slice(0,5)} hs</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-violett-900 font-medium">{p.clase_nombre}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
-              </motion.div>
-            )}
+            {activeTab === 'recurrentes' && <ProfesorTabRecurrentes data={data} />}
           </AnimatePresence>
         </div>
 
