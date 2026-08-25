@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function AlumnosAdmin() {
   const [alumnos, setAlumnos] = useState<UsuarioAdmin[]>([]);
   const [search, setSearch] = useState('');
+  const [minAge, setMinAge] = useState('');
+  const [maxAge, setMaxAge] = useState('');
   const [loading, setLoading] = useState(false);
   
   const [selectedAlumno, setSelectedAlumno] = useState<UsuarioAdmin | null>(null);
@@ -26,6 +28,8 @@ export function AlumnosAdmin() {
   const [newTelefono, setNewTelefono] = useState('');
   const [newContacto, setNewContacto] = useState('');
   const [newNotas, setNewNotas] = useState('');
+  const [newFechaNacimiento, setNewFechaNacimiento] = useState('');
+  const [newSexo, setNewSexo] = useState('');
   const [creating, setCreating] = useState(false);
 
   const fetchAlumnos = async () => {
@@ -82,11 +86,11 @@ export function AlumnosAdmin() {
     try {
       await createAdminAlumno({
         nombre: newNombre, apellido: newApellido, email: newEmail,
-        telefono: newTelefono, contacto_emergencia: newContacto, notas_medicas: newNotas
+        telefono: newTelefono, contacto_emergencia: newContacto, notas_medicas: newNotas, fecha_nacimiento: newFechaNacimiento || null, sexo: newSexo || null
       });
       alert('Alumno creado exitosamente. La contraseña por defecto es "violett123".');
       setShowNewModal(false);
-      setNewNombre(''); setNewApellido(''); setNewEmail(''); setNewTelefono(''); setNewContacto(''); setNewNotas('');
+      setNewNombre(''); setNewApellido(''); setNewEmail(''); setNewTelefono(''); setNewContacto(''); setNewNotas(''); setNewFechaNacimiento(''); setNewSexo('');
       fetchAlumnos();
     } catch (e: any) {
       alert('Error creando alumno. Asegurate de que el email no esté ya registrado.');
@@ -94,6 +98,12 @@ export function AlumnosAdmin() {
       setCreating(false);
     }
   };
+
+  const filteredAlumnos = alumnos.filter(a => {
+    if (minAge && (a.edad === null || a.edad < parseInt(minAge))) return false;
+    if (maxAge && (a.edad === null || a.edad > parseInt(maxAge))) return false;
+    return true;
+  });
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -119,7 +129,7 @@ export function AlumnosAdmin() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
-            {alumnos.map(alumno => (
+            {filteredAlumnos.map(alumno => (
               <motion.div 
                 key={alumno.id}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -130,7 +140,9 @@ export function AlumnosAdmin() {
                 <Card className="h-full flex flex-col justify-between hover:shadow-glow transition-shadow">
                   <CardContent className="pt-6">
                     <h3 className="text-xl font-bold text-foreground">{alumno.nombre} {alumno.apellido}</h3>
-                    <p className="text-sm text-muted mt-1">📞 {alumno.telefono || 'Sin teléfono'}</p>
+                    <p className="text-sm text-muted mt-1">
+                      Tel: {alumno.telefono || 'Sin teléfono'} • Edad: {alumno.edad !== null ? `${alumno.edad} años` : '-'}
+                    </p>
                     
                     <div className="mt-5">
                       {alumno.plan_activo ? (
@@ -247,3 +259,7 @@ export function AlumnosAdmin() {
     </motion.div>
   );
 }
+
+
+
+

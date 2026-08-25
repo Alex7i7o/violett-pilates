@@ -44,6 +44,8 @@ class CustomRegisterSerializer(RegisterSerializer):
     telefono = serializers.CharField(max_length=30, required=False, allow_blank=True)
     contacto_emergencia = serializers.CharField(required=False, allow_blank=True)
     notas_medicas = serializers.CharField(required=False, allow_blank=True)
+    fecha_nacimiento = serializers.DateField(required=False, allow_null=True)
+    sexo = serializers.CharField(required=False, allow_blank=True)
 
     def get_cleaned_data(self):
         data_dict = super().get_cleaned_data()
@@ -52,6 +54,8 @@ class CustomRegisterSerializer(RegisterSerializer):
         data_dict['telefono'] = self.validated_data.get('telefono', '')
         data_dict['contacto_emergencia'] = self.validated_data.get('contacto_emergencia', '')
         data_dict['notas_medicas'] = self.validated_data.get('notas_medicas', '')
+        data_dict['fecha_nacimiento'] = self.validated_data.get('fecha_nacimiento', None)
+        data_dict['sexo'] = self.validated_data.get('sexo', '')
         return data_dict
 
     def save(self, request):
@@ -61,6 +65,8 @@ class CustomRegisterSerializer(RegisterSerializer):
         user.telefono = self.cleaned_data.get('telefono')
         user.contacto_emergencia = self.cleaned_data.get('contacto_emergencia')
         user.notas_medicas = self.cleaned_data.get('notas_medicas')
+        user.fecha_nacimiento = self.cleaned_data.get('fecha_nacimiento')
+        user.sexo = self.cleaned_data.get('sexo')
         user.rol = 'CLIENTE'
         user.save()
         return user
@@ -76,9 +82,17 @@ class RecurrenciaSerializer(serializers.ModelSerializer):
 from .models import Profesor, Usuario, Clase, Plan
 
 class ProfesorSerializer(serializers.ModelSerializer):
+    edad = serializers.SerializerMethodField()
     class Meta:
         model = Profesor
         fields = '__all__'
+
+    def get_edad(self, obj):
+        import datetime
+        if not obj.fecha_nacimiento:
+            return None
+        today = datetime.date.today()
+        return today.year - obj.fecha_nacimiento.year - ((today.month, today.day) < (obj.fecha_nacimiento.month, obj.fecha_nacimiento.day))
 
 class AdminReservaSerializer(serializers.ModelSerializer):
     alumno_nombre = serializers.CharField(source='usuario.nombre', read_only=True)
@@ -120,10 +134,18 @@ class AdminTurnoSerializer(serializers.ModelSerializer):
 
 class AdminUsuarioSerializer(serializers.ModelSerializer):
     plan_activo = serializers.SerializerMethodField()
+    edad = serializers.SerializerMethodField()
     
     class Meta:
         model = Usuario
-        fields = ['id', 'nombre', 'apellido', 'email', 'telefono', 'contacto_emergencia', 'notas_medicas', 'is_active', 'plan_activo']
+        fields = ['id', 'nombre', 'apellido', 'email', 'telefono', 'contacto_emergencia', 'notas_medicas', 'is_active', 'plan_activo', 'fecha_nacimiento', 'edad', 'sexo']
+
+    def get_edad(self, obj):
+        import datetime
+        if not obj.fecha_nacimiento:
+            return None
+        today = datetime.date.today()
+        return today.year - obj.fecha_nacimiento.year - ((today.month, today.day) < (obj.fecha_nacimiento.month, obj.fecha_nacimiento.day))
 
     def get_plan_activo(self, obj):
         sub = Suscripcion.objects.filter(usuario=obj, estado='ACTIVO').first()
@@ -135,3 +157,4 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
                 'fecha_vencimiento': sub.fecha_vencimiento
             }
         return None
+

@@ -9,6 +9,9 @@ export interface Profesor {
     especialidad: string;
     color_identificador: string;
     is_active: boolean;
+    fecha_nacimiento: string | null;
+    sexo: string | null;
+    edad: number | null;
 }
 
 export interface ReservaAdmin {
@@ -51,6 +54,9 @@ export interface UsuarioAdmin {
     notas_medicas: string;
     is_active: boolean;
     plan_activo: PlanActivo | null;
+    fecha_nacimiento: string | null;
+    edad: number | null;
+    sexo: string | null;
 }
 
 // APIs
@@ -71,3 +77,5 @@ export const getAdminAlumnoDetalle = (id: string) => api.get<UsuarioAdmin>(`/adm
 export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/admin/alumnos/${id}/asignar-plan/`, { plan_id });
 
 export const getAdminClases = () => api.get('/admin/clases/');
+
+

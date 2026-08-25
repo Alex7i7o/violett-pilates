@@ -20,6 +20,8 @@ export function ProfesoresAdmin() {
   const [email, setEmail] = useState('');
   const [especialidad, setEspecialidad] = useState('');
   const [color, setColor] = useState('#4a306d');
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [sexo, setSexo] = useState('');
 
   const fetchProfesores = async () => {
     try {
@@ -40,7 +42,7 @@ export function ProfesoresAdmin() {
   const openNewModal = () => {
     setIsEditing(false);
     setCurrentId(null);
-    setNombre(''); setApellido(''); setTelefono(''); setEmail(''); setEspecialidad(''); setColor('#4a306d');
+    setNombre(''); setApellido(''); setTelefono(''); setEmail(''); setEspecialidad(''); setColor('#4a306d'); setFechaNacimiento(''); setSexo('');
     setShowModal(true);
   };
 
@@ -48,7 +50,7 @@ export function ProfesoresAdmin() {
     setIsEditing(true);
     setCurrentId(prof.id);
     setNombre(prof.nombre); setApellido(prof.apellido); setTelefono(prof.telefono || '');
-    setEmail(prof.email || ''); setEspecialidad(prof.especialidad || ''); setColor(prof.color_identificador || '#4a306d');
+    setEmail(prof.email || ''); setEspecialidad(prof.especialidad || ''); setColor(prof.color_identificador || '#4a306d'); setFechaNacimiento(prof.fecha_nacimiento || ''); setSexo(prof.sexo || '');
     setShowModal(true);
   };
 
@@ -64,7 +66,7 @@ export function ProfesoresAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = { nombre, apellido, telefono, email, especialidad, color_identificador: color };
+    const data = { nombre, apellido, telefono, email, especialidad, color_identificador: color, fecha_nacimiento: fechaNacimiento || null, sexo: sexo || null };
     try {
       if (isEditing && currentId) await updateAdminProfesor(currentId, data);
       else await createAdminProfesor(data);
@@ -113,8 +115,9 @@ export function ProfesoresAdmin() {
                         </div>
                       </td>
                       <td className="py-4 px-6 align-middle">
-                        <div className="text-sm text-foreground">{prof.telefono || 'Sin teléfono'}</div>
+                        <div className="text-sm text-foreground">Tel: {prof.telefono || 'Sin teléfono'}</div>
                         <div className="text-sm text-muted">{prof.email || 'Sin email'}</div>
+                        <div className="text-xs font-medium text-violett-600 mt-1">Edad: {prof.edad !== null ? `${prof.edad} años` : '-'} | Sexo: {prof.sexo || '-'}</div>
                       </td>
                       <td className="py-4 px-6 align-middle">
                         <span className="px-3 py-1 text-xs font-semibold rounded bg-violett-100 text-violett-900 border border-violett-200">
@@ -158,8 +161,24 @@ export function ProfesoresAdmin() {
             <input type="text" value={telefono} onChange={e=>setTelefono(e.target.value)} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-1 text-foreground">Especialidad</label>
+              <label className="block text-sm font-semibold mb-1">Fecha Nacimiento</label>
+              <input type="date" value={fechaNacimiento} onChange={e=>setFechaNacimiento(e.target.value)} className="w-full p-2 border rounded-xl" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Sexo</label>
+              <select value={sexo} onChange={e=>setSexo(e.target.value)} className="w-full p-2 border rounded-xl bg-white">
+                <option value="">Seleccionar</option>
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+                <option value="O">Otro</option>
+                <option value="N">Prefiero no decirlo</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">Especialidad</label>
               <input type="text" value={especialidad} onChange={e=>setEspecialidad(e.target.value)} placeholder="Ej. Pilates" className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
             </div>
             <div>
@@ -176,3 +195,4 @@ export function ProfesoresAdmin() {
     </motion.div>
   );
 }
+

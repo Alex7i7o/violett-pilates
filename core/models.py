@@ -52,6 +52,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     google_id = models.CharField(max_length=255, unique=True, blank=True, null=True, db_index=True)
     contacto_emergencia = models.CharField(max_length=255, blank=True, null=True)
     notas_medicas = models.TextField(blank=True, null=True)
+    fecha_nacimiento = models.DateField(blank=True, null=True)
+    SEXO_CHOICES = (('F', 'Femenino'), ('M', 'Masculino'), ('O', 'Otro'), ('N', 'Prefiero no decirlo'))
+    sexo = models.CharField(max_length=2, choices=SEXO_CHOICES, blank=True, null=True)
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='CLIENTE')
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -76,6 +79,8 @@ class Profesor(models.Model):
     telefono = models.CharField(max_length=20, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     especialidad = models.CharField(max_length=100, blank=True, null=True)
+    fecha_nacimiento = models.DateField(blank=True, null=True)
+    sexo = models.CharField(max_length=2, choices=Usuario.SEXO_CHOICES, blank=True, null=True)
     color_identificador = models.CharField(max_length=7, default='#3B82F6')
     is_active = models.BooleanField(default=True)
 
@@ -196,3 +201,4 @@ class Recurrencia(models.Model):
 
     class Meta:
         db_table = 'recurrencias'
+
