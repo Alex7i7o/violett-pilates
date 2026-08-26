@@ -39,16 +39,16 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ 
               opacity: 1, 
               scale: 1, 
-              transition: { type: "spring", bounce: 0.3, duration: 0.45 } 
+              transition: { type: "spring", bounce: 0, duration: 0.6 } 
             }}
             exit={{ 
               opacity: 0, 
-              scale: 0.92, 
-              transition: { type: "spring", bounce: 0, duration: 0.35 } 
+              scale: 0.95, 
+              transition: { type: "spring", bounce: 0, duration: 0.4 } 
             }}
             className={cn(
               "relative z-50 w-full max-w-lg overflow-hidden rounded-2xl bg-card shadow-glass sm:w-[90%]",

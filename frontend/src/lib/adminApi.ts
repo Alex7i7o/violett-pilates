@@ -70,7 +70,7 @@ export const getAdminAgenda = (fecha: string) => api.get<TurnoAdmin[]>(`/admin/a
 export const createAdminTurno = (data: any) => api.post('/admin/turnos/', data);
 export const deleteAdminTurno = (id: string) => api.delete(`/admin/turnos/${id}/`);
 
-export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE') => api.patch(`/admin/reservas/${id}/asistencia/`, { estado });
+export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => api.patch(`/admin/reservas/${id}/asistencia/`, { estado });
 
 export const getAdminAlumnos = (search: string = '') => api.get<UsuarioAdmin[]>(`/admin/alumnos/?q=${search}`);
 export const createAdminAlumno = (data: any) => api.post('/admin/alumnos/', data);

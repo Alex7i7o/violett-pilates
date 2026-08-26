@@ -1,4 +1,5 @@
 ﻿import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { type Recurrencia } from '../../hooks/useClientProfile';
@@ -23,13 +24,22 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
           </CardContent>
         </Card>
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {recurrencias.map(rec => {
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative min-h-[140px]">
+        <AnimatePresence mode="popLayout">
+          {recurrencias.map(rec => {
           const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados', 'Domingos'];
           const dayName = days[rec.dia_semana - 1];
           return (
-            <Card key={rec.id} className="bg-violett-50/50 relative overflow-hidden">
-              <CardHeader className="pb-2">
+            <motion.div
+              layout
+              key={rec.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+            >
+              <Card className="bg-violett-50/50 h-full relative overflow-hidden">
+                <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <Badge variant="secondary">Fijo Semanal</Badge>
                   <button 
@@ -45,9 +55,11 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
                 <p className="text-muted text-sm">Todos los {dayName}</p>
                 <p className="text-muted text-sm font-medium">⏰ {rec.time} hs</p>
               </CardContent>
-            </Card>
+              </Card>
+            </motion.div>
           );
         })}
+        </AnimatePresence>
       </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
+import { FeedbackButton } from '../components/ui/FeedbackButton'
 import { api } from '../lib/api'
 
 export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
@@ -22,7 +23,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const [sexo, setSexo] = useState('')
 
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle')
 
   const toggleAdminMode = () => {
     setIsRegisterMode(false)
@@ -48,42 +49,53 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    setStatus('loading')
+
     try {
       await api.post('/auth/login/', { email, password })
-      onLoginSuccess()
+      setStatus('success')
+      setTimeout(() => onLoginSuccess(), 1000)
     } catch (err: any) {
-      setError('Credenciales inválidas')
-    } finally {
-      setLoading(false)
+      setStatus('idle')
+      if (err.response?.data?.non_field_errors) {
+        setError(err.response.data.non_field_errors[0])
+      } else {
+        setError('Error de conexión o credenciales inválidas.')
+      }
     }
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
+    setStatus('loading')
+
     try {
-      await api.post('/auth/registration/', {
+      const registerData = {
         email,
-        password1: password,
-        password2: password,
+        password,
         nombre,
         apellido,
         telefono,
         contacto_emergencia: contacto,
         notas_medicas: notas,
-          fecha_nacimiento: fechaNacimiento || null,
-          sexo: sexo || null
-      })
-      // Después de registrarse exitosamente en dj-rest-auth, 
-      // automáticamente devuelve los tokens de JWT igual que en login.
-      onLoginSuccess()
+        fecha_nacimiento: fechaNacimiento,
+        sexo
+      }
+      
+      await api.post('/auth/registration/', registerData)
+      await api.post('/auth/login/', { email, password })
+      setStatus('success')
+      setTimeout(() => onLoginSuccess(), 1000)
     } catch (err: any) {
-      const msgs = err.response?.data ? Object.values(err.response.data).flat().join(', ') : 'Error al crear la cuenta';
-      setError(msgs)
-    } finally {
-      setLoading(false)
+      setStatus('idle')
+      if (err.response?.data) {
+        const errors = err.response.data
+        const errorMessages = Object.entries(errors).map(([key, val]) => `${key}: ${val}`).join(' | ')
+        setError(errorMessages)
+      } else {
+        setError('Error al registrar usuario.')
+      }
     }
   }
 
@@ -136,9 +148,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               </div>
 
               {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-              <Button type="submit" className="w-full py-6 text-base" disabled={loading}>
-                {loading ? 'Creando...' : 'Comenzar en Violett'}
-              </Button>
+              <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className="w-full py-6 text-base" initialText="Comenzar en Violett" successText="¡Cuenta creada!" /></div>
             </form>
 
             <div className="mt-6 text-center border-t border-gray-100 pt-4">
@@ -188,9 +198,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               />
             </div>
             {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-            <Button type="submit" className={`w-full py-6 text-base ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} disabled={loading}>
-              {loading ? 'Iniciando sesión...' : 'Ingresar'}
-            </Button>
+            <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className={`w-full py-6 text-base ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} initialText="Ingresar" successText="¡Bienvenido!" /></div>
           </form>
 
           {!isAdminMode && (

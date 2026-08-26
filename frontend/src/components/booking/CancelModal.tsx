@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
+import { FeedbackButton } from '../ui/FeedbackButton'
 import { type Turno } from '../../hooks/useBookings'
 import { AlertTriangle } from 'lucide-react'
 
@@ -8,7 +9,7 @@ interface CancelModalProps {
   isOpen: boolean
   onClose: () => void
   turno: Turno | null
-  onConfirm: (turnoId: string) => void
+  onConfirm: (turnoId: string) => Promise<void> | void
 }
 
 export function CancelModal({ isOpen, onClose, turno, onConfirm }: CancelModalProps) {

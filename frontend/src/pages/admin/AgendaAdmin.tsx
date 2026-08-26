@@ -6,12 +6,19 @@ import { getAdminAgenda, updateAsistencia, createAdminTurno, getAdminClases, get
 import type { TurnoAdmin } from '../../lib/adminApi';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { FeedbackButton } from '../../components/ui/FeedbackButton';
 import { Badge } from '../../components/ui/Badge';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function AgendaAdmin() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [turnos, setTurnos] = useState<TurnoAdmin[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   const [loading, setLoading] = useState(true);
 
   const [clases, setClases] = useState<any[]>([]);
@@ -52,12 +59,20 @@ export function AgendaAdmin() {
     fetchAgenda();
   }, [fecha]);
 
-  const handleAsistencia = async (reservaId: string, estado: 'TOMADA' | 'AUSENTE') => {
+  const handleAsistencia = async (reservaId: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => {
     try {
       await updateAsistencia(reservaId, estado);
-      fetchAgenda();
+      
+      // Update local state without refetching to avoid skeletons and flickering
+      setTurnos(prev => prev.map(turno => ({
+        ...turno,
+        reservas_list: turno.reservas_list?.map((res: any) => 
+          res.id === reservaId ? { ...res, estado } : res
+        )
+      })));
+      
     } catch (e) {
-      toast.error("Error actualizando asistencia")
+      toast.error("Error actualizando asistencia");
     }
   };
 
@@ -136,37 +151,88 @@ export function AgendaAdmin() {
                           <span className="text-violett-900 font-bold">{turno.clase_nombre}</span>
                           <br/>
                           <span className="text-sm text-muted">Prof: {turno.profesor ? turno.profesor.nombre : 'Sin asignar'}</span>
+                          <br/>
+                          <span className="text-xs font-semibold text-emerald-600 mt-1 inline-block">
+                            Asistencia: {turno.reservas_list.filter((r: any) => r.estado === 'TOMADA').length}/{turno.reservas_list.length}
+                          </span>
                         </td>
-                        <td className="py-4 px-6">
+                                                <td className="py-4 px-6 align-top">
                           {turno.reservas_list.length > 0 ? (
-                            <ul className="space-y-4">
-                              {turno.reservas_list.map((r) => (
-                                <li key={r.id} className="flex flex-col gap-2 border-b border-violett-50 pb-4 last:border-0 last:pb-0">
-                                  <div>
-                                    <p className="font-medium text-foreground">{r.alumno_nombre} {r.alumno_apellido}</p>
-                                    <p className="text-xs text-muted">{r.es_recurrente ? 'Recurrente' : 'Puntual'}</p>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      size="sm"
-                                      variant={r.estado === 'TOMADA' ? 'default' : 'outline'}
-                                      className={r.estado === 'TOMADA' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-none' : 'text-emerald-700 border-emerald-200 hover:bg-emerald-50'}
-                                      onClick={() => handleAsistencia(r.id, 'TOMADA')}
-                                    >
-                                      ✓ Presente
-                                    </Button>
-                                    <Button 
-                                      size="sm"
-                                      variant={r.estado === 'AUSENTE' ? 'default' : 'outline'}
-                                      className={r.estado === 'AUSENTE' ? 'bg-rose-600 hover:bg-rose-700 shadow-none' : 'text-rose-700 border-rose-200 hover:bg-rose-50'}
-                                      onClick={() => handleAsistencia(r.id, 'AUSENTE')}
-                                    >
-                                      ✗ Ausente
-                                    </Button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
+                            <div className="space-y-3">
+                              <button 
+                                onClick={() => toggleExpand(turno.id)}
+                                className="w-full text-left py-2 px-3 bg-violett-50/50 hover:bg-violett-100/50 rounded-xl font-medium text-sm text-violett-900 transition-colors flex justify-between items-center"
+                              >
+                                <span>{turno.reservas_list.length} inscriptos</span>
+                                <span className="text-lg leading-none">{expandedIds.includes(turno.id) ? '▾' : '▸'}</span>
+                              </button>
+                              <AnimatePresence initial={false}>
+                                {expandedIds.includes(turno.id) && (
+                                  <motion.ul 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="space-y-4 overflow-hidden px-1"
+                                  >
+                                    {turno.reservas_list.map((r: any) => (
+                                      <li key={r.id} className="flex flex-col gap-2 border-b border-violett-50 pb-4 last:border-0 last:pb-0">
+                                        <div>
+                                          <p className="font-medium text-foreground">{r.alumno_nombre} {r.alumno_apellido}</p>
+                                          <p className="text-xs text-muted">{r.es_recurrente ? 'Recurrente' : 'Puntual'}</p>
+                                        </div>
+                                        <motion.div layout className="flex gap-2 w-full max-w-[220px]">
+                                          <AnimatePresence initial={false}>
+                                            {(r.estado === 'CONFIRMADA' || r.estado === 'TOMADA') && (
+                                              <motion.div 
+                                                key="presente"
+                                                layout
+                                                initial={{ opacity: 0, flex: 0 }} 
+                                                animate={{ opacity: 1, flex: r.estado === 'TOMADA' ? '1 1 100%' : '1 1 50%' }} 
+                                                exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
+                                                transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
+                                                className="flex"
+                                              >
+                                                <FeedbackButton 
+                                                  size="sm" 
+                                                  variant={r.estado === 'TOMADA' ? 'default' : 'outline'}
+                                                  key={`presente-btn-${r.estado}`}
+                                                  onClick={() => handleAsistencia(r.id, r.estado === 'TOMADA' ? 'CONFIRMADA' : 'TOMADA')}
+                                                  className={r.estado !== 'TOMADA' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-violett-50 text-violett-900 border-violett-200 hover:border-violett-300" : "w-full flex-1 whitespace-nowrap bg-violett-900 hover:bg-violett-800 border-violett-900 text-white"}
+                                                  initialText={r.estado === 'TOMADA' ? '✓ Presente (Deshacer)' : 'Presente'}
+                                                  successText={r.estado === 'TOMADA' ? 'Deshecho' : 'Asistió'}
+                                                />
+                                              </motion.div>
+                                            )}
+                                            {(r.estado === 'CONFIRMADA' || r.estado === 'AUSENTE') && (
+                                              <motion.div 
+                                                key="ausente"
+                                                layout
+                                                initial={{ opacity: 0, flex: 0 }} 
+                                                animate={{ opacity: 1, flex: r.estado === 'AUSENTE' ? '1 1 100%' : '1 1 50%' }} 
+                                                exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
+                                                transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
+                                                className="flex"
+                                              >
+                                                <FeedbackButton 
+                                                  size="sm" 
+                                                  variant={r.estado === 'AUSENTE' ? 'destructive' : 'outline'}
+                                                  key={`ausente-btn-${r.estado}`}
+                                                  onClick={() => handleAsistencia(r.id, r.estado === 'AUSENTE' ? 'CONFIRMADA' : 'AUSENTE')}
+                                                  className={r.estado !== 'AUSENTE' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-rose-50 text-rose-500 border-rose-200 hover:border-rose-300" : "w-full flex-1 whitespace-nowrap text-white bg-rose-500 hover:bg-rose-600 border-rose-500"}
+                                                  initialText={r.estado === 'AUSENTE' ? '✗ Ausente (Deshacer)' : 'Ausente'}
+                                                  successText={r.estado === 'AUSENTE' ? 'Deshecho' : 'Faltó'}
+                                                />
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </motion.div>
+                                      </li>
+                                    ))}
+                                  </motion.ul>
+                                )}
+                              </AnimatePresence>
+                            </div>
                           ) : (
                             <span className="text-sm text-muted">Sin inscriptos</span>
                           )}

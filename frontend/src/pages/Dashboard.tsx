@@ -1,9 +1,10 @@
 /* Developed by FireSeed - Fueling Innovation */
+import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState } from 'react'
 import { toast } from 'sonner';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { useClientProfile } from '../hooks/useClientProfile'
-import { motion } from 'framer-motion'
+
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -72,16 +73,37 @@ export function Dashboard() {
     setRecurrenciaToCancel(id);
   }
 
-  if (profileLoading || bookingsLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-violett-900">Cargando perfil...</div>
-  }
 
-  if (!profile) return null
+
+  
 
     return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-200 ease-out">
-      
-      <ClientProfileHeader profile={profile} />
+    <AnimatePresence mode="wait">
+      {(profileLoading || bookingsLoading) ? (
+        <motion.div 
+          key="skeleton"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="min-h-screen flex items-center justify-center"
+        >
+          {/* Skeleton representation of dashboard */}
+          <div className="w-full max-w-5xl mx-auto space-y-8 p-4">
+            <div className="h-32 bg-violett-100 rounded-2xl animate-pulse"></div>
+            <div className="h-64 bg-violett-50 rounded-2xl animate-pulse"></div>
+            <div className="h-64 bg-violett-50 rounded-2xl animate-pulse"></div>
+          </div>
+        </motion.div>
+      ) : !profile ? null : (
+        <motion.div 
+          key="content"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="max-w-5xl mx-auto space-y-8"
+        >
+          <ClientProfileHeader profile={profile} />
 
       <ClientRecurringClasses recurrencias={profile.recurrencias} onCancelClick={promptCancelRecurrencia} />
 
@@ -151,6 +173,8 @@ Esto cancelará todas tus reservas futuras para este horario."
         cancelText="Mantener horario"
         isDestructive={true}
       />
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

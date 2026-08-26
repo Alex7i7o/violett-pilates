@@ -118,28 +118,45 @@ export function ProfesorDashboard() {
     return days[dow % 7];
   };
 
-  if (loading) return (
-    <div className="p-8 space-y-6">
-      <Skeleton className="h-12 w-1/4 mb-8" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    </div>
-  );
-  if (!data) return <p className="text-muted p-4">Error cargando el panel.</p>;
+
+  
 
   // Filter turnos_hoy
   const now = new Date();
   const currentHHMM = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
   
-  const upcomingHoy = data.turnos_hoy.filter((t: any) => t.hora_fin.slice(0,5) >= currentHHMM);
-  const pastHoy = data.turnos_hoy.filter((t: any) => t.hora_fin.slice(0,5) < currentHHMM);
+  const upcomingHoy = data ? data.turnos_hoy.filter((t: any) => t.hora_fin.slice(0,5) >= currentHHMM) : [];
+  const pastHoy = data ? data.turnos_hoy.filter((t: any) => t.hora_fin.slice(0,5) < currentHHMM) : [];
   const displayHoy = showPast ? [...upcomingHoy, ...pastHoy].sort((a: any, b: any) => a.hora_inicio.localeCompare(b.hora_inicio)) : upcomingHoy;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+    <AnimatePresence mode="wait">
+      {loading ? (
+        <motion.div 
+          key="skeleton"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="p-8 space-y-6"
+        >
+          <div className="h-12 w-1/4 mb-8 bg-violett-100 rounded-2xl animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-48 w-full bg-violett-50 rounded-2xl animate-pulse"></div>
+            <div className="h-48 w-full bg-violett-50 rounded-2xl animate-pulse"></div>
+            <div className="h-48 w-full bg-violett-50 rounded-2xl animate-pulse"></div>
+          </div>
+        </motion.div>
+      ) : !data ? (
+        <motion.p key="error" className="text-muted p-4">Error cargando el panel.</motion.p>
+      ) : (
+        <motion.div 
+          key="content"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="space-y-8"
+        >
       
       {/* Header & Stats */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -338,7 +355,8 @@ export function ProfesorDashboard() {
         message="¿Estás seguro de que quieres dar esta clase?"
         confirmText="Sí, tomar clase"
       />
-
-    </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

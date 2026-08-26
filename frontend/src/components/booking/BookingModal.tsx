@@ -2,13 +2,14 @@
 import React from 'react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
+import { FeedbackButton } from '../ui/FeedbackButton'
 import { type Turno } from '../../hooks/useBookings'
 
 interface BookingModalProps {
   isOpen: boolean
   onClose: () => void
   turno: Turno | null
-  onConfirm: (turnoId: string, isRecurring: boolean) => void
+  onConfirm: (turnoId: string, isRecurring: boolean) => Promise<void> | void
 }
 
 export function BookingModal({ isOpen, onClose, turno, onConfirm }: BookingModalProps) {

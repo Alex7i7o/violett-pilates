@@ -21,7 +21,8 @@ export function AdminLayout() {
     { name: 'Esquema', path: '/admin/esquema' },
     { name: 'Alumnos', path: '/admin/alumnos' },
     { name: 'Profesores', path: '/admin/profesores' },
-    { name: 'Planes', path: '/admin/planes' }
+    { name: 'Planes', path: '/admin/planes' },
+    { name: 'Clases', path: '/admin/clases' }
   ];
 
   return (

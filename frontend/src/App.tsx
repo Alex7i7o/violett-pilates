@@ -15,6 +15,7 @@ import { PlantillasAdmin } from './pages/admin/PlantillasAdmin'
 import { AlumnosAdmin } from './pages/admin/AlumnosAdmin'
 import { ProfesoresAdmin } from './pages/admin/ProfesoresAdmin'
 import { PlanesAdmin } from './pages/admin/PlanesAdmin'
+import { ClasesAdmin } from './pages/admin/ClasesAdmin'
 
 import { ProfesorLayout } from './layouts/ProfesorLayout'
 import { ProfesorDashboard } from './pages/profesor/ProfesorDashboard'
@@ -51,6 +52,7 @@ function AppRoutes() {
           <Route path="alumnos" element={<AlumnosAdmin />} />
           <Route path="profesores" element={<ProfesoresAdmin />} />
           <Route path="planes" element={<PlanesAdmin />} />
+          <Route path="clases" element={<ClasesAdmin />} />
         </Route>
         {/* Si un admin intenta ir a la ruta de cliente, lo forzamos a volver a su panel */}
         <Route path="*" element={<Navigate to="/admin/agenda" replace />} />

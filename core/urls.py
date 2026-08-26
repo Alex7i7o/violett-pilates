@@ -30,7 +30,7 @@ urlpatterns = [
     
     path('admin/agenda/', AdminAgendaView.as_view(), name='admin_agenda'),
     path('admin/reservas/<uuid:pk>/asistencia/', AdminReservaAsistenciaView.as_view(), name='admin_asistencia'),
-    path('admin/alumnos/<uuid:usuario_id>/asignar-plan/', AdminAlumnoViewSet.as_view({'post': 'asignar_plan'}), name='asignar_plan'),
+    path('admin/alumnos/<uuid:pk>/asignar-plan/', AdminAlumnoViewSet.as_view({'post': 'asignar_plan'}), name='asignar_plan'),
     
     path('profesor/dashboard/', ProfesorDashboardView.as_view(), name='profesor_dashboard'),
     path('profesor/reservas/<uuid:reserva_id>/asistencia/', ProfesorAsistenciaView.as_view(), name='profesor-asistencia'),

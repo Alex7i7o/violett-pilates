@@ -1,11 +1,12 @@
 ﻿import React from 'react'
 import { Modal } from './Modal'
 import { Button } from './Button'
+import { FeedbackButton } from './FeedbackButton'
 
 interface ConfirmModalProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: () => Promise<void> | void
   title?: string
   message: string
   confirmText?: string

@@ -1,4 +1,5 @@
 ﻿import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { type Turno } from '../../hooks/useBookings';
@@ -34,9 +35,19 @@ export function ClientUpcomingClasses({ turnos, onCancelClick }: ClientUpcomingC
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-foreground">Mis Próximas Clases Confirmadas</h2>
-      <div className="flex gap-3 overflow-x-auto pb-4 snap-x">
-        {myUpcomingBookings.map(turno => (
-          <Card key={turno.id} className="min-w-[280px] snap-start relative overflow-hidden">
+      <div className="flex gap-3 overflow-x-auto pb-4 snap-x relative min-h-[160px]">
+        <AnimatePresence mode="popLayout">
+          {myUpcomingBookings.map(turno => (
+            <motion.div
+              layout
+              key={turno.id}
+              initial={{ opacity: 0, scale: 0.9, x: 20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.9, x: -20 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+              className="min-w-[280px] snap-start"
+            >
+              <Card className="h-full relative overflow-hidden">
             <CardHeader className="pb-2">
               <Badge className="w-fit" variant={turno.isRecurring ? "secondary" : "default"}>
                 {turno.isRecurring ? "Clase fija" : "Puntual"}
@@ -57,8 +68,10 @@ export function ClientUpcomingClasses({ turnos, onCancelClick }: ClientUpcomingC
                 </button>
               </div>
             </CardContent>
-          </Card>
-        ))}
+            </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ export function ProfesorTabHoy({ data, formatFecha }: Props) {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const handleAsistencia = async (reservaId: number, estado: 'TOMADA' | 'AUSENTE') => {
+  const handleAsistencia = async (reservaId: number, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => {
     try {
       await api.put(`/profesor/reservas/${reservaId}/asistencia/`, { estado });
       toast.success('Asistencia actualizada');
@@ -104,48 +104,50 @@ export function ProfesorTabHoy({ data, formatFecha }: Props) {
                                     </Badge>
                                   </div>
                                   <motion.div layout className="flex gap-2 mt-3 sm:mt-0 w-full sm:w-[220px]">
-                                    <AnimatePresence initial={false}>
-                                      {(res.estado === 'CONFIRMADA' || res.estado === 'TOMADA') && (
-                                        <motion.div 
-                                          key="presente"
-                                          layout
-                                          initial={{ opacity: 0, flex: 0 }} 
-                                          animate={{ opacity: 1, flex: res.estado === 'TOMADA' ? '1 1 100%' : '1 1 50%' }} 
-                                          exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
-                                          transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
-                                          className="flex"
-                                        >
-                                          <FeedbackButton 
-                                            size="sm" 
-                                            variant={res.estado === 'TOMADA' ? 'default' : 'outline'}
-                                            onClick={() => handleAsistencia(res.id, 'TOMADA')}
-                                            className="w-full flex-1 whitespace-nowrap"
-                                            initialText="Presente"
-                                            successText="Asistió"
-                                          />
-                                        </motion.div>
-                                      )}
-                                      {(res.estado === 'CONFIRMADA' || res.estado === 'AUSENTE') && (
-                                        <motion.div 
-                                          key="ausente"
-                                          layout
-                                          initial={{ opacity: 0, flex: 0 }} 
-                                          animate={{ opacity: 1, flex: res.estado === 'AUSENTE' ? '1 1 100%' : '1 1 50%' }} 
-                                          exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
-                                          transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
-                                          className="flex"
-                                        >
-                                          <FeedbackButton 
-                                            size="sm" 
-                                            variant={res.estado === 'AUSENTE' ? 'destructive' : 'outline'}
-                                            onClick={() => handleAsistencia(res.id, 'AUSENTE')}
-                                            className={res.estado !== 'AUSENTE' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-rose-50 text-rose-600 border-rose-200 hover:border-rose-300" : "w-full flex-1 whitespace-nowrap"}
-                                            initialText="Ausente"
-                                            successText="Faltó"
-                                          />
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
+                                                                          <AnimatePresence initial={false}>
+                                        {(res.estado === 'CONFIRMADA' || res.estado === 'TOMADA') && (
+                                          <motion.div 
+                                            key="presente"
+                                            layout
+                                            initial={{ opacity: 0, flex: 0 }} 
+                                            animate={{ opacity: 1, flex: res.estado === 'TOMADA' ? '1 1 100%' : '1 1 50%' }} 
+                                            exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
+                                            transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
+                                            className="flex"
+                                          >
+                                            <FeedbackButton 
+                                              size="sm" 
+                                              variant={res.estado === 'TOMADA' ? 'default' : 'outline'}
+                                                key={`presente-btn-${res.estado}`}
+                                              onClick={() => handleAsistencia(res.id, res.estado === 'TOMADA' ? 'CONFIRMADA' : 'TOMADA')}
+                                              className={res.estado !== 'TOMADA' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-violett-50 text-violett-900 border-violett-200 hover:border-violett-300" : "w-full flex-1 whitespace-nowrap bg-violett-900 hover:bg-violett-800 border-violett-900 text-white"}
+                                              initialText={res.estado === 'TOMADA' ? '✓ Presente (Deshacer)' : 'Presente'}
+                                              successText={res.estado === 'TOMADA' ? 'Deshecho' : 'Asistió'}
+                                            />
+                                          </motion.div>
+                                        )}
+                                        {(res.estado === 'CONFIRMADA' || res.estado === 'AUSENTE') && (
+                                          <motion.div 
+                                            key="ausente"
+                                            layout
+                                            initial={{ opacity: 0, flex: 0 }} 
+                                            animate={{ opacity: 1, flex: res.estado === 'AUSENTE' ? '1 1 100%' : '1 1 50%' }} 
+                                            exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
+                                            transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
+                                            className="flex"
+                                          >
+                                            <FeedbackButton 
+                                              size="sm" 
+                                              variant={res.estado === 'AUSENTE' ? 'destructive' : 'outline'}
+                                                key={`ausente-btn-${res.estado}`}
+                                              onClick={() => handleAsistencia(res.id, res.estado === 'AUSENTE' ? 'CONFIRMADA' : 'AUSENTE')}
+                                              className={res.estado !== 'AUSENTE' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-rose-50 text-rose-500 border-rose-200 hover:border-rose-300" : "w-full flex-1 whitespace-nowrap text-white bg-rose-500 hover:bg-rose-600 border-rose-500"}
+                                              initialText={res.estado === 'AUSENTE' ? '✗ Ausente (Deshacer)' : 'Ausente'}
+                                              successText={res.estado === 'AUSENTE' ? 'Deshecho' : 'Faltó'}
+                                            />
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
                                   </motion.div>
                                 </div>
                               ))}

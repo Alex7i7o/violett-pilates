@@ -5,7 +5,8 @@ import { Button, type ButtonProps } from './Button';
 
 interface FeedbackButtonProps extends ButtonProps {
   successIcon?: React.ReactNode;
-  onClick: (e: React.MouseEvent) => Promise<void> | void;
+  onClick?: (e: React.MouseEvent) => Promise<void> | void;
+  status?: 'idle' | 'loading' | 'success';
   successText?: string;
   initialText: React.ReactNode;
 }
@@ -18,22 +19,32 @@ export function FeedbackButton({
   className,
   variant,
   size,
+  status: externalStatus,
   ...props 
 }: FeedbackButtonProps) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [internalStatus, setInternalStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const status = externalStatus !== undefined ? externalStatus : internalStatus;
 
   const handleClick = async (e: React.MouseEvent) => {
-    if (status !== 'idle') return;
-    setStatus('loading');
-    try {
-      const result = onClick(e);
-      if (result instanceof Promise) {
-        await result;
+    if (status !== 'idle') {
+      e.preventDefault();
+      return;
+    }
+    
+    if (onClick) {
+      if (externalStatus === undefined) setInternalStatus('loading');
+      try {
+        const result = onClick(e);
+        if (result instanceof Promise) {
+          await result;
+        }
+        if (externalStatus === undefined) {
+          setInternalStatus('success');
+          setTimeout(() => setInternalStatus('idle'), 2000);
+        }
+      } catch {
+        if (externalStatus === undefined) setInternalStatus('idle');
       }
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 2000);
-    } catch {
-      setStatus('idle');
     }
   };
 

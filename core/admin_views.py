@@ -117,7 +117,7 @@ class AdminReservaAsistenciaView(views.APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
             
         nuevo_estado = request.data.get('estado')
-        if nuevo_estado not in ['TOMADA', 'AUSENTE']:
+        if nuevo_estado not in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
             return Response({"error": "Estado inválido"}, status=status.HTTP_400_BAD_REQUEST)
             
         reserva.estado = nuevo_estado

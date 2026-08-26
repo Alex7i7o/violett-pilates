@@ -179,7 +179,7 @@ class ProfesorAsistenciaView(views.APIView):
             return Response({"detail": "No tienes permiso para modificar esta reserva."}, status=status.HTTP_403_FORBIDDEN)
 
         estado = request.data.get('estado')
-        if estado not in ['TOMADA', 'AUSENTE']:
+        if estado not in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
             return Response({"detail": "Estado invalido."}, status=status.HTTP_400_BAD_REQUEST)
 
         reserva.estado = estado
