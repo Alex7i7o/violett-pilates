@@ -9,13 +9,20 @@ interface ClientRecurringClassesProps {
 }
 
 export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRecurringClassesProps) {
-  if (!recurrencias || recurrencias.length === 0) {
+  if (!recurrencias) {
     return null;
   }
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-foreground">Mi Horario Fijo / Recurrente</h2>
+      {recurrencias.length === 0 ? (
+        <Card className="bg-white/50 border-dashed border-2">
+          <CardContent className="p-6 text-center text-muted">
+            No tienes horarios fijos asignados actualmente.
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {recurrencias.map(rec => {
           const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados', 'Domingos'];
@@ -42,6 +49,7 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
           );
         })}
       </div>
+      )}
     </div>
   );
 }

@@ -42,6 +42,7 @@ export interface PlanActivo {
     nombre: string;
     clases_restantes: number;
     fecha_vencimiento: string;
+    estado_calculado?: 'Activo' | 'Pendiente' | 'Sin plan';
 }
 
 export interface UsuarioAdmin {

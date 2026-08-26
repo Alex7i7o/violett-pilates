@@ -16,13 +16,19 @@ export function ClientUpcomingClasses({ turnos, onCancelClick }: ClientUpcomingC
   }
 
   const formatUpcomingDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const weekdayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long' });
-    const weekday = weekdayFormatter.format(date);
-    const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    const dayAndMonth = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(date);
-    return `${capitalizedWeekday} ${dayAndMonth}`;
+    try {
+      const datePart = dateStr.split('T')[0];
+      const [year, month, day] = datePart.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      const weekdayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long' });
+      const weekday = weekdayFormatter.format(date);
+      const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+      const dayAndMonth = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(date);
+      return `${capitalizedWeekday} ${dayAndMonth}`;
+    } catch(e) {
+      return 'Fecha inválida';
+    }
   };
 
   return (

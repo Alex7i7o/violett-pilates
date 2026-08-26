@@ -5,13 +5,14 @@ export interface PlantillaFormData {
   dia_semana: string;
   hora_inicio: string;
   hora_fin: string;
-  clase_nombre: string;
-  profesor_id: string;
+  clase: string;
+  profesor: string;
 }
 
 interface PlantillaFormProps {
   initialData?: PlantillaFormData;
   profesores: any[];
+  clases: any[];
   onSubmit: (data: PlantillaFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -27,13 +28,13 @@ const DIAS = [
   { val: '7', label: 'Domingo' }
 ];
 
-export function PlantillaForm({ initialData, profesores, onSubmit, onCancel, isSubmitting }: PlantillaFormProps) {
+export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCancel, isSubmitting }: PlantillaFormProps) {
   const [formData, setFormData] = useState<PlantillaFormData>(initialData || {
     dia_semana: '1',
     hora_inicio: '09:00',
     hora_fin: '10:00',
-    clase_nombre: 'Mat Pilates',
-    profesor_id: ''
+    clase: '',
+    profesor: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -68,13 +69,18 @@ export function PlantillaForm({ initialData, profesores, onSubmit, onCancel, isS
       </div>
 
       <div>
-        <label className="block text-sm font-semibold mb-1 text-foreground">Tipo de Clase</label>
-        <input type="text" name="clase_nombre" required value={formData.clase_nombre} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
+        <label className="block text-sm font-semibold mb-1 text-foreground">Clase</label>
+        <select name="clase" required value={formData.clase} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white">
+          <option value="">Selecciona una clase</option>
+          {clases.map(c => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
       </div>
 
       <div>
         <label className="block text-sm font-semibold mb-1 text-foreground">Profesor Asignado</label>
-        <select name="profesor_id" value={formData.profesor_id} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white">
+        <select name="profesor" value={formData.profesor} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white">
           <option value="">Dejar libre (Bolsa de trabajo)</option>
           {profesores.map(p => (
             <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>

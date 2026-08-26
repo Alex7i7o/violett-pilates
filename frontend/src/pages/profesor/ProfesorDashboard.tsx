@@ -102,9 +102,15 @@ export function ProfesorDashboard() {
   };
 
   const formatFecha = (d: string) => {
-    const [y, m, day] = d.split('-');
-    const date = new Date(parseInt(y), parseInt(m)-1, parseInt(day));
-    return new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }).format(date).replace(/^\w/, c => c.toUpperCase());
+    try {
+      const dp = d.split('T')[0];
+      const [y, m, day] = dp.split('-');
+      const date = new Date(parseInt(y), parseInt(m)-1, parseInt(day));
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+      return new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'short' }).format(date).replace(/^\w/, c => c.toUpperCase());
+    } catch(e) {
+      return 'Fecha inválida';
+    }
   };
 
   const formatDayOfWeek = (dow: number) => {

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { PlantillaForm } from '../../components/admin/PlantillaForm';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -18,6 +19,16 @@ export function PlantillasAdmin() {
   const [plantillaToDelete, setPlantillaToDelete] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const handleEdit = (id: string) => {
+    setEditId(id);
+    setIsModalOpen(true);
+  };
+  const handleCreateClick = () => {
+    setEditId(null);
+    setIsModalOpen(true);
+  };
+
   
   const fetchData = async () => {
     try {
@@ -50,13 +61,16 @@ export function PlantillasAdmin() {
     } catch(e) {}
   };
 
-    const handleCreate = async (data: PlantillaFormData) => {
+    const handleCreate = async (data: any) => {
     try {
+      const payload = { ...data };
+      if (!payload.profesor) payload.profesor = null;
+      
       if (editId) {
-        await api.put(`/admin/plantillas/${editId}/`, data);
+        await api.put(`/admin/plantillas/${editId}/`, payload);
         toast.success('Horario actualizado');
       } else {
-        await api.post('/admin/plantillas/', data);
+        await api.post('/admin/plantillas/', payload);
         toast.success('Horario creado exitosamente');
       }
       setIsModalOpen(false);
@@ -70,7 +84,7 @@ export function PlantillasAdmin() {
   const handleDelete = async (id: string) => {
     try {
       await api.delete(`/admin/plantillas/${id}/`);
-      fetchPlantillas();
+      fetchData();
     } catch (e) {
       toast.error("Error eliminando plantilla")
     }
@@ -89,7 +103,7 @@ export function PlantillasAdmin() {
           <h2 className="text-2xl font-bold text-violett-900">Esquema Semanal</h2>
           <p className="text-sm text-muted">Configura los horarios fijos de clases recurrentes</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>+ Nuevo Horario Fijo</Button>
+        <Button onClick={handleCreateClick}>+ Nuevo Horario Fijo</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
@@ -107,11 +121,11 @@ export function PlantillasAdmin() {
                   <div className="text-center text-xs text-muted py-4">Sin clases</div>
                 ) : (
                   plantillasDia.map(p => (
-                    <Card key={p.id} className="text-sm">
+                    <Card key={p.id} className="text-sm cursor-pointer hover:border-violett-500 transition-colors shadow-sm hover:shadow-md" onClick={() => handleEdit(p.id)}>
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-bold">{p.hora_inicio.slice(0,5)}</span>
-                          <button onClick={() => promptDelete(p.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">&times;</button>
+                          <button onClick={(e) => { e.stopPropagation(); promptDelete(p.id); }} className="text-red-500 hover:text-red-700 text-lg leading-none font-bold">&times;</button>
                         </div>
                         <p className="text-violett-900 font-medium truncate" title={p.clase_nombre}>{p.clase_nombre}</p>
                         {p.profesor ? (
@@ -128,17 +142,18 @@ export function PlantillasAdmin() {
 })}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Horario Fijo">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editId ? "Modificar Horario Fijo" : "Crear Horario Fijo"}>
         {editId ? (
           <PlantillaForm 
             initialData={{ 
               dia_semana: plantillas.find(p => p.id === editId)?.dia_semana.toString() || '1', 
               hora_inicio: plantillas.find(p => p.id === editId)?.hora_inicio || '09:00', 
               hora_fin: plantillas.find(p => p.id === editId)?.hora_fin || '10:00', 
-              clase_nombre: plantillas.find(p => p.id === editId)?.clase_nombre || 'Mat Pilates', 
-              profesor_id: plantillas.find(p => p.id === editId)?.profesor || '' 
+              clase: plantillas.find(p => p.id === editId)?.clase || '', 
+              profesor: plantillas.find(p => p.id === editId)?.profesor || '' 
             }}
             profesores={profesores}
+            clases={clases}
             onSubmit={handleCreate} 
             onCancel={() => setIsModalOpen(false)} 
             isSubmitting={false} 
@@ -146,6 +161,7 @@ export function PlantillasAdmin() {
         ) : (
           <PlantillaForm 
             profesores={profesores}
+            clases={clases}
             onSubmit={handleCreate} 
             onCancel={() => setIsModalOpen(false)} 
             isSubmitting={false} 

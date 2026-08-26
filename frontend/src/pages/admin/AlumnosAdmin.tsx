@@ -17,6 +17,7 @@ export function AlumnosAdmin() {
   const [search, setSearch] = useState('');
   const [minAge, setMinAge] = useState('');
   const [maxAge, setMaxAge] = useState('');
+  const [estadoFilter, setEstadoFilter] = useState('Todos');
   const [loading, setLoading] = useState(false);
   
   const [selectedAlumno, setSelectedAlumno] = useState<UsuarioAdmin | null>(null);
@@ -98,6 +99,10 @@ export function AlumnosAdmin() {
   const filteredAlumnos = alumnos.filter(a => {
     if (minAge && (a.edad === null || a.edad < parseInt(minAge))) return false;
     if (maxAge && (a.edad === null || a.edad > parseInt(maxAge))) return false;
+    if (estadoFilter !== 'Todos') {
+      const estadoCalculado = a.plan_activo?.estado_calculado || 'Sin plan';
+      if (estadoFilter !== estadoCalculado) return false;
+    }
     return true;
   });
 
@@ -141,17 +146,36 @@ export function AlumnosAdmin() {
                     </p>
                     
                     <div className="mt-5">
-                      {alumno.plan_activo ? (
-                        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                          <p className="text-sm font-bold text-emerald-800">{alumno.plan_activo.nombre}</p>
-                          <p className="text-sm text-emerald-700 mt-1">{alumno.plan_activo.clases_restantes} clases restantes</p>
-                          <p className="text-xs text-emerald-600 mt-1">Vence: {alumno.plan_activo.fecha_vencimiento}</p>
-                        </div>
-                      ) : (
-                        <div className="bg-rose-50 border border-rose-100 rounded-xl p-4">
-                          <p className="text-sm font-bold text-rose-800">Sin Plan Activo</p>
-                        </div>
-                      )}
+                      {(() => {
+                        const plan = alumno.plan_activo;
+                        const estado = plan?.estado_calculado || 'Sin plan';
+                        
+                        if (estado === 'Activo') {
+                          return (
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                              <p className="text-sm font-bold text-emerald-800">{plan!.nombre}</p>
+                              <p className="text-sm text-emerald-700 mt-1">{plan!.clases_restantes} clases restantes</p>
+                              <p className="text-xs text-emerald-600 mt-1">Vence: {plan!.fecha_vencimiento}</p>
+                            </div>
+                          );
+                        }
+                        
+                        if (estado === 'Pendiente') {
+                          return (
+                            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                              <p className="text-sm font-bold text-amber-800">{plan!.nombre}</p>
+                              <p className="text-sm text-amber-700 mt-1">Pendiente de renovación (0 clases)</p>
+                              <p className="text-xs text-amber-600 mt-1">Vence: {plan!.fecha_vencimiento}</p>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <div className="bg-rose-50 border border-rose-100 rounded-xl p-4">
+                            <p className="text-sm font-bold text-rose-800">Sin Plan Activo</p>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </CardContent>
                   <div className="p-6 pt-0">

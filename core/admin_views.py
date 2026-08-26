@@ -183,6 +183,137 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
     serializer_class = PlantillaTurnoSerializer
     permission_classes = [IsStaffPermission]
 
+    def perform_update(self, serializer):
+        old_instance = self.get_object()
+        old_dia = old_instance.dia_semana
+        old_inicio = old_instance.hora_inicio
+        old_fin = old_instance.hora_fin
+        
+        instance = serializer.save()
+        
+        from django.utils import timezone
+        from django.core.mail import send_mail
+        from core.models import Reserva, Recurrencia
+        
+        if old_dia != instance.dia_semana or old_inicio != instance.hora_inicio or old_fin != instance.hora_fin:
+            today = timezone.now().date()
+            turnos_futuros = instance.turnos_generados.filter(fecha__gte=today, estado='PROGRAMADO')
+            
+            # Actualizar recurrencias asociadas a este horario
+            recurrencias = Recurrencia.objects.filter(
+                clase=instance.clase,
+                dia_semana=old_dia,
+                hora_inicio=old_inicio,
+                is_active=True
+            )
+            
+            for rec in recurrencias:
+                if old_dia != instance.dia_semana:
+                    # Cancelar la recurrencia porque cambió el día
+                    rec.is_active = False
+                    rec.save()
+                    send_mail(
+                        'Horario fijo cancelado por cambio de día',
+                        f'Hola {rec.usuario.nombre},\n\nEl horario fijo que tenías para {instance.clase.nombre} ha cambiado de día. Tu turno fijo ha sido dado de baja. Por favor, ingresa al sistema para elegir un nuevo horario.\n\nSaludos,\nViolett Pilates',
+                        'no-reply@violettpilates.com',
+                        [rec.usuario.email],
+                        fail_silently=True,
+                    )
+                else:
+                    # Solo cambió la hora, la mantenemos
+                    rec.hora_inicio = instance.hora_inicio
+                    rec.save()
+                    send_mail(
+                        'Cambio de hora de tu horario fijo',
+                        f'Hola {rec.usuario.nombre},\n\nTu horario fijo de {instance.clase.nombre} ha cambiado su horario. Ahora será a las {instance.hora_inicio.strftime("%H:%M")}.\n\nSaludos,\nViolett Pilates',
+                        'no-reply@violettpilates.com',
+                        [rec.usuario.email],
+                        fail_silently=True,
+                    )
+
+            # Actualizar turnos futuros
+            for turno in turnos_futuros:
+                if old_dia != instance.dia_semana:
+                    turno.estado = 'CANCELADO'
+                    turno.save()
+                    reservas = Reserva.objects.filter(turno=turno, estado='CONFIRMADA')
+                    for reserva in reservas:
+                        reserva.estado = 'CANCELADA'
+                        reserva.save()
+                        if reserva.usuario.suscripcion_activa:
+                            reserva.usuario.suscripcion_activa.clases_disponibles += 1
+                            reserva.usuario.suscripcion_activa.save()
+                        
+                        send_mail(
+                            'Cambio de día de tu clase',
+                            f'Hola {reserva.usuario.nombre},\n\nLa clase puntual de {instance.clase.nombre} del {turno.fecha} ha cambiado de día y tu reserva fue cancelada. Te devolvimos el crédito.\n\nSaludos,\nViolett Pilates',
+                            'no-reply@violettpilates.com',
+                            [reserva.usuario.email],
+                            fail_silently=True,
+                        )
+                else:
+                    turno.hora_inicio = instance.hora_inicio
+                    turno.hora_fin = instance.hora_fin
+                    turno.save()
+                    reservas = Reserva.objects.filter(turno=turno, estado='CONFIRMADA')
+                    for reserva in reservas:
+                        send_mail(
+                            'Cambio de horario de tu clase',
+                            f'Hola {reserva.usuario.nombre},\n\nLa clase de {instance.clase.nombre} del {turno.fecha} cambió de horario. Ahora será de {instance.hora_inicio.strftime("%H:%M")} a {instance.hora_fin.strftime("%H:%M")}.\n\nSaludos,\nViolett Pilates',
+                            'no-reply@violettpilates.com',
+                            [reserva.usuario.email],
+                            fail_silently=True,
+                        )
+
+    def perform_destroy(self, instance):
+        from django.utils import timezone
+        from django.core.mail import send_mail
+        from core.models import Reserva, Recurrencia
+        
+        # Cancelar recurrencias
+        recurrencias = Recurrencia.objects.filter(
+            clase=instance.clase,
+            dia_semana=instance.dia_semana,
+            hora_inicio=instance.hora_inicio,
+            is_active=True
+        )
+        for rec in recurrencias:
+            rec.is_active = False
+            rec.save()
+            send_mail(
+                'Horario fijo cancelado',
+                f'Hola {rec.usuario.nombre},\n\nEl horario fijo que tenías para {instance.clase.nombre} ha sido eliminado del sistema de forma definitiva. Tu turno fijo fue dado de baja.\n\nSaludos,\nViolett Pilates',
+                'no-reply@violettpilates.com',
+                [rec.usuario.email],
+                fail_silently=True,
+            )
+
+        today = timezone.now().date()
+        turnos_futuros = instance.turnos_generados.filter(fecha__gte=today, estado='PROGRAMADO')
+        
+        for turno in turnos_futuros:
+            turno.estado = 'CANCELADO'
+            turno.save()
+            reservas = Reserva.objects.filter(turno=turno, estado='CONFIRMADA')
+            for reserva in reservas:
+                reserva.estado = 'CANCELADA'
+                reserva.save()
+                if reserva.usuario.suscripcion_activa:
+                    reserva.usuario.suscripcion_activa.clases_disponibles += 1
+                    reserva.usuario.suscripcion_activa.save()
+                
+                send_mail(
+                    'Clase cancelada',
+                    f'Hola {reserva.usuario.nombre},\n\nLamentamos informarte que la clase de {instance.clase.nombre} del {turno.fecha} ha sido cancelada. Te devolvimos el crédito.\n\nSaludos,\nViolett Pilates',
+                    'no-reply@violettpilates.com',
+                    [reserva.usuario.email],
+                    fail_silently=True,
+                )
+        
+        instance.is_active = False
+        instance.save()
+
+
 class ClaseViewSet(viewsets.ModelViewSet):
     queryset = Clase.objects.filter(is_active=True)
     serializer_class = ClaseSerializer

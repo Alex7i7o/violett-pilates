@@ -10,9 +10,15 @@ interface ClientProfileHeaderProps {
 export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
   const formatExpirationDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+    try {
+      const datePart = dateStr.split('T')[0];
+      const [year, month, day] = datePart.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      if (isNaN(date.getTime())) return 'N/A';
+      return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+    } catch(e) {
+      return 'N/A';
+    }
   };
 
   return (
@@ -34,7 +40,13 @@ export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{profile.activePlan}</p>
-            <p className="text-violett-200 mt-2 text-sm">Válido hasta el {formatExpirationDate(profile.expirationDate)}</p>
+            {profile.remainingClasses === 0 && profile.activePlan !== "Sin plan activo" ? (
+              <p className="text-red-200 mt-2 text-sm font-semibold">
+                Plan agotado. Renovar el {formatExpirationDate(profile.expirationDate)}
+              </p>
+            ) : (
+              <p className="text-violett-200 mt-2 text-sm">Válido hasta el {formatExpirationDate(profile.expirationDate)}</p>
+            )}
           </CardContent>
         </Card>
 

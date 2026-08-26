@@ -152,13 +152,29 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         return today.year - obj.fecha_nacimiento.year - ((today.month, today.day) < (obj.fecha_nacimiento.month, obj.fecha_nacimiento.day))
 
     def get_plan_activo(self, obj):
-        sub = Suscripcion.objects.filter(usuario=obj, estado='ACTIVO').first()
-        if sub:
-            return {
-                'id': sub.id,
-                'nombre': sub.plan.nombre,
-                'clases_restantes': sub.clases_restantes,
-                'fecha_vencimiento': sub.fecha_vencimiento
-            }
-        return None
+        import datetime
+        today = datetime.date.today()
+        sub = Suscripcion.objects.filter(usuario=obj).order_by('-fecha_inicio').first()
+        
+        if not sub:
+            return None
+            
+        estado = 'Sin plan'
+        if sub.estado == 'VENCIDO' or sub.fecha_vencimiento < today:
+            estado = 'Sin plan'
+        elif sub.clases_restantes <= 0:
+            estado = 'Pendiente'
+        else:
+            estado = 'Activo'
+            
+        if estado == 'Sin plan':
+            return None
+            
+        return {
+            'id': sub.id,
+            'nombre': sub.plan.nombre,
+            'clases_restantes': sub.clases_restantes,
+            'fecha_vencimiento': sub.fecha_vencimiento,
+            'estado_calculado': estado
+        }
 

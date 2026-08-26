@@ -157,3 +157,35 @@ class AssignPlantillaView(views.APIView):
         Turno.objects.filter(plantilla=plantilla, fecha__gte=timezone.now().date(), profesor__isnull=True).update(profesor=profesor)
 
         return Response({'detail': 'Plantilla asignada exitosamente.'})
+
+
+from core.models import Reserva
+class ProfesorAsistenciaView(views.APIView):
+    permission_classes = [IsProfesorPermission]
+
+    def put(self, request, reserva_id):
+        user = request.user
+        try:
+            profesor = user.profesor_profile
+        except Profesor.DoesNotExist:
+            return Response({"detail": "Perfil de profesor no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            reserva = Reserva.objects.select_related('turno').get(id=reserva_id)
+        except Reserva.DoesNotExist:
+            return Response({"detail": "Reserva no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+        if reserva.turno.profesor != profesor:
+            return Response({"detail": "No tienes permiso para modificar esta reserva."}, status=status.HTTP_403_FORBIDDEN)
+
+        estado = request.data.get('estado')
+        if estado not in ['TOMADA', 'AUSENTE']:
+            return Response({"detail": "Estado invalido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        reserva.estado = estado
+        reserva.save()
+
+        # Si marcamos ausencia y queremos devolver el turno? O simplemente perderlo?
+        # En gral, si esta ausente pierde el credito (ya descontado al confirmar). 
+        # Si fue cancelado antes devuelve el credito. Aqui solo tomamos lista.
+        return Response({"status": "ok", "estado": reserva.estado})

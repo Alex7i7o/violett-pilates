@@ -15,7 +15,7 @@ class ClientProfileView(APIView):
 
     def get(self, request):
         user = request.user
-        suscripcion = Suscripcion.objects.filter(usuario=user, estado='ACTIVO').first()
+        suscripcion = Suscripcion.objects.filter(usuario=user).order_by('-fecha_inicio').first()
         
         if not suscripcion:
             return Response({
@@ -117,13 +117,16 @@ class BookTurnoView(APIView):
             weekday = turno.fecha.isoweekday()
             
             # Save rule
-            Recurrencia.objects.get_or_create(
+            recurrencia, created = Recurrencia.objects.get_or_create(
                 usuario=user,
                 clase=turno.clase,
                 dia_semana=weekday,
                 hora_inicio=turno.hora_inicio,
                 defaults={'is_active': True}
             )
+            if not created and not recurrencia.is_active:
+                recurrencia.is_active = True
+                recurrencia.save()
 
             # Find all available future turnos matching the criteria
             future_turnos = Turno.objects.select_related('clase', 'profesor').prefetch_related('reservas').filter(

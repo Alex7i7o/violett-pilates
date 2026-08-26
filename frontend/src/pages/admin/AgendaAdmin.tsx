@@ -17,7 +17,15 @@ export function AgendaAdmin() {
   const [clases, setClases] = useState<any[]>([]);
   const [profesores, setProfesores] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ clase: '', profesor: '', fecha: fecha, hora_inicio: '10:00', hora_fin: '11:00' });
+  const [formData, setFormData] = useState({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" });
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const getFechaTitle = () => {
+    if (fecha === todayStr) return 'Hoy';
+    const [year, month, day] = fecha.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  };
 
   const fetchAuxData = async () => {
     try {
@@ -72,7 +80,10 @@ export function AgendaAdmin() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <h2 className="text-3xl font-bold text-violett-900">Turnos del Día</h2>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h2 className="text-3xl font-bold text-violett-900">Agenda</h2>
+        <Button onClick={() => setIsModalOpen(true)}>+ Agregar Clase</Button>
+      </div>
       
       <Card>
         <CardContent className="pt-6">
@@ -83,8 +94,8 @@ export function AgendaAdmin() {
               onChange={(e) => setFecha(e.target.value)}
               className="p-2.5 rounded-xl border border-violett-200 text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-violett-500 shadow-sm"
             />
-            <Button onClick={() => setFecha(new Date().toISOString().split('T')[0])}>
-              Hoy
+            <Button variant={fecha === todayStr ? 'default' : 'outline'} onClick={() => setFecha(todayStr)}>
+              {getFechaTitle()}
             </Button>
           </div>
         </CardContent>

@@ -7,7 +7,7 @@ from .admin_views import (
     AdminAgendaView, AdminReservaAsistenciaView,
     PlanViewSet, PlantillaTurnoViewSet, ClaseViewSet
 )
-from .profesor_views import ProfesorDashboardView, AssignClaseView, AssignPlantillaView
+from .profesor_views import ProfesorDashboardView, AssignClaseView, AssignPlantillaView, ProfesorAsistenciaView
 
 router = DefaultRouter()
 router.register(r'admin/profesores', ProfesorViewSet, basename='admin-profesores')
@@ -33,6 +33,7 @@ urlpatterns = [
     path('admin/alumnos/<uuid:usuario_id>/asignar-plan/', AdminAlumnoViewSet.as_view({'post': 'asignar_plan'}), name='asignar_plan'),
     
     path('profesor/dashboard/', ProfesorDashboardView.as_view(), name='profesor_dashboard'),
+    path('profesor/reservas/<uuid:reserva_id>/asistencia/', ProfesorAsistenciaView.as_view(), name='profesor-asistencia'),
     path('profesor/turnos/<uuid:turno_id>/assign/', AssignClaseView.as_view(), name='profesor_assign'),
     path('profesor/plantillas/<uuid:plantilla_id>/assign/', AssignPlantillaView.as_view(), name='profesor_plantilla_assign'),
     path('resenas/', CrearResenaView.as_view(), name='crear-resena'),

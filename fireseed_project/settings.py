@@ -228,3 +228,6 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Update REST_AUTH with secure cookies
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
