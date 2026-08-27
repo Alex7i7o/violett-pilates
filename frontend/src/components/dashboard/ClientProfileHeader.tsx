@@ -1,6 +1,9 @@
 ﻿import React from 'react';
 import { Badge } from '../ui/Badge';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
+import { Button } from '../ui/Button'
+import { PlanSelectionModal } from './PlanSelectionModal'
+import { useState } from 'react';
 import { type ClientProfile } from '../../hooks/useClientProfile';
 
 interface ClientProfileHeaderProps {
@@ -21,17 +24,29 @@ export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
     }
   };
 
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+
   return (
     <>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Hola, {profile.name}</h1>
           <p className="text-muted mt-1">Bienvenida de nuevo a Violett Pilates.</p>
-        </div>
+          <PlanSelectionModal 
+        isOpen={isPlanModalOpen} 
+        onClose={() => setIsPlanModalOpen(false)} 
+        currentPlan={profile.activePlan}
+      />
+    </div>
         <Badge variant={profile.daysUntilExpiration < 7 ? "destructive" : "secondary"} className="text-sm px-4 py-1">
           Vence en {profile.daysUntilExpiration} días
         </Badge>
-      </div>
+        <PlanSelectionModal 
+        isOpen={isPlanModalOpen} 
+        onClose={() => setIsPlanModalOpen(false)} 
+        currentPlan={profile.activePlan}
+      />
+    </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-gradient-to-br from-violett-900 to-violett-700 text-white border-none shadow-glass">
@@ -59,7 +74,12 @@ export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
             <span className="text-muted font-medium">de {profile.totalClasses}</span>
           </CardContent>
         </Card>
-      </div>
+        <PlanSelectionModal 
+        isOpen={isPlanModalOpen} 
+        onClose={() => setIsPlanModalOpen(false)} 
+        currentPlan={profile.activePlan}
+      />
+    </div>
     </>
   );
 }

@@ -2,6 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import ClientHistoryView, TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, CancelRecurrenciaView, GoogleLogin, CrearResenaView
+from .views_webhooks import MercadoPagoWebhookView
 from .admin_views import (
     ProfesorViewSet, AdminTurnoViewSet, AdminAlumnoViewSet, 
     AdminAgendaView, AdminReservaAsistenciaView,
@@ -18,6 +19,8 @@ router.register(r'admin/plantillas', PlantillaTurnoViewSet, basename='admin-plan
 router.register(r'admin/clases', ClaseViewSet, basename='admin-clases')
 
 urlpatterns = [
+    path('webhooks/mercadopago/', MercadoPagoWebhookView.as_view(), name='webhook_mp'),
+
     path('auth/registration/', include('dj_rest_auth.registration.urls')),
     path('auth/', include('dj_rest_auth.urls')),
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
