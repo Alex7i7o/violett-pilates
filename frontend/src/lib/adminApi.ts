@@ -81,3 +81,8 @@ export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/adm
 export const getAdminClases = () => api.get('/admin/clases/');
 
 
+
+export const updateAdminAlumno = async (id: string, data: Partial<UsuarioAdmin>): Promise<UsuarioAdmin> => {
+  const res = await api.put(`/admin/alumnos/${id}/`, data);
+  return res.data;
+};

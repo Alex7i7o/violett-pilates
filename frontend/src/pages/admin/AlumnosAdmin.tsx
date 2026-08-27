@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
-import { getAdminAlumnos, createAdminAlumno, asignarPlanAlumno } from '../../lib/adminApi';
+import { getAdminAlumnos, createAdminAlumno, updateAdminAlumno, asignarPlanAlumno } from '../../lib/adminApi';
 import type { UsuarioAdmin } from '../../lib/adminApi';
 import { api } from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -24,6 +24,8 @@ export function AlumnosAdmin() {
   const [planes, setPlanes] = useState<any[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [isEditingSelected, setIsEditingSelected] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
 
   // Nuevo Alumno Modal State
   const [showNewModal, setShowNewModal] = useState(false);
@@ -65,6 +67,37 @@ export function AlumnosAdmin() {
     }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [search]);
+
+  
+  const openAlumnoModal = (alumno: UsuarioAdmin) => {
+    setSelectedAlumno(alumno);
+    setIsEditingSelected(false);
+    setEditFormData({
+      nombre: alumno.nombre,
+      apellido: alumno.apellido,
+      email: alumno.email,
+      telefono: alumno.telefono || '',
+      contacto_emergencia: alumno.contacto_emergencia || '',
+      notas_medicas: alumno.notas_medicas || ''
+    });
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+  };
+
+  const saveAlumnoChanges = async () => {
+    if (!selectedAlumno) return;
+    try {
+      await updateAdminAlumno(selectedAlumno.id, editFormData);
+      toast.success('Datos actualizados');
+      setIsEditingSelected(false);
+      fetchData();
+      setSelectedAlumno({ ...selectedAlumno, ...editFormData });
+    } catch (e) {
+      toast.error('Error al actualizar datos');
+    }
+  };
 
   const handleAssignPlan = async () => {
     if (!selectedAlumno || !selectedPlanId) return;
@@ -179,7 +212,7 @@ export function AlumnosAdmin() {
                     </div>
                   </CardContent>
                   <div className="p-6 pt-0">
-                    <Button variant="outline" className="w-full" onClick={() => setSelectedAlumno(alumno)}>
+                    <Button variant="outline" className="w-full" onClick={() => openAlumnoModal(alumno)}>
                       Ficha Completa / Asignar Plan
                     </Button>
                   </div>
@@ -192,28 +225,60 @@ export function AlumnosAdmin() {
       )}
 
       {/* Modal Ficha Completa */}
-      <Modal isOpen={!!selectedAlumno} onClose={() => setSelectedAlumno(null)} title="Ficha de Alumna">
+            <Modal isOpen={!!selectedAlumno} onClose={() => setSelectedAlumno(null)} title="Ficha de Alumna">
         {selectedAlumno && (
           <div className="space-y-6">
-            <div>
-              <h4 className="text-2xl font-bold text-foreground mb-1">{selectedAlumno.nombre} {selectedAlumno.apellido}</h4>
-              <p className="text-muted">{selectedAlumno.email}</p>
+            <div className="flex justify-between items-start">
+              {!isEditingSelected ? (
+                <div>
+                  <h4 className="text-2xl font-bold text-foreground mb-1">{selectedAlumno.nombre} {selectedAlumno.apellido}</h4>
+                  <p className="text-muted">{selectedAlumno.email}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 flex-1 mr-4">
+                  <InputField label="Nombre" name="nombre" value={editFormData.nombre} onChange={handleEditChange} required />
+                  <InputField label="Apellido" name="apellido" value={editFormData.apellido} onChange={handleEditChange} required />
+                  <div className="col-span-2">
+                    <InputField label="Email" name="email" type="email" value={editFormData.email} onChange={handleEditChange} required />
+                  </div>
+                </div>
+              )}
+              
+              {!isEditingSelected ? (
+                <Button variant="outline" size="sm" onClick={() => setIsEditingSelected(true)}>Editar</Button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button size="sm" onClick={saveAlumnoChanges}>Guardar</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditingSelected(false)}>Cancelar</Button>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-violett-50 p-4 rounded-xl border border-violett-100">
-                <span className="block text-xs text-violett-600 uppercase font-bold tracking-wider mb-1">Teléfono</span>
-                <span className="text-foreground font-medium">{selectedAlumno.telefono || '-'}</span>
+            {!isEditingSelected ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-violett-50 p-4 rounded-xl border border-violett-100">
+                  <span className="block text-xs text-violett-600 uppercase font-bold tracking-wider mb-1">Teléfono</span>
+                  <span className="text-foreground font-medium">{selectedAlumno.telefono || '-'}</span>
+                </div>
+                <div className="bg-violett-50 p-4 rounded-xl border border-violett-100">
+                  <span className="block text-xs text-violett-600 uppercase font-bold tracking-wider mb-1">Emergencia</span>
+                  <span className="text-foreground font-medium">{selectedAlumno.contacto_emergencia || '-'}</span>
+                </div>
+                <div className="bg-violett-50 p-4 rounded-xl border border-violett-100 col-span-2">
+                  <span className="block text-xs text-violett-600 uppercase font-bold tracking-wider mb-1">Notas Médicas</span>
+                  <span className="text-foreground font-medium">{selectedAlumno.notas_medicas || '-'}</span>
+                </div>
               </div>
-              <div className="bg-violett-50 p-4 rounded-xl border border-violett-100">
-                <span className="block text-xs text-violett-600 uppercase font-bold tracking-wider mb-1">Emergencia</span>
-                <span className="text-foreground font-medium">{selectedAlumno.contacto_emergencia || '-'}</span>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <InputField label="Teléfono" name="telefono" value={editFormData.telefono} onChange={handleEditChange} />
+                <InputField label="Emergencia" name="contacto_emergencia" value={editFormData.contacto_emergencia} onChange={handleEditChange} />
+                <div className="col-span-2">
+                  <label className="block text-sm font-semibold mb-1 text-foreground">Notas Médicas</label>
+                  <textarea name="notas_medicas" value={editFormData.notas_medicas} onChange={handleEditChange} rows={3} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
+                </div>
               </div>
-              <div className="bg-violett-50 p-4 rounded-xl border border-violett-100 col-span-2">
-                <span className="block text-xs text-violett-600 uppercase font-bold tracking-wider mb-1">Notas Médicas</span>
-                <span className="text-foreground font-medium">{selectedAlumno.notas_medicas || '-'}</span>
-              </div>
-            </div>
+            )}
 
             <div className="border-t border-violett-100 pt-6">
               <h5 className="font-bold text-foreground mb-4">Carga Manual de Plan (Pago Físico)</h5>
