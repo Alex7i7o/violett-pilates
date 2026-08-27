@@ -21,7 +21,7 @@ export function ProfesoresAdmin() {
 
   const fetchData = async () => {
     try {
-      const res = await api.get('/admin/profesores/');
+      const res = await getAdminProfesores();
       setProfesores(res.data);
       setLoading(false);
     } catch (e) {
@@ -46,7 +46,7 @@ export function ProfesoresAdmin() {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/admin/profesores/${id}/`);
+      await deleteAdminProfesor(id);
       toast.success('Profesor eliminado');
       fetchData();
     } catch (e) {
@@ -59,10 +59,10 @@ export function ProfesoresAdmin() {
   const handleSubmit = async (data: any) => {
     try {
       if (currentProfesor) {
-        await api.put(`/admin/profesores/${currentProfesor.id}/`, data);
+        await updateAdminProfesor(currentProfesor.id, data);
         toast.success('Profesor actualizado');
       } else {
-        await api.post('/admin/profesores/', data);
+        await createAdminProfesor(data);
         toast.success('Profesor creado');
       }
       setShowModal(false);
