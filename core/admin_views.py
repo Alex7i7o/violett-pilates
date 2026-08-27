@@ -25,10 +25,16 @@ class PlanSerializer(serializers.ModelSerializer):
         model = Plan
         fields = '__all__'
 
+from rest_framework.permissions import IsAuthenticated
+
 class PlanViewSet(viewsets.ModelViewSet):
     queryset = Plan.objects.filter(is_active=True)
     serializer_class = PlanSerializer
-    permission_classes = [IsStaffPermission]
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated()]
+        return [IsStaffPermission()]
 
     def perform_destroy(self, instance):
         instance.is_active = False
