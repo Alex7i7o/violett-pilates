@@ -75,7 +75,7 @@ class AdminAgendaView(views.APIView):
     def get(self, request):
         fecha_str = request.query_params.get('fecha')
         if not fecha_str:
-            fecha = datetime.date.today()
+            fecha = timezone.localdate()
         else:
             fecha = parse_date(fecha_str)
 
@@ -165,7 +165,7 @@ class AdminAlumnoViewSet(viewsets.ModelViewSet):
         config = ConfiguracionGlobal.objects.first()
         dias = config.dias_vencimiento_plan if config else 30
         
-        fecha_inicio = timezone.now().date()
+        fecha_inicio = timezone.localdate()
         fecha_vencimiento = fecha_inicio + datetime.timedelta(days=dias)
         
         nueva_sub = Suscripcion.objects.create(
@@ -196,7 +196,7 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
         from core.models import Reserva, Recurrencia
         
         if old_dia != instance.dia_semana or old_inicio != instance.hora_inicio or old_fin != instance.hora_fin:
-            today = timezone.now().date()
+            today = timezone.localdate()
             turnos_futuros = instance.turnos_generados.filter(fecha__gte=today, estado='PROGRAMADO')
             
             # Actualizar recurrencias asociadas a este horario
@@ -288,7 +288,7 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
                 fail_silently=True,
             )
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         turnos_futuros = instance.turnos_generados.filter(fecha__gte=today, estado='PROGRAMADO')
         
         for turno in turnos_futuros:

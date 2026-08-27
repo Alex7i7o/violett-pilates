@@ -1,3 +1,4 @@
+from django.utils import timezone
 # Developed by FireSeed - Fueling Innovation
 from rest_framework import serializers
 from .models import Turno, Reserva, Suscripcion, Recurrencia, PlantillaTurno
@@ -95,7 +96,7 @@ class ProfesorSerializer(serializers.ModelSerializer):
         import datetime
         if not obj.fecha_nacimiento:
             return None
-        today = datetime.date.today()
+        today = timezone.localdate()
         return today.year - obj.fecha_nacimiento.year - ((today.month, today.day) < (obj.fecha_nacimiento.month, obj.fecha_nacimiento.day))
 
 class AdminReservaSerializer(serializers.ModelSerializer):
@@ -148,12 +149,12 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         import datetime
         if not obj.fecha_nacimiento:
             return None
-        today = datetime.date.today()
+        today = timezone.localdate()
         return today.year - obj.fecha_nacimiento.year - ((today.month, today.day) < (obj.fecha_nacimiento.month, obj.fecha_nacimiento.day))
 
     def get_plan_activo(self, obj):
         import datetime
-        today = datetime.date.today()
+        today = timezone.localdate()
         sub = Suscripcion.objects.filter(usuario=obj).order_by('-fecha_inicio').first()
         
         if not sub:

@@ -21,7 +21,7 @@ class ProfesorDashboardView(views.APIView):
             return Response({"detail": "Perfil de profesor no encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
         now = timezone.now()
-        today = now.date()
+        today = timezone.localdate(now)
         
         # Parse optional month and year
         req_month = request.query_params.get('month')
@@ -154,7 +154,7 @@ class AssignPlantillaView(views.APIView):
         plantilla.save()
 
         # Auto-asignar turnos futuros generados por esta plantilla que an no tengan profesor
-        Turno.objects.filter(plantilla=plantilla, fecha__gte=timezone.now().date(), profesor__isnull=True).update(profesor=profesor)
+        Turno.objects.filter(plantilla=plantilla, fecha__gte=timezone.localdate(), profesor__isnull=True).update(profesor=profesor)
 
         return Response({'detail': 'Plantilla asignada exitosamente.'})
 

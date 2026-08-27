@@ -144,7 +144,7 @@ def notificar_profesores_diario():
     from .models import Turno
     
     now = timezone.now()
-    tomorrow = now.date() + datetime.timedelta(days=1)
+    tomorrow = timezone.localdate(now) + datetime.timedelta(days=1)
     
     turnos_manana = Turno.objects.filter(
         fecha=tomorrow,
@@ -173,7 +173,7 @@ def generar_turnos_desde_plantillas():
     import datetime
     from .models import Turno, PlantillaTurno, Recurrencia, Reserva
     
-    now = timezone.now().date()
+    now = timezone.localdate()
     end_date = now + datetime.timedelta(days=30)
     
     plantillas = PlantillaTurno.objects.filter(is_active=True)

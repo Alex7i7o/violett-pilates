@@ -29,7 +29,7 @@ class ClientProfileView(APIView):
                 "recurrencias": []
             })
             
-        dias_restantes = (suscripcion.fecha_vencimiento - timezone.now().date()).days
+        dias_restantes = (suscripcion.fecha_vencimiento - timezone.localdate()).days
         
         recurrencias = Recurrencia.objects.select_related('clase', 'usuario').filter(usuario=user, is_active=True)
         recurrencias_data = RecurrenciaSerializer(recurrencias, many=True).data
@@ -51,7 +51,7 @@ class TurnosDisponiblesView(APIView):
     def get(self, request):
         # Fetch upcoming turnos from today onwards, but filter out past times for today
         now = timezone.now()
-        today = now.date()
+        today = timezone.localdate(now)
         current_time = now.time()
         
         from django.db.models import Q
@@ -246,7 +246,7 @@ class CancelRecurrenciaView(APIView):
         reservas = Reserva.objects.filter(
             usuario=user,
             turno__clase=recurrencia.clase,
-            turno__fecha__gte=timezone.now().date(),
+            turno__fecha__gte=timezone.localdate(),
             turno__hora_inicio=recurrencia.hora_inicio,
             estado='CONFIRMADA',
             es_recurrente=True
@@ -284,7 +284,7 @@ class ClientHistoryView(APIView):
     def get(self, request):
         user = request.user
         now = timezone.now()
-        today = now.date()
+        today = timezone.localdate(now)
         
         req_month = request.query_params.get('month')
         req_year = request.query_params.get('year')
