@@ -45,9 +45,11 @@ class Command(BaseCommand):
                         reserva.estado = 'CANCELADA'
                         reserva.save()
                         
-                        if reserva.usuario.suscripcion_activa:
-                            reserva.usuario.suscripcion_activa.clases_restantes += 1
-                            reserva.usuario.suscripcion_activa.save()
+                        if reserva.suscripcion:
+                            reserva.suscripcion.clases_restantes += 1
+                            if reserva.suscripcion.estado == 'AGOTADO':
+                                reserva.suscripcion.estado = 'ACTIVO'
+                            reserva.suscripcion.save()
                             
                         send_mail(
                             'Clase cancelada',
