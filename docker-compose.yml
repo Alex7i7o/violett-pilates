@@ -1,18 +1,18 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
   db:
     image: postgres:15
-    container_name: fireseed_postgres
-    restart: always
+    container_name: violett_postgres
     environment:
-      POSTGRES_DB: fireseed_pilates
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: violett_db
+      POSTGRES_USER: violett_user
+      POSTGRES_PASSWORD: violett_password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
 volumes:
   postgres_data:
