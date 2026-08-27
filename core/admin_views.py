@@ -57,10 +57,16 @@ class ProfesorViewSet(viewsets.ModelViewSet):
                     nombre=profesor.nombre,
                     apellido=profesor.apellido,
                     telefono=profesor.telefono,
-                    rol='PROFESOR'
+                    rol='PROFESOR',
+                    is_active=True
                 )
                 usuario.set_password('violett123')
                 usuario.save()
+            else:
+                if not usuario.is_active:
+                    usuario.is_active = True
+                    usuario.set_password('violett123')
+                    usuario.save()
             
             profesor.usuario = usuario
             profesor.save()
