@@ -16,65 +16,50 @@ export function ProfesoresAdmin() {
   const [loading, setLoading] = useState(true);
   
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentId, setCurrentId] = useState<string | null>(null);
-  
-    const [apellido, setApellido] = useState('');
-    const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
-    const [especialidad, setEspecialidad] = useState('');
-  const [color, setColor] = useState('#4a306d');
-  const [fechaNacimiento, setFechaNacimiento] = useState('');
-  const [sexo, setSexo] = useState('');
+  const [currentProfesor, setCurrentProfesor] = useState<Profesor | null>(null);
+  const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
 
-  const fetchProfesores = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true);
-      const res = await getAdminProfesores();
+      const res = await api.get('/admin/profesores/');
       setProfesores(res.data);
+      setLoading(false);
     } catch (e) {
-      console.error(e);
-    } finally {
+      toast.error('Error al cargar profesores');
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProfesores();
+    fetchData();
   }, []);
 
   const openNewModal = () => {
-    setIsEditing(false);
-    setCurrentId(null);
-    setNombre(''); setApellido(''); setTelefono(''); setEmail(''); setEspecialidad(''); setColor('#4a306d'); setFechaNacimiento(''); setSexo('');
+    setCurrentProfesor(null);
     setShowModal(true);
   };
 
   const openEditModal = (prof: Profesor) => {
-    setIsEditing(true);
-    setCurrentId(prof.id);
-    setNombre(prof.nombre); setApellido(prof.apellido); setTelefono(prof.telefono || '');
-    setEmail(prof.email || ''); setEspecialidad(prof.especialidad || ''); setColor(prof.color_identificador || '#4a306d'); setFechaNacimiento(prof.fecha_nacimiento || ''); setSexo(prof.sexo || '');
+    setCurrentProfesor(prof);
     setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteAdminProfesor(id);
+      await api.delete(`/admin/profesores/${id}/`);
+      toast.success('Profesor eliminado');
       fetchData();
     } catch (e) {
-      toast.error("Error eliminando profesor")
+      toast.error('Error al eliminar profesor');
+    } finally {
+      setProfesorToDelete(null);
     }
   };
 
-  const promptDelete = (id: string) => {
-    setProfesorToDelete(id);
-  };
-
-    const handleSubmit = async (data: ProfesorFormData) => {
+  const handleSubmit = async (data: any) => {
     try {
-      if (editId) {
-        await api.put(`/admin/profesores/${editId}/`, data);
+      if (currentProfesor) {
+        await api.put(`/admin/profesores/${currentProfesor.id}/`, data);
         toast.success('Profesor actualizado');
       } else {
         await api.post('/admin/profesores/', data);
@@ -151,23 +136,14 @@ export function ProfesoresAdmin() {
         </CardContent>
       </Card>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={isEditing ? 'Modificar Profesor' : 'Nuevo Profesor'}>
-        {editId ? (
-          <ProfesorForm 
-            initialData={{ nombre: profesores.find(p => p.id === editId)?.nombre || '', email: profesores.find(p => p.id === editId)?.email || '', telefono: profesores.find(p => p.id === editId)?.telefono || '', color: profesores.find(p => p.id === editId)?.color || '#6d28d9' }} 
-            onSubmit={handleSubmit} 
-            onCancel={() => setShowModal(false)} 
-            isSubmitting={false} 
-            submitLabel="Actualizar Profesor" 
-          />
-        ) : (
-          <ProfesorForm 
-            onSubmit={handleSubmit} 
-            onCancel={() => setShowModal(false)} 
-            isSubmitting={false} 
-            submitLabel="Crear Profesor" 
-          />
-        )}
+            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={currentProfesor ? 'Modificar Profesor' : 'Nuevo Profesor'}>
+        <ProfesorForm 
+          initialData={currentProfesor ? { nombre: currentProfesor.nombre, apellido: currentProfesor.apellido, email: currentProfesor.email || '', telefono: currentProfesor.telefono || '', color_identificador: currentProfesor.color_identificador || '#6d28d9' } : undefined} 
+          onSubmit={handleSubmit} 
+          onCancel={() => setShowModal(false)} 
+          isSubmitting={false} 
+          submitLabel={currentProfesor ? "Actualizar Profesor" : "Crear Profesor"}
+        />
       </Modal>
       <ConfirmModal
         isOpen={!!profesorToDelete}

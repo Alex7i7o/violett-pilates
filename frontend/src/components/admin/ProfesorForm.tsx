@@ -3,9 +3,10 @@ import { Button } from '../ui/Button';
 
 export interface ProfesorFormData {
   nombre: string;
+  apellido: string;
   email: string;
   telefono: string;
-  color: string;
+  color_identificador: string;
 }
 
 interface ProfesorFormProps {
@@ -19,9 +20,10 @@ interface ProfesorFormProps {
 export function ProfesorForm({ initialData, onSubmit, onCancel, isSubmitting, submitLabel = 'Guardar' }: ProfesorFormProps) {
   const [formData, setFormData] = useState<ProfesorFormData>(initialData || {
     nombre: '',
+    apellido: '',
     email: '',
     telefono: '',
-    color: '#6d28d9'
+    color_identificador: '#6d28d9'
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,10 +38,14 @@ export function ProfesorForm({ initialData, onSubmit, onCancel, isSubmitting, su
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold mb-1 text-foreground">Nombre</label>
           <input type="text" name="nombre" required value={formData.nombre} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1 text-foreground">Apellido</label>
+          <input type="text" name="apellido" required value={formData.apellido} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500" />
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1 text-foreground">Email</label>
@@ -51,7 +57,7 @@ export function ProfesorForm({ initialData, onSubmit, onCancel, isSubmitting, su
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1 text-foreground">Color</label>
-          <input type="color" name="color" value={formData.color} onChange={handleChange} className="w-full h-11 px-1 py-1 rounded-xl cursor-pointer border border-violett-200" />
+          <input type="color" name="color_identificador" value={formData.color_identificador} onChange={handleChange} className="w-full h-11 px-1 py-1 rounded-xl cursor-pointer border border-violett-200" />
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-violett-100">
