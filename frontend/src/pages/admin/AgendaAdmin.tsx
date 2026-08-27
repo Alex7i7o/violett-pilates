@@ -1,379 +1,380 @@
-import { ConfirmModal } from '../../components/ui/ConfirmModal';
-import React, { useState, useEffect } from 'react';
-import { Skeleton } from "../../components/ui/Skeleton";
-import { toast } from "sonner";
-import { Modal } from '../../components/ui/Modal';
-import { getAdminAgenda, updateAsistencia, createAdminTurno, updateAdminTurno, deleteAdminTurno, getAdminClases, getAdminProfesores } from '../../lib/adminApi';
-import type { TurnoAdmin } from '../../lib/adminApi';
-import { Card, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { FeedbackButton } from '../../components/ui/FeedbackButton';
-import { Badge } from '../../components/ui/Badge';
-import { motion, AnimatePresence } from 'framer-motion';
-
-export function AgendaAdmin() {
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [turnos, setTurnos] = useState<TurnoAdmin[]>([]);
-  const [expandedIds, setExpandedIds] = useState<string[]>([]);
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
-  const [loading, setLoading] = useState(true);
-
-  const [clases, setClases] = useState<any[]>([]);
-  const [profesores, setProfesores] = useState<any[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
-  const [turnoToDelete, setTurnoToDelete] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" });
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const getFechaTitle = () => {
-    if (fecha === todayStr) return 'Hoy';
-    const [year, month, day] = fecha.split('-').map(Number);
-    const d = new Date(year, month - 1, day);
-    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
-  };
-
-  const fetchAuxData = async () => {
-    try {
-      const [resClases, resProfesores] = await Promise.all([getAdminClases(), getAdminProfesores()]);
-      setClases(resClases.data);
-      setProfesores(resProfesores.data);
-    } catch(e) {}
-  };
-  useEffect(() => { fetchAuxData(); }, []);
-
-  const fetchAgenda = async () => {
-    try {
-      setLoading(true);
-      const res = await getAdminAgenda(fecha);
-      setTurnos(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAgenda();
-  }, [fecha]);
-
-  const handleAsistencia = async (reservaId: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => {
-    try {
-      await updateAsistencia(reservaId, estado);
-      
-      // Update local state without refetching to avoid skeletons and flickering
-      setTurnos(prev => prev.map(turno => ({
-        ...turno,
-        reservas_list: turno.reservas_list?.map((res: any) => 
-          res.id === reservaId ? { ...res, estado } : res
-        )
-      })));
-      
-    } catch (e) {
-      toast.error("Error actualizando asistencia");
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const data = {
-        clase: formData.clase,
-        profesor: formData.profesor || null,
-        fecha: formData.fecha,
-        hora_inicio: formData.hora_inicio,
-        hora_fin: formData.hora_fin
-      };
-      if (editingTurnoId) {
-        await updateAdminTurno(editingTurnoId, data);
-        toast.success("Turno modificado correctamente");
-      } else {
-        await createAdminTurno(data);
-        toast.success("Turno creado correctamente");
-      }
-      setIsModalOpen(false);
-      setEditingTurnoId(null);
-      fetchAgenda();
-    } catch (e) {
-      toast.error("Error al guardar el turno");
-    }
-  };
-
-  const handleEditClick = (turno: any) => {
-    setEditingTurnoId(turno.id);
-    setFormData({
-      clase: turno.clase,
-      profesor: turno.profesor || "",
-      fecha: turno.fecha,
-      hora_inicio: turno.hora_inicio,
-      hora_fin: turno.hora_fin
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteTurno = async () => {
-    if (!turnoToDelete) return;
-    try {
-      await deleteAdminTurno(turnoToDelete);
-      toast.success("Turno cancelado correctamente");
-      fetchAgenda();
-    } catch (e) {
-      toast.error("Error al cancelar el turno");
-    } finally {
-      setTurnoToDelete(null);
-    }
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-violett-900">Agenda</h2>
-        <Button onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" }); setIsModalOpen(true); }}>+ Agregar Clase</Button>
-      </div>
-      
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <input 
-              type="date" 
-              value={fecha} 
-              onChange={(e) => setFecha(e.target.value)}
-              className="p-2.5 rounded-xl border border-violett-200 text-foreground bg-white focus:outline-none focus:ring-2 focus:ring-violett-500 shadow-sm"
-            />
-            <Button variant={fecha === todayStr ? 'default' : 'outline'} onClick={() => setFecha(todayStr)}>
-              {getFechaTitle()}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {loading ? (
-        <div className="space-y-4 mt-4">
-            {[1,2,3,4].map(i => <Skeleton key={i} className="h-16 w-full" />)}
-          </div>
-      ) : turnos.length === 0 ? (
-        <p className="text-muted py-4">No hay turnos para esta fecha.</p>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-violett-50/50">
-                  <tr>
-                    <th className="py-4 px-6 text-sm font-bold text-violett-900">Hora</th>
-                    <th className="py-4 px-6 text-sm font-bold text-violett-900">Clase</th>
-                    <th className="py-4 px-6 text-sm font-bold text-violett-900">Inscriptos</th>
-                    <th className="py-4 px-6 text-sm font-bold text-violett-900 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {turnos.map((turno) => (
-                      <motion.tr 
-                        key={turno.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="border-t border-violett-100 bg-white"
-                      >
-                        <td className="py-4 px-6 align-top">
-                          <span className="font-bold text-lg text-foreground">{turno.hora_inicio.slice(0,5)}</span>
-                        </td>
-                        <td className="py-4 px-6 align-top">
-                          <span className="text-violett-900 font-bold">{turno.clase_nombre}</span>
-                          <br/>
-                          <span className="text-sm text-muted">Prof: {turno.profesor ? turno.profesor.nombre : 'Sin asignar'}</span>
-                          <br/>
-                          <span className="text-xs font-semibold text-emerald-600 mt-1 inline-block">
-                            Asistencia: {turno.reservas_list.filter((r: any) => r.estado === 'TOMADA').length}/{turno.reservas_list.length}
-                          </span>
-                        </td>
-                                                <td className="py-4 px-6 align-top">
-                          {turno.reservas_list.length > 0 ? (
-                            <div className="space-y-3">
-                              <button 
-                                onClick={() => toggleExpand(turno.id)}
-                                className="w-full text-left py-2 px-3 bg-violett-50/50 hover:bg-violett-100/50 rounded-xl font-medium text-sm text-violett-900 transition-colors flex justify-between items-center"
-                              >
-                                <span>{turno.reservas_list.length} inscriptos</span>
-                                <span className="text-lg leading-none">{expandedIds.includes(turno.id) ? '▾' : '▸'}</span>
-                              </button>
-                              <AnimatePresence initial={false}>
-                                {expandedIds.includes(turno.id) && (
-                                  <motion.ul 
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="space-y-4 overflow-hidden px-1"
-                                  >
-                                    {turno.reservas_list.map((r: any) => (
-                                      <li key={r.id} className="flex flex-col gap-2 border-b border-violett-50 pb-4 last:border-0 last:pb-0">
-                                        <div>
-                                          <p className="font-medium text-foreground">{r.alumno_nombre} {r.alumno_apellido}</p>
-                                          <p className="text-xs text-muted">{r.es_recurrente ? 'Recurrente' : 'Puntual'}</p>
-                                        </div>
-                                        <motion.div layout className="flex gap-2 w-full max-w-[220px]">
-                                          <AnimatePresence initial={false}>
-                                            {(r.estado === 'CONFIRMADA' || r.estado === 'TOMADA') && (
-                                              <motion.div 
-                                                key="presente"
-                                                layout
-                                                initial={{ opacity: 0, flex: 0 }} 
-                                                animate={{ opacity: 1, flex: r.estado === 'TOMADA' ? '1 1 100%' : '1 1 50%' }} 
-                                                exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
-                                                transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
-                                                className="flex"
-                                              >
-                                                <FeedbackButton 
-                                                  size="sm" 
-                                                  variant={r.estado === 'TOMADA' ? 'default' : 'outline'}
-                                                  key={`presente-btn-${r.estado}`}
-                                                  onClick={() => handleAsistencia(r.id, r.estado === 'TOMADA' ? 'CONFIRMADA' : 'TOMADA')}
-                                                  className={r.estado !== 'TOMADA' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-violett-50 text-violett-900 border-violett-200 hover:border-violett-300" : "w-full flex-1 whitespace-nowrap bg-violett-900 hover:bg-violett-800 border-violett-900 text-white"}
-                                                  initialText={r.estado === 'TOMADA' ? '✓ Presente (Deshacer)' : 'Presente'}
-                                                  successText={r.estado === 'TOMADA' ? 'Deshecho' : 'Asistió'}
-                                                />
-                                          
-      <ConfirmModal
-        isOpen={!!turnoToDelete}
-        onClose={() => setTurnoToDelete(null)}
-        onConfirm={handleDeleteTurno}
-        title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
-        confirmText="Sí, Cancelar"
-        cancelText="No, Volver"
-        isDestructive={true}
-      />
-    </motion.div>
-
-                                            )}
-                                            {(r.estado === 'CONFIRMADA' || r.estado === 'AUSENTE') && (
-                                              <motion.div 
-                                                key="ausente"
-                                                layout
-                                                initial={{ opacity: 0, flex: 0 }} 
-                                                animate={{ opacity: 1, flex: r.estado === 'AUSENTE' ? '1 1 100%' : '1 1 50%' }} 
-                                                exit={{ opacity: 0, flex: 0, padding: 0, margin: 0, overflow: 'hidden' }} 
-                                                transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
-                                                className="flex"
-                                              >
-                                                <FeedbackButton 
-                                                  size="sm" 
-                                                  variant={r.estado === 'AUSENTE' ? 'destructive' : 'outline'}
-                                                  key={`ausente-btn-${r.estado}`}
-                                                  onClick={() => handleAsistencia(r.id, r.estado === 'AUSENTE' ? 'CONFIRMADA' : 'AUSENTE')}
-                                                  className={r.estado !== 'AUSENTE' ? "w-full flex-1 whitespace-nowrap bg-white hover:bg-rose-50 text-rose-500 border-rose-200 hover:border-rose-300" : "w-full flex-1 whitespace-nowrap text-white bg-rose-500 hover:bg-rose-600 border-rose-500"}
-                                                  initialText={r.estado === 'AUSENTE' ? '✗ Ausente (Deshacer)' : 'Ausente'}
-                                                  successText={r.estado === 'AUSENTE' ? 'Deshecho' : 'Faltó'}
-                                                />
-                                          
-      <ConfirmModal
-        isOpen={!!turnoToDelete}
-        onClose={() => setTurnoToDelete(null)}
-        onConfirm={handleDeleteTurno}
-        title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
-        confirmText="Sí, Cancelar"
-        cancelText="No, Volver"
-        isDestructive={true}
-      />
-    </motion.div>
-
-                                            )}
-                                          </AnimatePresence>
-                                    
-      <ConfirmModal
-        isOpen={!!turnoToDelete}
-        onClose={() => setTurnoToDelete(null)}
-        onConfirm={handleDeleteTurno}
-        title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
-        confirmText="Sí, Cancelar"
-        cancelText="No, Volver"
-        isDestructive={true}
-      />
-    </motion.div>
-
-                                      </li>
-                                    ))}
-                                  </motion.ul>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted">Sin inscriptos</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-6 align-top text-right space-y-2">
-                          <Button className="w-full" variant="outline" onClick={() => handleEditClick(turno)}>Modificar</Button>
-                          <Button className="w-full bg-red-500 hover:bg-red-600 text-white" onClick={() => setTurnoToDelete(turno.id)}>Cancelar</Button>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTurnoId ? "Modificar Turno" : "Crear Turno Puntual"}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-            <label className="block text-sm font-semibold mb-1">Clase</label>
-            <select required value={formData.clase} onChange={e => setFormData({...formData, clase: e.target.value})} className="w-full p-2 border rounded-xl bg-white">
-              <option value="">Selecciona una clase</option>
-              {clases.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">Profesor (Opcional)</label>
-            <select value={formData.profesor} onChange={e => setFormData({...formData, profesor: e.target.value})} className="w-full p-2 border rounded-xl bg-white">
-              <option value="">Dejar libre (Bolsa de trabajo)</option>
-              {profesores.map(p => <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-1">Fecha</label>
-            <input type="date" required value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} className="w-full p-2 border rounded-xl" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-1">Hora Inicio</label>
-              <input type="time" required value={formData.hora_inicio} onChange={e => setFormData({...formData, hora_inicio: e.target.value})} className="w-full p-2 border rounded-xl" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1">Hora Fin</label>
-              <input type="time" required value={formData.hora_fin} onChange={e => setFormData({...formData, hora_fin: e.target.value})} className="w-full p-2 border rounded-xl" />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button type="submit">Guardar Turno</Button>
-          </div>
-        </form>
-      </Modal>
-
-      <ConfirmModal
-        isOpen={!!turnoToDelete}
-        onClose={() => setTurnoToDelete(null)}
-        onConfirm={handleDeleteTurno}
-        title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
-        confirmText="Sí, Cancelar"
-        cancelText="No, Volver"
-        isDestructive={true}
-      />
-    </motion.div>
-
-  );
-}
-
-
-
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜCÜoÜnÜfÜiÜrÜmÜMÜoÜdÜaÜlÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜCÜoÜnÜfÜiÜrÜmÜMÜoÜdÜaÜlÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ ÜRÜeÜaÜcÜtÜ,Ü Ü{Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ,Ü ÜuÜsÜeÜEÜfÜfÜeÜcÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜrÜeÜaÜcÜtÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜSÜkÜeÜlÜeÜtÜoÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü"Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜSÜkÜeÜlÜeÜtÜoÜnÜ"Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜtÜoÜaÜsÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü"ÜsÜoÜnÜnÜeÜrÜ"Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜMÜoÜdÜaÜlÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜMÜoÜdÜaÜlÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜgÜeÜtÜAÜdÜmÜiÜnÜAÜgÜeÜnÜdÜaÜ,Ü ÜuÜpÜdÜaÜtÜeÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ,Ü ÜcÜrÜeÜaÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ,Ü ÜuÜpÜdÜaÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ,Ü ÜdÜeÜlÜeÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ,Ü ÜgÜeÜtÜAÜdÜmÜiÜnÜCÜlÜaÜsÜeÜsÜ,Ü ÜgÜeÜtÜAÜdÜmÜiÜnÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜlÜiÜbÜ/ÜaÜdÜmÜiÜnÜAÜpÜiÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ ÜtÜyÜpÜeÜ Ü{Ü ÜTÜuÜrÜnÜoÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜlÜiÜbÜ/ÜaÜdÜmÜiÜnÜAÜpÜiÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜCÜaÜrÜdÜ,Ü ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜCÜaÜrÜdÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜBÜuÜtÜtÜoÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜBÜuÜtÜtÜoÜnÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜFÜeÜeÜdÜbÜaÜcÜkÜBÜuÜtÜtÜoÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜFÜeÜeÜdÜbÜaÜcÜkÜBÜuÜtÜtÜoÜnÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜBÜaÜdÜgÜeÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜcÜoÜmÜpÜoÜnÜeÜnÜtÜsÜ/ÜuÜiÜ/ÜBÜaÜdÜgÜeÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜmÜoÜtÜiÜoÜnÜ,Ü ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜfÜrÜaÜmÜeÜrÜ-ÜmÜoÜtÜiÜoÜnÜ'Ü;Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜfÜuÜnÜcÜtÜiÜoÜnÜ ÜAÜgÜeÜnÜdÜaÜAÜdÜmÜiÜnÜ(Ü)Ü Ü{Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜfÜeÜcÜhÜaÜ,Ü ÜsÜeÜtÜFÜeÜcÜhÜaÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ(ÜnÜeÜwÜ ÜDÜaÜtÜeÜ(Ü)Ü.ÜtÜoÜIÜSÜOÜSÜtÜrÜiÜnÜgÜ(Ü)Ü.ÜsÜpÜlÜiÜtÜ(Ü'ÜTÜ'Ü)Ü[Ü0Ü]Ü)Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜtÜuÜrÜnÜoÜsÜ,Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜsÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜTÜuÜrÜnÜoÜAÜdÜmÜiÜnÜ[Ü]Ü>Ü(Ü[Ü]Ü)Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜeÜxÜpÜaÜnÜdÜeÜdÜIÜdÜsÜ,Ü ÜsÜeÜtÜEÜxÜpÜaÜnÜdÜeÜdÜIÜdÜsÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜsÜtÜrÜiÜnÜgÜ[Ü]Ü>Ü(Ü[Ü]Ü)Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜtÜoÜgÜgÜlÜeÜEÜxÜpÜaÜnÜdÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜsÜeÜtÜEÜxÜpÜaÜnÜdÜeÜdÜIÜdÜsÜ(ÜpÜrÜeÜvÜ Ü=Ü>Ü ÜpÜrÜeÜvÜ.ÜiÜnÜcÜlÜuÜdÜeÜsÜ(ÜiÜdÜ)Ü Ü?Ü ÜpÜrÜeÜvÜ.ÜfÜiÜlÜtÜeÜrÜ(ÜiÜ Ü=Ü>Ü ÜiÜ Ü!Ü=Ü=Ü ÜiÜdÜ)Ü Ü:Ü Ü[Ü.Ü.Ü.ÜpÜrÜeÜvÜ,Ü ÜiÜdÜ]Ü)Ü;Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜlÜoÜaÜdÜiÜnÜgÜ,Ü ÜsÜeÜtÜLÜoÜaÜdÜiÜnÜgÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ(ÜtÜrÜuÜeÜ)Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜcÜlÜaÜsÜeÜsÜ,Ü ÜsÜeÜtÜCÜlÜaÜsÜeÜsÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜaÜnÜyÜ[Ü]Ü>Ü(Ü[Ü]Ü)Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ,Ü ÜsÜeÜtÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜaÜnÜyÜ[Ü]Ü>Ü(Ü[Ü]Ü)Ü;Ü
+Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜiÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ,Ü ÜsÜeÜtÜIÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ(ÜfÜaÜlÜsÜeÜ)Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜeÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ,Ü ÜsÜeÜtÜEÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜsÜtÜrÜiÜnÜgÜ Ü|Ü ÜnÜuÜlÜlÜ>Ü(ÜnÜuÜlÜlÜ)Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ,Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜsÜtÜrÜiÜnÜgÜ Ü|Ü ÜnÜuÜlÜlÜ>Ü(ÜnÜuÜlÜlÜ)Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜfÜoÜrÜmÜDÜaÜtÜaÜ,Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ(Ü{Ü ÜcÜlÜaÜsÜeÜ:Ü Ü"Ü"Ü,Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ:Ü Ü"Ü"Ü,Ü ÜfÜeÜcÜhÜaÜ:Ü ÜfÜeÜcÜhÜaÜ,Ü ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ:Ü Ü"Ü1Ü0Ü:Ü0Ü0Ü"Ü,Ü ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ:Ü Ü"Ü1Ü1Ü:Ü0Ü0Ü"Ü Ü}Ü)Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜtÜoÜdÜaÜyÜSÜtÜrÜ Ü=Ü ÜnÜeÜwÜ ÜDÜaÜtÜeÜ(Ü)Ü.ÜtÜoÜIÜSÜOÜSÜtÜrÜiÜnÜgÜ(Ü)Ü.ÜsÜpÜlÜiÜtÜ(Ü'ÜTÜ'Ü)Ü[Ü0Ü]Ü;Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜgÜeÜtÜFÜeÜcÜhÜaÜTÜiÜtÜlÜeÜ Ü=Ü Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜiÜfÜ Ü(ÜfÜeÜcÜhÜaÜ Ü=Ü=Ü=Ü ÜtÜoÜdÜaÜyÜSÜtÜrÜ)Ü ÜrÜeÜtÜuÜrÜnÜ Ü'ÜHÜoÜyÜ'Ü;Ü
+Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜyÜeÜaÜrÜ,Ü ÜmÜoÜnÜtÜhÜ,Ü ÜdÜaÜyÜ]Ü Ü=Ü ÜfÜeÜcÜhÜaÜ.ÜsÜpÜlÜiÜtÜ(Ü'Ü-Ü'Ü)Ü.ÜmÜaÜpÜ(ÜNÜuÜmÜbÜeÜrÜ)Ü;Ü
+Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜdÜ Ü=Ü ÜnÜeÜwÜ ÜDÜaÜtÜeÜ(ÜyÜeÜaÜrÜ,Ü ÜmÜoÜnÜtÜhÜ Ü-Ü Ü1Ü,Ü ÜdÜaÜyÜ)Ü;Ü
+Ü Ü Ü Ü ÜrÜeÜtÜuÜrÜnÜ ÜdÜ.ÜtÜoÜLÜoÜcÜaÜlÜeÜDÜaÜtÜeÜSÜtÜrÜiÜnÜgÜ(Ü'ÜeÜsÜ-ÜEÜSÜ'Ü,Ü Ü{Ü ÜdÜaÜyÜ:Ü Ü'ÜnÜuÜmÜeÜrÜiÜcÜ'Ü,Ü ÜmÜoÜnÜtÜhÜ:Ü Ü'ÜlÜoÜnÜgÜ'Ü Ü}Ü)Ü;Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜfÜeÜtÜcÜhÜAÜuÜxÜDÜaÜtÜaÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜtÜrÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜrÜeÜsÜCÜlÜaÜsÜeÜsÜ,Ü ÜrÜeÜsÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ]Ü Ü=Ü ÜaÜwÜaÜiÜtÜ ÜPÜrÜoÜmÜiÜsÜeÜ.ÜaÜlÜlÜ(Ü[ÜgÜeÜtÜAÜdÜmÜiÜnÜCÜlÜaÜsÜeÜsÜ(Ü)Ü,Ü ÜgÜeÜtÜAÜdÜmÜiÜnÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ(Ü)Ü]Ü)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜCÜlÜaÜsÜeÜsÜ(ÜrÜeÜsÜCÜlÜaÜsÜeÜsÜ.ÜdÜaÜtÜaÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ(ÜrÜeÜsÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ.ÜdÜaÜtÜaÜ)Ü;Ü
+Ü Ü Ü Ü Ü}Ü ÜcÜaÜtÜcÜhÜ(ÜeÜ)Ü Ü{Ü}Ü
+Ü Ü Ü}Ü;Ü
+Ü Ü ÜuÜsÜeÜEÜfÜfÜeÜcÜtÜ(Ü(Ü)Ü Ü=Ü>Ü Ü{Ü ÜfÜeÜtÜcÜhÜAÜuÜxÜDÜaÜtÜaÜ(Ü)Ü;Ü Ü}Ü,Ü Ü[Ü]Ü)Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜfÜeÜtÜcÜhÜAÜgÜeÜnÜdÜaÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜtÜrÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜLÜoÜaÜdÜiÜnÜgÜ(ÜtÜrÜuÜeÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜrÜeÜsÜ Ü=Ü ÜaÜwÜaÜiÜtÜ ÜgÜeÜtÜAÜdÜmÜiÜnÜAÜgÜeÜnÜdÜaÜ(ÜfÜeÜcÜhÜaÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜsÜ(ÜrÜeÜsÜ.ÜdÜaÜtÜaÜ)Ü;Ü
+Ü Ü Ü Ü Ü}Ü ÜcÜaÜtÜcÜhÜ Ü(ÜeÜ)Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜsÜoÜlÜeÜ.ÜeÜrÜrÜoÜrÜ(ÜeÜ)Ü;Ü
+Ü Ü Ü Ü Ü}Ü ÜfÜiÜnÜaÜlÜlÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜLÜoÜaÜdÜiÜnÜgÜ(ÜfÜaÜlÜsÜeÜ)Ü;Ü
+Ü Ü Ü Ü Ü}Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜuÜsÜeÜEÜfÜfÜeÜcÜtÜ(Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜfÜeÜtÜcÜhÜAÜgÜeÜnÜdÜaÜ(Ü)Ü;Ü
+Ü Ü Ü}Ü,Ü Ü[ÜfÜeÜcÜhÜaÜ]Ü)Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜhÜaÜnÜdÜlÜeÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(ÜrÜeÜsÜeÜrÜvÜaÜIÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ,Ü ÜeÜsÜtÜaÜdÜoÜ:Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü|Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü|Ü Ü'ÜCÜOÜNÜFÜIÜRÜMÜAÜDÜAÜ'Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜtÜrÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜaÜwÜaÜiÜtÜ ÜuÜpÜdÜaÜtÜeÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ(ÜrÜeÜsÜeÜrÜvÜaÜIÜdÜ,Ü ÜeÜsÜtÜaÜdÜoÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü Ü
+Ü Ü Ü Ü Ü Ü Ü/Ü/Ü ÜUÜpÜdÜaÜtÜeÜ ÜlÜoÜcÜaÜlÜ ÜsÜtÜaÜtÜeÜ ÜwÜiÜtÜhÜoÜuÜtÜ ÜrÜeÜfÜeÜtÜcÜhÜiÜnÜgÜ ÜtÜoÜ ÜaÜvÜoÜiÜdÜ ÜsÜkÜeÜlÜeÜtÜoÜnÜsÜ ÜaÜnÜdÜ ÜfÜlÜiÜcÜkÜeÜrÜiÜnÜgÜ
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜsÜ(ÜpÜrÜeÜvÜ Ü=Ü>Ü ÜpÜrÜeÜvÜ.ÜmÜaÜpÜ(ÜtÜuÜrÜnÜoÜ Ü=Ü>Ü Ü(Ü{Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü.Ü.Ü.ÜtÜuÜrÜnÜoÜ,Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ:Ü ÜtÜuÜrÜnÜoÜ.ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ?Ü.ÜmÜaÜpÜ(Ü(ÜrÜeÜsÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜrÜeÜsÜ.ÜiÜdÜ Ü=Ü=Ü=Ü ÜrÜeÜsÜeÜrÜvÜaÜIÜdÜ Ü?Ü Ü{Ü Ü.Ü.Ü.ÜrÜeÜsÜ,Ü ÜeÜsÜtÜaÜdÜoÜ Ü}Ü Ü:Ü ÜrÜeÜsÜ
+Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü
+Ü Ü Ü Ü Ü Ü Ü}Ü)Ü)Ü)Ü;Ü
+Ü Ü Ü Ü Ü Ü Ü
+Ü Ü Ü Ü Ü}Ü ÜcÜaÜtÜcÜhÜ Ü(ÜeÜ)Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜeÜrÜrÜoÜrÜ(Ü"ÜEÜrÜrÜoÜrÜ ÜaÜcÜtÜuÜaÜlÜiÜzÜaÜnÜdÜoÜ ÜaÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ"Ü)Ü;Ü
+Ü Ü Ü Ü Ü}Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜhÜaÜnÜdÜlÜeÜSÜuÜbÜmÜiÜtÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(ÜeÜ:Ü ÜRÜeÜaÜcÜtÜ.ÜFÜoÜrÜmÜEÜvÜeÜnÜtÜ)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜeÜ.ÜpÜrÜeÜvÜeÜnÜtÜDÜeÜfÜaÜuÜlÜtÜ(Ü)Ü;Ü
+Ü Ü Ü Ü ÜtÜrÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜdÜaÜtÜaÜ Ü=Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜeÜ:Ü ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜcÜlÜaÜsÜeÜ,Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ:Ü ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜpÜrÜoÜfÜeÜsÜoÜrÜ Ü|Ü|Ü ÜnÜuÜlÜlÜ,Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜfÜeÜcÜhÜaÜ:Ü ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜfÜeÜcÜhÜaÜ,Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ:Ü ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ,Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ:Ü ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ
+Ü Ü Ü Ü Ü Ü Ü}Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜiÜfÜ Ü(ÜeÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ)Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜwÜaÜiÜtÜ ÜuÜpÜdÜaÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ(ÜeÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜsÜuÜcÜcÜeÜsÜsÜ(Ü"ÜTÜuÜrÜnÜoÜ ÜmÜoÜdÜiÜfÜiÜcÜaÜdÜoÜ ÜcÜoÜrÜrÜeÜcÜtÜaÜmÜeÜnÜtÜeÜ"Ü)Ü;Ü
+Ü Ü Ü Ü Ü Ü Ü}Ü ÜeÜlÜsÜeÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜwÜaÜiÜtÜ ÜcÜrÜeÜaÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ(ÜdÜaÜtÜaÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜsÜuÜcÜcÜeÜsÜsÜ(Ü"ÜTÜuÜrÜnÜoÜ ÜcÜrÜeÜaÜdÜoÜ ÜcÜoÜrÜrÜeÜcÜtÜaÜmÜeÜnÜtÜeÜ"Ü)Ü;Ü
+Ü Ü Ü Ü Ü Ü Ü}Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜIÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ(ÜfÜaÜlÜsÜeÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜEÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ(ÜnÜuÜlÜlÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜfÜeÜtÜcÜhÜAÜgÜeÜnÜdÜaÜ(Ü)Ü;Ü
+Ü Ü Ü Ü Ü}Ü ÜcÜaÜtÜcÜhÜ Ü(ÜeÜ)Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜeÜrÜrÜoÜrÜ(Ü"ÜEÜrÜrÜoÜrÜ ÜaÜlÜ ÜgÜuÜaÜrÜdÜaÜrÜ ÜeÜlÜ ÜtÜuÜrÜnÜoÜ"Ü)Ü;Ü
+Ü Ü Ü Ü Ü}Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜhÜaÜnÜdÜlÜeÜEÜdÜiÜtÜCÜlÜiÜcÜkÜ Ü=Ü Ü(ÜtÜuÜrÜnÜoÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜsÜeÜtÜEÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ(ÜtÜuÜrÜnÜoÜ.ÜiÜdÜ)Ü;Ü
+Ü Ü Ü Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜeÜ:Ü ÜtÜuÜrÜnÜoÜ.ÜcÜlÜaÜsÜeÜ,Ü
+Ü Ü Ü Ü Ü Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ:Ü ÜtÜuÜrÜnÜoÜ.ÜpÜrÜoÜfÜeÜsÜoÜrÜ Ü|Ü|Ü Ü"Ü"Ü,Ü
+Ü Ü Ü Ü Ü Ü ÜfÜeÜcÜhÜaÜ:Ü ÜtÜuÜrÜnÜoÜ.ÜfÜeÜcÜhÜaÜ,Ü
+Ü Ü Ü Ü Ü Ü ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ:Ü ÜtÜuÜrÜnÜoÜ.ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ,Ü
+Ü Ü Ü Ü Ü Ü ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ:Ü ÜtÜuÜrÜnÜoÜ.ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ
+Ü Ü Ü Ü Ü}Ü)Ü;Ü
+Ü Ü Ü Ü ÜsÜeÜtÜIÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ(ÜtÜrÜuÜeÜ)Ü;Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜhÜaÜnÜdÜlÜeÜDÜeÜlÜeÜtÜeÜTÜuÜrÜnÜoÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜiÜfÜ Ü(Ü!ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ)Ü ÜrÜeÜtÜuÜrÜnÜ;Ü
+Ü Ü Ü Ü ÜtÜrÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜaÜwÜaÜiÜtÜ ÜdÜeÜlÜeÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ(ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜsÜuÜcÜcÜeÜsÜsÜ(Ü"ÜTÜuÜrÜnÜoÜ ÜcÜaÜnÜcÜeÜlÜaÜdÜoÜ ÜcÜoÜrÜrÜeÜcÜtÜaÜmÜeÜnÜtÜeÜ"Ü)Ü;Ü
+Ü Ü Ü Ü Ü Ü ÜfÜeÜtÜcÜhÜAÜgÜeÜnÜdÜaÜ(Ü)Ü;Ü
+Ü Ü Ü Ü Ü}Ü ÜcÜaÜtÜcÜhÜ Ü(ÜeÜ)Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜeÜrÜrÜoÜrÜ(Ü"ÜEÜrÜrÜoÜrÜ ÜaÜlÜ ÜcÜaÜnÜcÜeÜlÜaÜrÜ ÜeÜlÜ ÜtÜuÜrÜnÜoÜ"Ü)Ü;Ü
+Ü Ü Ü Ü Ü}Ü ÜfÜiÜnÜaÜlÜlÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ(ÜnÜuÜlÜlÜ)Ü;Ü
+Ü Ü Ü Ü Ü}Ü
+Ü Ü Ü}Ü;Ü
+Ü
+Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
+Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü Ü}Ü}Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü Ü}Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü6Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜfÜlÜeÜxÜ-ÜcÜoÜlÜ ÜmÜdÜ:ÜfÜlÜeÜxÜ-ÜrÜoÜwÜ ÜmÜdÜ:ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜbÜeÜtÜwÜeÜeÜnÜ ÜgÜaÜpÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜhÜ2Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-Ü3ÜxÜlÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü>ÜAÜgÜeÜnÜdÜaÜ<Ü/ÜhÜ2Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü Ü{Ü ÜsÜeÜtÜEÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ(ÜnÜuÜlÜlÜ)Ü;Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü ÜcÜlÜaÜsÜeÜ:Ü Ü"Ü"Ü,Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ:Ü Ü"Ü"Ü,Ü ÜfÜeÜcÜhÜaÜ:Ü ÜfÜeÜcÜhÜaÜ,Ü ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ:Ü Ü"Ü1Ü0Ü:Ü0Ü0Ü"Ü,Ü ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ:Ü Ü"Ü1Ü1Ü:Ü0Ü0Ü"Ü Ü}Ü)Ü;Ü ÜsÜeÜtÜIÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ(ÜtÜrÜuÜeÜ)Ü;Ü Ü}Ü}Ü>Ü+Ü ÜAÜgÜrÜeÜgÜaÜrÜ ÜCÜlÜaÜsÜeÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜtÜ-Ü6Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜfÜlÜeÜxÜ-ÜwÜrÜaÜpÜ ÜgÜaÜpÜ-Ü4Ü ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜiÜnÜpÜuÜtÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜyÜpÜeÜ=Ü"ÜdÜaÜtÜeÜ"Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜvÜaÜlÜuÜeÜ=Ü{ÜfÜeÜcÜhÜaÜ}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜhÜaÜnÜgÜeÜ=Ü{Ü(ÜeÜ)Ü Ü=Ü>Ü ÜsÜeÜtÜFÜeÜcÜhÜaÜ(ÜeÜ.ÜtÜaÜrÜgÜeÜtÜ.ÜvÜaÜlÜuÜeÜ)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜ-Ü2Ü.Ü5Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜbÜoÜrÜdÜeÜrÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü2Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜfÜoÜrÜeÜgÜrÜoÜuÜnÜdÜ ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ ÜfÜoÜcÜuÜsÜ:ÜoÜuÜtÜlÜiÜnÜeÜ-ÜnÜoÜnÜeÜ ÜfÜoÜcÜuÜsÜ:ÜrÜiÜnÜgÜ-Ü2Ü ÜfÜoÜcÜuÜsÜ:ÜrÜiÜnÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü0Ü ÜsÜhÜaÜdÜoÜwÜ-ÜsÜmÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜvÜaÜrÜiÜaÜnÜtÜ=Ü{ÜfÜeÜcÜhÜaÜ Ü=Ü=Ü=Ü ÜtÜoÜdÜaÜyÜSÜtÜrÜ Ü?Ü Ü'ÜdÜeÜfÜaÜuÜlÜtÜ'Ü Ü:Ü Ü'ÜoÜuÜtÜlÜiÜnÜeÜ'Ü}Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜFÜeÜcÜhÜaÜ(ÜtÜoÜdÜaÜyÜSÜtÜrÜ)Ü}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜgÜeÜtÜFÜeÜcÜhÜaÜTÜiÜtÜlÜeÜ(Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜ>Ü
+Ü
+Ü Ü Ü Ü Ü Ü Ü{ÜlÜoÜaÜdÜiÜnÜgÜ Ü?Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü4Ü ÜmÜtÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{Ü[Ü1Ü,Ü2Ü,Ü3Ü,Ü4Ü]Ü.ÜmÜaÜpÜ(ÜiÜ Ü=Ü>Ü Ü<ÜSÜkÜeÜlÜeÜtÜoÜnÜ ÜkÜeÜyÜ=Ü{ÜiÜ}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜhÜ-Ü1Ü6Ü ÜwÜ-ÜfÜuÜlÜlÜ"Ü Ü/Ü>Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü)Ü Ü:Ü ÜtÜuÜrÜnÜoÜsÜ.ÜlÜeÜnÜgÜtÜhÜ Ü=Ü=Ü=Ü Ü0Ü Ü?Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ ÜpÜyÜ-Ü4Ü"Ü>ÜNÜoÜ ÜhÜaÜyÜ ÜtÜuÜrÜnÜoÜsÜ ÜpÜaÜrÜaÜ ÜeÜsÜtÜaÜ ÜfÜeÜcÜhÜaÜ.Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü)Ü Ü:Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜ-Ü0Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜoÜvÜeÜrÜfÜlÜoÜwÜ-ÜxÜ-ÜaÜuÜtÜoÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜaÜbÜlÜeÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜtÜeÜxÜtÜ-ÜlÜeÜfÜtÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜhÜeÜaÜdÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü/Ü5Ü0Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜrÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜhÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü>ÜHÜoÜrÜaÜ<Ü/ÜtÜhÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜhÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü>ÜCÜlÜaÜsÜeÜ<Ü/ÜtÜhÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜhÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü>ÜIÜnÜsÜcÜrÜiÜpÜtÜoÜsÜ<Ü/ÜtÜhÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜhÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜrÜiÜgÜhÜtÜ"Ü>ÜAÜcÜcÜiÜoÜnÜeÜsÜ<Ü/ÜtÜhÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜrÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜhÜeÜaÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜbÜoÜdÜyÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜtÜuÜrÜnÜoÜsÜ.ÜmÜaÜpÜ(Ü(ÜtÜuÜrÜnÜoÜ)Ü Ü=Ü>Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜtÜrÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜkÜeÜyÜ=Ü{ÜtÜuÜrÜnÜoÜ.ÜiÜdÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜyÜ:Ü Ü1Ü0Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü,Ü ÜyÜ:Ü Ü0Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜoÜrÜdÜeÜrÜ-ÜtÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü1Ü0Ü0Ü ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜdÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜaÜlÜiÜgÜnÜ-ÜtÜoÜpÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜlÜgÜ ÜtÜeÜxÜtÜ-ÜfÜoÜrÜeÜgÜrÜoÜuÜnÜdÜ"Ü>Ü{ÜtÜuÜrÜnÜoÜ.ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ.ÜsÜlÜiÜcÜeÜ(Ü0Ü,Ü5Ü)Ü}Ü<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜdÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜaÜlÜiÜgÜnÜ-ÜtÜoÜpÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ"Ü>Ü{ÜtÜuÜrÜnÜoÜ.ÜcÜlÜaÜsÜeÜ_ÜnÜoÜmÜbÜrÜeÜ}Ü<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜbÜrÜ/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ"Ü>ÜPÜrÜoÜfÜ:Ü Ü{ÜtÜuÜrÜnÜoÜ.ÜpÜrÜoÜfÜeÜsÜoÜrÜ Ü?Ü ÜtÜuÜrÜnÜoÜ.ÜpÜrÜoÜfÜeÜsÜoÜrÜ.ÜnÜoÜmÜbÜrÜeÜ Ü:Ü Ü'ÜSÜiÜnÜ ÜaÜsÜiÜgÜnÜaÜrÜ'Ü}Ü<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜbÜrÜ/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜxÜsÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜeÜmÜeÜrÜaÜlÜdÜ-Ü6Ü0Ü0Ü ÜmÜtÜ-Ü1Ü ÜiÜnÜlÜiÜnÜeÜ-ÜbÜlÜoÜcÜkÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ:Ü Ü{ÜtÜuÜrÜnÜoÜ.ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ.ÜfÜiÜlÜtÜeÜrÜ(Ü(ÜrÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü)Ü.ÜlÜeÜnÜgÜtÜhÜ}Ü/Ü{ÜtÜuÜrÜnÜoÜ.ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ.ÜlÜeÜnÜgÜtÜhÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜdÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜaÜlÜiÜgÜnÜ-ÜtÜoÜpÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜtÜuÜrÜnÜoÜ.ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ.ÜlÜeÜnÜgÜtÜhÜ Ü>Ü Ü0Ü Ü?Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü3Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜbÜuÜtÜtÜoÜnÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜtÜoÜgÜgÜlÜeÜEÜxÜpÜaÜnÜdÜ(ÜtÜuÜrÜnÜoÜ.ÜiÜdÜ)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜtÜeÜxÜtÜ-ÜlÜeÜfÜtÜ ÜpÜyÜ-Ü2Ü ÜpÜxÜ-Ü3Ü ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü/Ü5Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü1Ü0Ü0Ü/Ü5Ü0Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ-ÜcÜoÜlÜoÜrÜsÜ ÜfÜlÜeÜxÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜbÜeÜtÜwÜeÜeÜnÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ>Ü{ÜtÜuÜrÜnÜoÜ.ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ.ÜlÜeÜnÜgÜtÜhÜ}Ü ÜiÜnÜsÜcÜrÜiÜpÜtÜoÜsÜ<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜlÜgÜ ÜlÜeÜaÜdÜiÜnÜgÜ-ÜnÜoÜnÜeÜ"Ü>Ü{ÜeÜxÜpÜaÜnÜdÜeÜdÜIÜdÜsÜ.ÜiÜnÜcÜlÜuÜdÜeÜsÜ(ÜtÜuÜrÜnÜoÜ.ÜiÜdÜ)Ü Ü?Ü Ü'Ü▾Ü'Ü Ü:Ü Ü'Ü▸Ü'Ü}Ü<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜbÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{ÜfÜaÜlÜsÜeÜ}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜeÜxÜpÜaÜnÜdÜeÜdÜIÜdÜsÜ.ÜiÜnÜcÜlÜuÜdÜeÜsÜ(ÜtÜuÜrÜnÜoÜ.ÜiÜdÜ)Ü Ü&Ü&Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜuÜlÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜhÜeÜiÜgÜhÜtÜ:Ü Ü0Ü,Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜhÜeÜiÜgÜhÜtÜ:Ü Ü'ÜaÜuÜtÜoÜ'Ü,Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜeÜxÜiÜtÜ=Ü{Ü{Ü ÜhÜeÜiÜgÜhÜtÜ:Ü Ü0Ü,Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ=Ü{Ü{Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ:Ü Ü0Ü.Ü3Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü4Ü ÜoÜvÜeÜrÜfÜlÜoÜwÜ-ÜhÜiÜdÜdÜeÜnÜ ÜpÜxÜ-Ü1Ü"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜtÜuÜrÜnÜoÜ.ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ.ÜmÜaÜpÜ(Ü(ÜrÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜlÜiÜ ÜkÜeÜyÜ=Ü{ÜrÜ.ÜiÜdÜ}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜfÜlÜeÜxÜ-ÜcÜoÜlÜ ÜgÜaÜpÜ-Ü2Ü ÜbÜoÜrÜdÜeÜrÜ-ÜbÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü ÜpÜbÜ-Ü4Ü ÜlÜaÜsÜtÜ:ÜbÜoÜrÜdÜeÜrÜ-Ü0Ü ÜlÜaÜsÜtÜ:ÜpÜbÜ-Ü0Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜtÜeÜxÜtÜ-ÜfÜoÜrÜeÜgÜrÜoÜuÜnÜdÜ"Ü>Ü{ÜrÜ.ÜaÜlÜuÜmÜnÜoÜ_ÜnÜoÜmÜbÜrÜeÜ}Ü Ü{ÜrÜ.ÜaÜlÜuÜmÜnÜoÜ_ÜaÜpÜeÜlÜlÜiÜdÜoÜ}Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜxÜsÜ ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ"Ü>Ü{ÜrÜ.ÜeÜsÜ_ÜrÜeÜcÜuÜrÜrÜeÜnÜtÜeÜ Ü?Ü Ü'ÜRÜeÜcÜuÜrÜrÜeÜnÜtÜeÜ'Ü Ü:Ü Ü'ÜPÜuÜnÜtÜuÜaÜlÜ'Ü}Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ ÜlÜaÜyÜoÜuÜtÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜgÜaÜpÜ-Ü2Ü ÜwÜ-ÜfÜuÜlÜlÜ ÜmÜaÜxÜ-ÜwÜ-Ü[Ü2Ü2Ü0ÜpÜxÜ]Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{ÜfÜaÜlÜsÜeÜ}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{Ü(ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜCÜOÜNÜFÜIÜRÜMÜAÜDÜAÜ'Ü Ü|Ü|Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü)Ü Ü&Ü&Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜkÜeÜyÜ=Ü"ÜpÜrÜeÜsÜeÜnÜtÜeÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜlÜaÜyÜoÜuÜtÜ
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜfÜlÜeÜxÜ:Ü Ü0Ü Ü}Ü}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü,Ü ÜfÜlÜeÜxÜ:Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü?Ü Ü'Ü1Ü Ü1Ü Ü1Ü0Ü0Ü%Ü'Ü Ü:Ü Ü'Ü1Ü Ü1Ü Ü5Ü0Ü%Ü'Ü Ü}Ü}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜeÜxÜiÜtÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜfÜlÜeÜxÜ:Ü Ü0Ü,Ü ÜpÜaÜdÜdÜiÜnÜgÜ:Ü Ü0Ü,Ü ÜmÜaÜrÜgÜiÜnÜ:Ü Ü0Ü,Ü ÜoÜvÜeÜrÜfÜlÜoÜwÜ:Ü Ü'ÜhÜiÜdÜdÜeÜnÜ'Ü Ü}Ü}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ=Ü{Ü{Ü ÜtÜyÜpÜeÜ:Ü Ü'ÜsÜpÜrÜiÜnÜgÜ'Ü,Ü ÜbÜoÜuÜnÜcÜeÜ:Ü Ü0Ü,Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ:Ü Ü0Ü.Ü6Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜFÜeÜeÜdÜbÜaÜcÜkÜBÜuÜtÜtÜoÜnÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜiÜzÜeÜ=Ü"ÜsÜmÜ"Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜvÜaÜrÜiÜaÜnÜtÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü?Ü Ü'ÜdÜeÜfÜaÜuÜlÜtÜ'Ü Ü:Ü Ü'ÜoÜuÜtÜlÜiÜnÜeÜ'Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜkÜeÜyÜ=Ü{Ü`ÜpÜrÜeÜsÜeÜnÜtÜeÜ-ÜbÜtÜnÜ-Ü$Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ}Ü`Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜhÜaÜnÜdÜlÜeÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ(ÜrÜ.ÜiÜdÜ,Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü?Ü Ü'ÜCÜOÜNÜFÜIÜRÜMÜAÜDÜAÜ'Ü Ü:Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü!Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü?Ü Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜfÜlÜeÜxÜ-Ü1Ü ÜwÜhÜiÜtÜeÜsÜpÜaÜcÜeÜ-ÜnÜoÜwÜrÜaÜpÜ ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü2Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü3Ü0Ü0Ü"Ü Ü:Ü Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜfÜlÜeÜxÜ-Ü1Ü ÜwÜhÜiÜtÜeÜsÜpÜaÜcÜeÜ-ÜnÜoÜwÜrÜaÜpÜ ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü8Ü0Ü0Ü ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ"Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜTÜeÜxÜtÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü?Ü Ü'Ü✓Ü ÜPÜrÜeÜsÜeÜnÜtÜeÜ Ü(ÜDÜeÜsÜhÜaÜcÜeÜrÜ)Ü'Ü Ü:Ü Ü'ÜPÜrÜeÜsÜeÜnÜtÜeÜ'Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜuÜcÜcÜeÜsÜsÜTÜeÜxÜtÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü?Ü Ü'ÜDÜeÜsÜhÜeÜcÜhÜoÜ'Ü Ü:Ü Ü'ÜAÜsÜiÜsÜtÜiÜóÜ'Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜCÜoÜnÜfÜiÜrÜmÜMÜoÜdÜaÜlÜ
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜOÜpÜeÜnÜ=Ü{Ü!Ü!ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜoÜsÜeÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ(ÜnÜuÜlÜlÜ)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜoÜnÜfÜiÜrÜmÜ=Ü{ÜhÜaÜnÜdÜlÜeÜDÜeÜlÜeÜtÜeÜTÜuÜrÜnÜoÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜiÜtÜlÜeÜ=Ü"ÜCÜaÜnÜcÜeÜlÜaÜrÜ ÜTÜuÜrÜnÜoÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜdÜeÜsÜcÜrÜiÜpÜtÜiÜoÜnÜ=Ü"Ü¿ÜEÜsÜtÜáÜsÜ ÜsÜeÜgÜuÜrÜoÜ ÜdÜeÜ ÜcÜaÜnÜcÜeÜlÜaÜrÜ ÜeÜsÜtÜeÜ ÜtÜuÜrÜnÜoÜ?Ü ÜLÜaÜsÜ ÜaÜlÜuÜmÜnÜaÜsÜ ÜiÜnÜsÜcÜrÜiÜpÜtÜaÜsÜ ÜrÜeÜcÜuÜpÜeÜrÜaÜrÜáÜnÜ ÜsÜuÜ ÜcÜlÜaÜsÜeÜ.Ü"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜfÜiÜrÜmÜTÜeÜxÜtÜ=Ü"ÜSÜíÜ,Ü ÜCÜaÜnÜcÜeÜlÜaÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜaÜnÜcÜeÜlÜTÜeÜxÜtÜ=Ü"ÜNÜoÜ,Ü ÜVÜoÜlÜvÜeÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜDÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ=Ü{ÜtÜrÜuÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ>Ü
+Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{Ü(ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜCÜOÜNÜFÜIÜRÜMÜAÜDÜAÜ'Ü Ü|Ü|Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü)Ü Ü&Ü&Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜkÜeÜyÜ=Ü"ÜaÜuÜsÜeÜnÜtÜeÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜlÜaÜyÜoÜuÜtÜ
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜfÜlÜeÜxÜ:Ü Ü0Ü Ü}Ü}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü,Ü ÜfÜlÜeÜxÜ:Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü?Ü Ü'Ü1Ü Ü1Ü Ü1Ü0Ü0Ü%Ü'Ü Ü:Ü Ü'Ü1Ü Ü1Ü Ü5Ü0Ü%Ü'Ü Ü}Ü}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜeÜxÜiÜtÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜfÜlÜeÜxÜ:Ü Ü0Ü,Ü ÜpÜaÜdÜdÜiÜnÜgÜ:Ü Ü0Ü,Ü ÜmÜaÜrÜgÜiÜnÜ:Ü Ü0Ü,Ü ÜoÜvÜeÜrÜfÜlÜoÜwÜ:Ü Ü'ÜhÜiÜdÜdÜeÜnÜ'Ü Ü}Ü}Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ=Ü{Ü{Ü ÜtÜyÜpÜeÜ:Ü Ü'ÜsÜpÜrÜiÜnÜgÜ'Ü,Ü ÜbÜoÜuÜnÜcÜeÜ:Ü Ü0Ü,Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ:Ü Ü0Ü.Ü6Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜFÜeÜeÜdÜbÜaÜcÜkÜBÜuÜtÜtÜoÜnÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜiÜzÜeÜ=Ü"ÜsÜmÜ"Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜvÜaÜrÜiÜaÜnÜtÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü?Ü Ü'ÜdÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ'Ü Ü:Ü Ü'ÜoÜuÜtÜlÜiÜnÜeÜ'Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜkÜeÜyÜ=Ü{Ü`ÜaÜuÜsÜeÜnÜtÜeÜ-ÜbÜtÜnÜ-Ü$Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ}Ü`Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜhÜaÜnÜdÜlÜeÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ(ÜrÜ.ÜiÜdÜ,Ü ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü?Ü Ü'ÜCÜOÜNÜFÜIÜRÜMÜAÜDÜAÜ'Ü Ü:Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü!Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü?Ü Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜfÜlÜeÜxÜ-Ü1Ü ÜwÜhÜiÜtÜeÜsÜpÜaÜcÜeÜ-ÜnÜoÜwÜrÜaÜpÜ ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜrÜoÜsÜeÜ-Ü5Ü0Ü ÜtÜeÜxÜtÜ-ÜrÜoÜsÜeÜ-Ü5Ü0Ü0Ü ÜbÜoÜrÜdÜeÜrÜ-ÜrÜoÜsÜeÜ-Ü2Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜoÜrÜdÜeÜrÜ-ÜrÜoÜsÜeÜ-Ü3Ü0Ü0Ü"Ü Ü:Ü Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜfÜlÜeÜxÜ-Ü1Ü ÜwÜhÜiÜtÜeÜsÜpÜaÜcÜeÜ-ÜnÜoÜwÜrÜaÜpÜ ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ ÜbÜgÜ-ÜrÜoÜsÜeÜ-Ü5Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜrÜoÜsÜeÜ-Ü6Ü0Ü0Ü ÜbÜoÜrÜdÜeÜrÜ-ÜrÜoÜsÜeÜ-Ü5Ü0Ü0Ü"Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜTÜeÜxÜtÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü?Ü Ü'Ü✗Ü ÜAÜuÜsÜeÜnÜtÜeÜ Ü(ÜDÜeÜsÜhÜaÜcÜeÜrÜ)Ü'Ü Ü:Ü Ü'ÜAÜuÜsÜeÜnÜtÜeÜ'Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜuÜcÜcÜeÜsÜsÜTÜeÜxÜtÜ=Ü{ÜrÜ.ÜeÜsÜtÜaÜdÜoÜ Ü=Ü=Ü=Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü?Ü Ü'ÜDÜeÜsÜhÜeÜcÜhÜoÜ'Ü Ü:Ü Ü'ÜFÜaÜlÜtÜóÜ'Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜCÜoÜnÜfÜiÜrÜmÜMÜoÜdÜaÜlÜ
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜOÜpÜeÜnÜ=Ü{Ü!Ü!ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜoÜsÜeÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ(ÜnÜuÜlÜlÜ)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜoÜnÜfÜiÜrÜmÜ=Ü{ÜhÜaÜnÜdÜlÜeÜDÜeÜlÜeÜtÜeÜTÜuÜrÜnÜoÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜiÜtÜlÜeÜ=Ü"ÜCÜaÜnÜcÜeÜlÜaÜrÜ ÜTÜuÜrÜnÜoÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜdÜeÜsÜcÜrÜiÜpÜtÜiÜoÜnÜ=Ü"Ü¿ÜEÜsÜtÜáÜsÜ ÜsÜeÜgÜuÜrÜoÜ ÜdÜeÜ ÜcÜaÜnÜcÜeÜlÜaÜrÜ ÜeÜsÜtÜeÜ ÜtÜuÜrÜnÜoÜ?Ü ÜLÜaÜsÜ ÜaÜlÜuÜmÜnÜaÜsÜ ÜiÜnÜsÜcÜrÜiÜpÜtÜaÜsÜ ÜrÜeÜcÜuÜpÜeÜrÜaÜrÜáÜnÜ ÜsÜuÜ ÜcÜlÜaÜsÜeÜ.Ü"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜfÜiÜrÜmÜTÜeÜxÜtÜ=Ü"ÜSÜíÜ,Ü ÜCÜaÜnÜcÜeÜlÜaÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜaÜnÜcÜeÜlÜTÜeÜxÜtÜ=Ü"ÜNÜoÜ,Ü ÜVÜoÜlÜvÜeÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜDÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ=Ü{ÜtÜrÜuÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ>Ü
+Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜCÜoÜnÜfÜiÜrÜmÜMÜoÜdÜaÜlÜ
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜOÜpÜeÜnÜ=Ü{Ü!Ü!ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜoÜsÜeÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ(ÜnÜuÜlÜlÜ)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜoÜnÜfÜiÜrÜmÜ=Ü{ÜhÜaÜnÜdÜlÜeÜDÜeÜlÜeÜtÜeÜTÜuÜrÜnÜoÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜiÜtÜlÜeÜ=Ü"ÜCÜaÜnÜcÜeÜlÜaÜrÜ ÜTÜuÜrÜnÜoÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜdÜeÜsÜcÜrÜiÜpÜtÜiÜoÜnÜ=Ü"Ü¿ÜEÜsÜtÜáÜsÜ ÜsÜeÜgÜuÜrÜoÜ ÜdÜeÜ ÜcÜaÜnÜcÜeÜlÜaÜrÜ ÜeÜsÜtÜeÜ ÜtÜuÜrÜnÜoÜ?Ü ÜLÜaÜsÜ ÜaÜlÜuÜmÜnÜaÜsÜ ÜiÜnÜsÜcÜrÜiÜpÜtÜaÜsÜ ÜrÜeÜcÜuÜpÜeÜrÜaÜrÜáÜnÜ ÜsÜuÜ ÜcÜlÜaÜsÜeÜ.Ü"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜfÜiÜrÜmÜTÜeÜxÜtÜ=Ü"ÜSÜíÜ,Ü ÜCÜaÜnÜcÜeÜlÜaÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜaÜnÜcÜeÜlÜTÜeÜxÜtÜ=Ü"ÜNÜoÜ,Ü ÜVÜoÜlÜvÜeÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜDÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ=Ü{ÜtÜrÜuÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ>Ü
+Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜlÜiÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜuÜlÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü Ü:Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ"Ü>ÜSÜiÜnÜ ÜiÜnÜsÜcÜrÜiÜpÜtÜoÜsÜ<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜtÜdÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü4Ü ÜpÜxÜ-Ü6Ü ÜaÜlÜiÜgÜnÜ-ÜtÜoÜpÜ ÜtÜeÜxÜtÜ-ÜrÜiÜgÜhÜtÜ ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü2Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ"Ü ÜvÜaÜrÜiÜaÜnÜtÜ=Ü"ÜoÜuÜtÜlÜiÜnÜeÜ"Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜhÜaÜnÜdÜlÜeÜEÜdÜiÜtÜCÜlÜiÜcÜkÜ(ÜtÜuÜrÜnÜoÜ)Ü}Ü>ÜMÜoÜdÜiÜfÜiÜcÜaÜrÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜbÜgÜ-ÜrÜeÜdÜ-Ü5Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜrÜeÜdÜ-Ü6Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ"Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ(ÜtÜuÜrÜnÜoÜ.ÜiÜdÜ)Ü}Ü>ÜCÜaÜnÜcÜeÜlÜaÜrÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜtÜrÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜbÜoÜdÜyÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜtÜaÜbÜlÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
+Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜMÜoÜdÜaÜlÜ ÜiÜsÜOÜpÜeÜnÜ=Ü{ÜiÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ}Ü ÜoÜnÜCÜlÜoÜsÜeÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜIÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ(ÜfÜaÜlÜsÜeÜ)Ü}Ü ÜtÜiÜtÜlÜeÜ=Ü{ÜeÜdÜiÜtÜiÜnÜgÜTÜuÜrÜnÜoÜIÜdÜ Ü?Ü Ü"ÜMÜoÜdÜiÜfÜiÜcÜaÜrÜ ÜTÜuÜrÜnÜoÜ"Ü Ü:Ü Ü"ÜCÜrÜeÜaÜrÜ ÜTÜuÜrÜnÜoÜ ÜPÜuÜnÜtÜuÜaÜlÜ"Ü}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜfÜoÜrÜmÜ ÜoÜnÜSÜuÜbÜmÜiÜtÜ=Ü{ÜhÜaÜnÜdÜlÜeÜSÜuÜbÜmÜiÜtÜ}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜlÜaÜbÜeÜlÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜlÜoÜcÜkÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜmÜbÜ-Ü1Ü"Ü>ÜCÜlÜaÜsÜeÜ<Ü/ÜlÜaÜbÜeÜlÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜeÜlÜeÜcÜtÜ ÜrÜeÜqÜuÜiÜrÜeÜdÜ ÜvÜaÜlÜuÜeÜ=Ü{ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜcÜlÜaÜsÜeÜ}Ü ÜoÜnÜCÜhÜaÜnÜgÜeÜ=Ü{ÜeÜ Ü=Ü>Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü.Ü.Ü.ÜfÜoÜrÜmÜDÜaÜtÜaÜ,Ü ÜcÜlÜaÜsÜeÜ:Ü ÜeÜ.ÜtÜaÜrÜgÜeÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü)Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü2Ü ÜbÜoÜrÜdÜeÜrÜ ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜoÜpÜtÜiÜoÜnÜ ÜvÜaÜlÜuÜeÜ=Ü"Ü"Ü>ÜSÜeÜlÜeÜcÜcÜiÜoÜnÜaÜ ÜuÜnÜaÜ ÜcÜlÜaÜsÜeÜ<Ü/ÜoÜpÜtÜiÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜcÜlÜaÜsÜeÜsÜ.ÜmÜaÜpÜ(ÜcÜ Ü=Ü>Ü Ü<ÜoÜpÜtÜiÜoÜnÜ ÜkÜeÜyÜ=Ü{ÜcÜ.ÜiÜdÜ}Ü ÜvÜaÜlÜuÜeÜ=Ü{ÜcÜ.ÜiÜdÜ}Ü>Ü{ÜcÜ.ÜnÜoÜmÜbÜrÜeÜ}Ü<Ü/ÜoÜpÜtÜiÜoÜnÜ>Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜsÜeÜlÜeÜcÜtÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜlÜaÜbÜeÜlÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜlÜoÜcÜkÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜmÜbÜ-Ü1Ü"Ü>ÜPÜrÜoÜfÜeÜsÜoÜrÜ Ü(ÜOÜpÜcÜiÜoÜnÜaÜlÜ)Ü<Ü/ÜlÜaÜbÜeÜlÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜeÜlÜeÜcÜtÜ ÜvÜaÜlÜuÜeÜ=Ü{ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜpÜrÜoÜfÜeÜsÜoÜrÜ}Ü ÜoÜnÜCÜhÜaÜnÜgÜeÜ=Ü{ÜeÜ Ü=Ü>Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü.Ü.Ü.ÜfÜoÜrÜmÜDÜaÜtÜaÜ,Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ:Ü ÜeÜ.ÜtÜaÜrÜgÜeÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü)Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü2Ü ÜbÜoÜrÜdÜeÜrÜ ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜoÜpÜtÜiÜoÜnÜ ÜvÜaÜlÜuÜeÜ=Ü"Ü"Ü>ÜDÜeÜjÜaÜrÜ ÜlÜiÜbÜrÜeÜ Ü(ÜBÜoÜlÜsÜaÜ ÜdÜeÜ ÜtÜrÜaÜbÜaÜjÜoÜ)Ü<Ü/ÜoÜpÜtÜiÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ.ÜmÜaÜpÜ(ÜpÜ Ü=Ü>Ü Ü<ÜoÜpÜtÜiÜoÜnÜ ÜkÜeÜyÜ=Ü{ÜpÜ.ÜiÜdÜ}Ü ÜvÜaÜlÜuÜeÜ=Ü{ÜpÜ.ÜiÜdÜ}Ü>Ü{ÜpÜ.ÜnÜoÜmÜbÜrÜeÜ}Ü Ü{ÜpÜ.ÜaÜpÜeÜlÜlÜiÜdÜoÜ}Ü<Ü/ÜoÜpÜtÜiÜoÜnÜ>Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜsÜeÜlÜeÜcÜtÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜlÜaÜbÜeÜlÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜlÜoÜcÜkÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜmÜbÜ-Ü1Ü"Ü>ÜFÜeÜcÜhÜaÜ<Ü/ÜlÜaÜbÜeÜlÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜiÜnÜpÜuÜtÜ ÜtÜyÜpÜeÜ=Ü"ÜdÜaÜtÜeÜ"Ü ÜrÜeÜqÜuÜiÜrÜeÜdÜ ÜvÜaÜlÜuÜeÜ=Ü{ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜfÜeÜcÜhÜaÜ}Ü ÜoÜnÜCÜhÜaÜnÜgÜeÜ=Ü{ÜeÜ Ü=Ü>Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü.Ü.Ü.ÜfÜoÜrÜmÜDÜaÜtÜaÜ,Ü ÜfÜeÜcÜhÜaÜ:Ü ÜeÜ.ÜtÜaÜrÜgÜeÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü)Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü2Ü ÜbÜoÜrÜdÜeÜrÜ ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ"Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜgÜrÜiÜdÜ ÜgÜrÜiÜdÜ-ÜcÜoÜlÜsÜ-Ü2Ü ÜgÜaÜpÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜlÜaÜbÜeÜlÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜlÜoÜcÜkÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜmÜbÜ-Ü1Ü"Ü>ÜHÜoÜrÜaÜ ÜIÜnÜiÜcÜiÜoÜ<Ü/ÜlÜaÜbÜeÜlÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜiÜnÜpÜuÜtÜ ÜtÜyÜpÜeÜ=Ü"ÜtÜiÜmÜeÜ"Ü ÜrÜeÜqÜuÜiÜrÜeÜdÜ ÜvÜaÜlÜuÜeÜ=Ü{ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ}Ü ÜoÜnÜCÜhÜaÜnÜgÜeÜ=Ü{ÜeÜ Ü=Ü>Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü.Ü.Ü.ÜfÜoÜrÜmÜDÜaÜtÜaÜ,Ü ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ:Ü ÜeÜ.ÜtÜaÜrÜgÜeÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü)Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü2Ü ÜbÜoÜrÜdÜeÜrÜ ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ"Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜlÜaÜbÜeÜlÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜlÜoÜcÜkÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜmÜbÜ-Ü1Ü"Ü>ÜHÜoÜrÜaÜ ÜFÜiÜnÜ<Ü/ÜlÜaÜbÜeÜlÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜiÜnÜpÜuÜtÜ ÜtÜyÜpÜeÜ=Ü"ÜtÜiÜmÜeÜ"Ü ÜrÜeÜqÜuÜiÜrÜeÜdÜ ÜvÜaÜlÜuÜeÜ=Ü{ÜfÜoÜrÜmÜDÜaÜtÜaÜ.ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ}Ü ÜoÜnÜCÜhÜaÜnÜgÜeÜ=Ü{ÜeÜ Ü=Ü>Ü ÜsÜeÜtÜFÜoÜrÜmÜDÜaÜtÜaÜ(Ü{Ü.Ü.Ü.ÜfÜoÜrÜmÜDÜaÜtÜaÜ,Ü ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ:Ü ÜeÜ.ÜtÜaÜrÜgÜeÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü)Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü2Ü ÜbÜoÜrÜdÜeÜrÜ ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ"Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜeÜnÜdÜ ÜgÜaÜpÜ-Ü3Ü ÜpÜtÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜtÜyÜpÜeÜ=Ü"ÜbÜuÜtÜtÜoÜnÜ"Ü ÜvÜaÜrÜiÜaÜnÜtÜ=Ü"ÜoÜuÜtÜlÜiÜnÜeÜ"Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜIÜsÜMÜoÜdÜaÜlÜOÜpÜeÜnÜ(ÜfÜaÜlÜsÜeÜ)Ü}Ü>ÜCÜaÜnÜcÜeÜlÜaÜrÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜtÜyÜpÜeÜ=Ü"ÜsÜuÜbÜmÜiÜtÜ"Ü>ÜGÜuÜaÜrÜdÜaÜrÜ ÜTÜuÜrÜnÜoÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜfÜoÜrÜmÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜMÜoÜdÜaÜlÜ>Ü
+Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜCÜoÜnÜfÜiÜrÜmÜMÜoÜdÜaÜlÜ
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜOÜpÜeÜnÜ=Ü{Ü!Ü!ÜtÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜlÜoÜsÜeÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜTÜuÜrÜnÜoÜTÜoÜDÜeÜlÜeÜtÜeÜ(ÜnÜuÜlÜlÜ)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜoÜnÜCÜoÜnÜfÜiÜrÜmÜ=Ü{ÜhÜaÜnÜdÜlÜeÜDÜeÜlÜeÜtÜeÜTÜuÜrÜnÜoÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜiÜtÜlÜeÜ=Ü"ÜCÜaÜnÜcÜeÜlÜaÜrÜ ÜTÜuÜrÜnÜoÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜdÜeÜsÜcÜrÜiÜpÜtÜiÜoÜnÜ=Ü"Ü¿ÜEÜsÜtÜáÜsÜ ÜsÜeÜgÜuÜrÜoÜ ÜdÜeÜ ÜcÜaÜnÜcÜeÜlÜaÜrÜ ÜeÜsÜtÜeÜ ÜtÜuÜrÜnÜoÜ?Ü ÜLÜaÜsÜ ÜaÜlÜuÜmÜnÜaÜsÜ ÜiÜnÜsÜcÜrÜiÜpÜtÜaÜsÜ ÜrÜeÜcÜuÜpÜeÜrÜaÜrÜáÜnÜ ÜsÜuÜ ÜcÜlÜaÜsÜeÜ.Ü"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜfÜiÜrÜmÜTÜeÜxÜtÜ=Ü"ÜSÜíÜ,Ü ÜCÜaÜnÜcÜeÜlÜaÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜaÜnÜcÜeÜlÜTÜeÜxÜtÜ=Ü"ÜNÜoÜ,Ü ÜVÜoÜlÜvÜeÜrÜ"Ü
+Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜsÜDÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ=Ü{ÜtÜrÜuÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ>Ü
+Ü
+Ü Ü Ü)Ü;Ü
+Ü}Ü
+Ü
+Ü
+Ü
+Ü

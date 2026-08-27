@@ -1,48 +1,49 @@
-import React from 'react';
-import { Card, CardContent } from '../ui/Card';
-import { Badge } from '../ui/Badge';
-import { type ProfesorDashboardData } from '../../types/profesor';
-import { motion } from 'framer-motion';
-
-interface Props {
-  data: ProfesorDashboardData;
-}
-
-export function ProfesorTabRecurrentes({ data }: Props) {
-  const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábados','Domingos'];
-  return (
-    <motion.div key="recurrentes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
-      <section>
-        <h3 className="text-xl font-bold text-foreground mb-4">Mis Clases Recurrentes</h3>
-        <p className="text-muted text-sm mb-4">
-          Estas son las franjas horarias fijas que tienes asignadas. 
-          Todas las semanas el sistema generará automáticamente estas clases bajo tu nombre.
-        </p>
-        {data.mis_plantillas.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted">
-              No tienes horarios fijos asignados.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {data.mis_plantillas.map(p => (
-              <Card key={p.id} className="relative overflow-hidden">
-                <CardContent className="flex justify-between items-center p-4">
-                  <div>
-                    <Badge variant="secondary" className="mb-2 bg-violett-100 text-violett-900">Horario Fijo</Badge>
-                    <p className="font-bold text-foreground">Todos los {days[p.dia_semana - 1]}</p>
-                    <p className="text-muted text-sm">{p.hora_inicio.slice(0,5)} - {p.hora_fin.slice(0,5)} hs</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-violett-900 font-medium">{p.clase_nombre}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-    </motion.div>
-  );
-}
+ÜiÜmÜpÜoÜrÜtÜ ÜRÜeÜaÜcÜtÜ ÜfÜrÜoÜmÜ Ü'ÜrÜeÜaÜcÜtÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜCÜaÜrÜdÜ,Ü ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/ÜuÜiÜ/ÜCÜaÜrÜdÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜBÜaÜdÜgÜeÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/ÜuÜiÜ/ÜBÜaÜdÜgÜeÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜtÜyÜpÜeÜ ÜPÜrÜoÜfÜeÜsÜoÜrÜDÜaÜsÜhÜbÜoÜaÜrÜdÜDÜaÜtÜaÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜtÜyÜpÜeÜsÜ/ÜpÜrÜoÜfÜeÜsÜoÜrÜ'Ü;Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜmÜoÜtÜiÜoÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜfÜrÜaÜmÜeÜrÜ-ÜmÜoÜtÜiÜoÜnÜ'Ü;Ü
+Ü
+ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜPÜrÜoÜpÜsÜ Ü{Ü
+Ü Ü ÜdÜaÜtÜaÜ:Ü ÜPÜrÜoÜfÜeÜsÜoÜrÜDÜaÜsÜhÜbÜoÜaÜrÜdÜDÜaÜtÜaÜ;Ü
+Ü}Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜfÜuÜnÜcÜtÜiÜoÜnÜ ÜPÜrÜoÜfÜeÜsÜoÜrÜTÜaÜbÜRÜeÜcÜuÜrÜrÜeÜnÜtÜeÜsÜ(Ü{Ü ÜdÜaÜtÜaÜ Ü}Ü:Ü ÜPÜrÜoÜpÜsÜ)Ü Ü{Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜdÜaÜyÜsÜ Ü=Ü Ü[Ü'ÜLÜuÜnÜeÜsÜ'Ü,Ü'ÜMÜaÜrÜtÜeÜsÜ'Ü,Ü'ÜMÜiÜéÜrÜcÜoÜlÜeÜsÜ'Ü,Ü'ÜJÜuÜeÜvÜeÜsÜ'Ü,Ü'ÜVÜiÜeÜrÜnÜeÜsÜ'Ü,Ü'ÜSÜáÜbÜaÜdÜoÜsÜ'Ü,Ü'ÜDÜoÜmÜiÜnÜgÜoÜsÜ'Ü]Ü;Ü
+Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
+Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ ÜkÜeÜyÜ=Ü"ÜrÜeÜcÜuÜrÜrÜeÜnÜtÜeÜsÜ"Ü ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜyÜ:Ü Ü1Ü0Ü Ü}Ü}Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü,Ü ÜyÜ:Ü Ü0Ü Ü}Ü}Ü ÜeÜxÜiÜtÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜyÜ:Ü Ü-Ü1Ü0Ü Ü}Ü}Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ=Ü{Ü{Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ:Ü Ü0Ü.Ü2Ü Ü}Ü}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü6Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜsÜeÜcÜtÜiÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜhÜ3Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜxÜlÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜfÜoÜrÜeÜgÜrÜoÜuÜnÜdÜ ÜmÜbÜ-Ü4Ü"Ü>ÜMÜiÜsÜ ÜCÜlÜaÜsÜeÜsÜ ÜRÜeÜcÜuÜrÜrÜeÜnÜtÜeÜsÜ<Ü/ÜhÜ3Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜmÜbÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜEÜsÜtÜaÜsÜ ÜsÜoÜnÜ ÜlÜaÜsÜ ÜfÜrÜaÜnÜjÜaÜsÜ ÜhÜoÜrÜaÜrÜiÜaÜsÜ ÜfÜiÜjÜaÜsÜ ÜqÜuÜeÜ ÜtÜiÜeÜnÜeÜsÜ ÜaÜsÜiÜgÜnÜaÜdÜaÜsÜ.Ü Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜTÜoÜdÜaÜsÜ ÜlÜaÜsÜ ÜsÜeÜmÜaÜnÜaÜsÜ ÜeÜlÜ ÜsÜiÜsÜtÜeÜmÜaÜ ÜgÜeÜnÜeÜrÜaÜrÜáÜ ÜaÜuÜtÜoÜmÜáÜtÜiÜcÜaÜmÜeÜnÜtÜeÜ ÜeÜsÜtÜaÜsÜ ÜcÜlÜaÜsÜeÜsÜ ÜbÜaÜjÜoÜ ÜtÜuÜ ÜnÜoÜmÜbÜrÜeÜ.Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜdÜaÜtÜaÜ.ÜmÜiÜsÜ_ÜpÜlÜaÜnÜtÜiÜlÜlÜaÜsÜ.ÜlÜeÜnÜgÜtÜhÜ Ü=Ü=Ü=Ü Ü0Ü Ü?Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü8Ü ÜtÜeÜxÜtÜ-ÜcÜeÜnÜtÜeÜrÜ ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜNÜoÜ ÜtÜiÜeÜnÜeÜsÜ ÜhÜoÜrÜaÜrÜiÜoÜsÜ ÜfÜiÜjÜoÜsÜ ÜaÜsÜiÜgÜnÜaÜdÜoÜsÜ.Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü Ü:Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜgÜrÜiÜdÜ ÜgÜaÜpÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜdÜaÜtÜaÜ.ÜmÜiÜsÜ_ÜpÜlÜaÜnÜtÜiÜlÜlÜaÜsÜ.ÜmÜaÜpÜ(ÜpÜ Ü=Ü>Ü Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜ ÜkÜeÜyÜ=Ü{ÜpÜ.ÜiÜdÜ}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜrÜeÜlÜaÜtÜiÜvÜeÜ ÜoÜvÜeÜrÜfÜlÜoÜwÜ-ÜhÜiÜdÜdÜeÜnÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜbÜeÜtÜwÜeÜeÜnÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜpÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜaÜdÜgÜeÜ ÜvÜaÜrÜiÜaÜnÜtÜ=Ü"ÜsÜeÜcÜoÜnÜdÜaÜrÜyÜ"Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜmÜbÜ-Ü2Ü ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü1Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü>ÜHÜoÜrÜaÜrÜiÜoÜ ÜFÜiÜjÜoÜ<Ü/ÜBÜaÜdÜgÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜfÜoÜrÜeÜgÜrÜoÜuÜnÜdÜ"Ü>ÜTÜoÜdÜoÜsÜ ÜlÜoÜsÜ Ü{ÜdÜaÜyÜsÜ[ÜpÜ.ÜdÜiÜaÜ_ÜsÜeÜmÜaÜnÜaÜ Ü-Ü Ü1Ü]Ü}Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜmÜuÜtÜeÜdÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ"Ü>Ü{ÜpÜ.ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ.ÜsÜlÜiÜcÜeÜ(Ü0Ü,Ü5Ü)Ü}Ü Ü-Ü Ü{ÜpÜ.ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ.ÜsÜlÜiÜcÜeÜ(Ü0Ü,Ü5Ü)Ü}Ü ÜhÜsÜ<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜrÜiÜgÜhÜtÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ"Ü>Ü{ÜpÜ.ÜcÜlÜaÜsÜeÜ_ÜnÜoÜmÜbÜrÜeÜ}Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜsÜeÜcÜtÜiÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ>Ü
+Ü Ü Ü)Ü;Ü
+Ü}Ü
+Ü

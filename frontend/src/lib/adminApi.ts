@@ -1,88 +1,89 @@
-import { api } from './api';
-
-export interface Profesor {
-    id: string;
-    nombre: string;
-    apellido: string;
-    telefono: string;
-    email: string;
-    especialidad: string;
-    color_identificador: string;
-    is_active: boolean;
-    fecha_nacimiento: string | null;
-    sexo: string | null;
-    edad: number | null;
-}
-
-export interface ReservaAdmin {
-    id: string;
-    alumno_id: string;
-    alumno_nombre: string;
-    alumno_apellido: string;
-    estado: string;
-    es_recurrente: boolean;
-}
-
-export interface TurnoAdmin {
-    id: string;
-    fecha: string;
-    hora_inicio: string;
-    hora_fin: string;
-    cupo_actual: number;
-    estado: string;
-    clase: string;
-    clase_nombre: string;
-    profesor?: Profesor;
-    profesor_id?: string;
-    reservas_list: ReservaAdmin[];
-}
-
-export interface PlanActivo {
-    id: string;
-    nombre: string;
-    clases_restantes: number;
-    fecha_vencimiento: string;
-    estado_calculado?: 'Activo' | 'Pendiente' | 'Sin plan';
-}
-
-export interface UsuarioAdmin {
-    id: string;
-    nombre: string;
-    apellido: string;
-    email: string;
-    telefono: string;
-    contacto_emergencia: string;
-    notas_medicas: string;
-    is_active: boolean;
-    plan_activo: PlanActivo | null;
-    fecha_nacimiento: string | null;
-    edad: number | null;
-    sexo: string | null;
-}
-
-// APIs
-export const getAdminProfesores = () => api.get<Profesor[]>('/admin/profesores/');
-export const createAdminProfesor = (data: any) => api.post('/admin/profesores/', data);
-export const updateAdminProfesor = (id: string, data: any) => api.patch(`/admin/profesores/${id}/`, data);
-export const deleteAdminProfesor = (id: string) => api.delete(`/admin/profesores/${id}/`);
-
-export const getAdminAgenda = (fecha: string) => api.get<TurnoAdmin[]>(`/admin/agenda/?fecha=${fecha}`);
-export const createAdminTurno = (data: any) => api.post('/admin/turnos/', data);
-export const updateAdminTurno = (id: string, data: any) => api.patch(`/admin/turnos/${id}/`, data);
-export const deleteAdminTurno = (id: string) => api.delete(`/admin/turnos/${id}/`);
-
-export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => api.patch(`/admin/reservas/${id}/asistencia/`, { estado });
-
-export const getAdminAlumnos = (search: string = '') => api.get<UsuarioAdmin[]>(`/admin/alumnos/?q=${search}`);
-export const createAdminAlumno = (data: any) => api.post('/admin/alumnos/', data);
-export const getAdminAlumnoDetalle = (id: string) => api.get<UsuarioAdmin>(`/admin/alumnos/${id}/`);
-export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/admin/alumnos/${id}/asignar-plan/`, { plan_id });
-
-export const getAdminClases = () => api.get('/admin/clases/');
-
-
-
-export const updateAdminAlumno = async (id: string, data: Partial<UsuarioAdmin>): Promise<UsuarioAdmin> => {
-  const res = await api.put(`/admin/alumnos/${id}/`, data);
-  return res.data;
-};
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜaÜpÜiÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜaÜpÜiÜ'Ü;Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜPÜrÜoÜfÜeÜsÜoÜrÜ Ü{Ü
+Ü Ü Ü Ü ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜnÜoÜmÜbÜrÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜaÜpÜeÜlÜlÜiÜdÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜtÜeÜlÜeÜfÜoÜnÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜeÜmÜaÜiÜlÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜeÜsÜpÜeÜcÜiÜaÜlÜiÜdÜaÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜcÜoÜlÜoÜrÜ_ÜiÜdÜeÜnÜtÜiÜfÜiÜcÜaÜdÜoÜrÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜiÜsÜ_ÜaÜcÜtÜiÜvÜeÜ:Ü ÜbÜoÜoÜlÜeÜaÜnÜ;Ü
+Ü Ü Ü Ü ÜfÜeÜcÜhÜaÜ_ÜnÜaÜcÜiÜmÜiÜeÜnÜtÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü Ü Ü Ü ÜsÜeÜxÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü Ü Ü Ü ÜeÜdÜaÜdÜ:Ü ÜnÜuÜmÜbÜeÜrÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü}Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜRÜeÜsÜeÜrÜvÜaÜAÜdÜmÜiÜnÜ Ü{Ü
+Ü Ü Ü Ü ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜaÜlÜuÜmÜnÜoÜ_ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜaÜlÜuÜmÜnÜoÜ_ÜnÜoÜmÜbÜrÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜaÜlÜuÜmÜnÜoÜ_ÜaÜpÜeÜlÜlÜiÜdÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜeÜsÜtÜaÜdÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜeÜsÜ_ÜrÜeÜcÜuÜrÜrÜeÜnÜtÜeÜ:Ü ÜbÜoÜoÜlÜeÜaÜnÜ;Ü
+Ü}Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜTÜuÜrÜnÜoÜAÜdÜmÜiÜnÜ Ü{Ü
+Ü Ü Ü Ü ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜfÜeÜcÜhÜaÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜhÜoÜrÜaÜ_ÜiÜnÜiÜcÜiÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜhÜoÜrÜaÜ_ÜfÜiÜnÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜcÜuÜpÜoÜ_ÜaÜcÜtÜuÜaÜlÜ:Ü ÜnÜuÜmÜbÜeÜrÜ;Ü
+Ü Ü Ü Ü ÜeÜsÜtÜaÜdÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜcÜlÜaÜsÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜcÜlÜaÜsÜeÜ_ÜnÜoÜmÜbÜrÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ?Ü:Ü ÜPÜrÜoÜfÜeÜsÜoÜrÜ;Ü
+Ü Ü Ü Ü ÜpÜrÜoÜfÜeÜsÜoÜrÜ_ÜiÜdÜ?Ü:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜrÜeÜsÜeÜrÜvÜaÜsÜ_ÜlÜiÜsÜtÜ:Ü ÜRÜeÜsÜeÜrÜvÜaÜAÜdÜmÜiÜnÜ[Ü]Ü;Ü
+Ü}Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜPÜlÜaÜnÜAÜcÜtÜiÜvÜoÜ Ü{Ü
+Ü Ü Ü Ü ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜnÜoÜmÜbÜrÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜcÜlÜaÜsÜeÜsÜ_ÜrÜeÜsÜtÜaÜnÜtÜeÜsÜ:Ü ÜnÜuÜmÜbÜeÜrÜ;Ü
+Ü Ü Ü Ü ÜfÜeÜcÜhÜaÜ_ÜvÜeÜnÜcÜiÜmÜiÜeÜnÜtÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜeÜsÜtÜaÜdÜoÜ_ÜcÜaÜlÜcÜuÜlÜaÜdÜoÜ?Ü:Ü Ü'ÜAÜcÜtÜiÜvÜoÜ'Ü Ü|Ü Ü'ÜPÜeÜnÜdÜiÜeÜnÜtÜeÜ'Ü Ü|Ü Ü'ÜSÜiÜnÜ ÜpÜlÜaÜnÜ'Ü;Ü
+Ü}Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜUÜsÜuÜaÜrÜiÜoÜAÜdÜmÜiÜnÜ Ü{Ü
+Ü Ü Ü Ü ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜnÜoÜmÜbÜrÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜaÜpÜeÜlÜlÜiÜdÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜeÜmÜaÜiÜlÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜtÜeÜlÜeÜfÜoÜnÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜcÜoÜnÜtÜaÜcÜtÜoÜ_ÜeÜmÜeÜrÜgÜeÜnÜcÜiÜaÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜnÜoÜtÜaÜsÜ_ÜmÜeÜdÜiÜcÜaÜsÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
+Ü Ü Ü Ü ÜiÜsÜ_ÜaÜcÜtÜiÜvÜeÜ:Ü ÜbÜoÜoÜlÜeÜaÜnÜ;Ü
+Ü Ü Ü Ü ÜpÜlÜaÜnÜ_ÜaÜcÜtÜiÜvÜoÜ:Ü ÜPÜlÜaÜnÜAÜcÜtÜiÜvÜoÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü Ü Ü Ü ÜfÜeÜcÜhÜaÜ_ÜnÜaÜcÜiÜmÜiÜeÜnÜtÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü Ü Ü Ü ÜeÜdÜaÜdÜ:Ü ÜnÜuÜmÜbÜeÜrÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü Ü Ü Ü ÜsÜeÜxÜoÜ:Ü ÜsÜtÜrÜiÜnÜgÜ Ü|Ü ÜnÜuÜlÜlÜ;Ü
+Ü}Ü
+Ü
+Ü/Ü/Ü ÜAÜPÜIÜsÜ
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜgÜeÜtÜAÜdÜmÜiÜnÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ Ü=Ü Ü(Ü)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜgÜeÜtÜ<ÜPÜrÜoÜfÜeÜsÜoÜrÜ[Ü]Ü>Ü(Ü'Ü/ÜaÜdÜmÜiÜnÜ/ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ/Ü'Ü)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜcÜrÜeÜaÜtÜeÜAÜdÜmÜiÜnÜPÜrÜoÜfÜeÜsÜoÜrÜ Ü=Ü Ü(ÜdÜaÜtÜaÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜoÜsÜtÜ(Ü'Ü/ÜaÜdÜmÜiÜnÜ/ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ/Ü'Ü,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜuÜpÜdÜaÜtÜeÜAÜdÜmÜiÜnÜPÜrÜoÜfÜeÜsÜoÜrÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ,Ü ÜdÜaÜtÜaÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜaÜtÜcÜhÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/Ü`Ü,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜdÜeÜlÜeÜtÜeÜAÜdÜmÜiÜnÜPÜrÜoÜfÜeÜsÜoÜrÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜdÜeÜlÜeÜtÜeÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/Ü`Ü)Ü;Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜgÜeÜtÜAÜdÜmÜiÜnÜAÜgÜeÜnÜdÜaÜ Ü=Ü Ü(ÜfÜeÜcÜhÜaÜ:Ü ÜsÜtÜrÜiÜnÜgÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜgÜeÜtÜ<ÜTÜuÜrÜnÜoÜAÜdÜmÜiÜnÜ[Ü]Ü>Ü(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜgÜeÜnÜdÜaÜ/Ü?ÜfÜeÜcÜhÜaÜ=Ü$Ü{ÜfÜeÜcÜhÜaÜ}Ü`Ü)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜcÜrÜeÜaÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ Ü=Ü Ü(ÜdÜaÜtÜaÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜoÜsÜtÜ(Ü'Ü/ÜaÜdÜmÜiÜnÜ/ÜtÜuÜrÜnÜoÜsÜ/Ü'Ü,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜuÜpÜdÜaÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ,Ü ÜdÜaÜtÜaÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜaÜtÜcÜhÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜtÜuÜrÜnÜoÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/Ü`Ü,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜdÜeÜlÜeÜtÜeÜAÜdÜmÜiÜnÜTÜuÜrÜnÜoÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜdÜeÜlÜeÜtÜeÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜtÜuÜrÜnÜoÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/Ü`Ü)Ü;Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜuÜpÜdÜaÜtÜeÜAÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ,Ü ÜeÜsÜtÜaÜdÜoÜ:Ü Ü'ÜTÜOÜMÜAÜDÜAÜ'Ü Ü|Ü Ü'ÜAÜUÜSÜEÜNÜTÜEÜ'Ü Ü|Ü Ü'ÜCÜOÜNÜFÜIÜRÜMÜAÜDÜAÜ'Ü)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜaÜtÜcÜhÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜrÜeÜsÜeÜrÜvÜaÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/ÜaÜsÜiÜsÜtÜeÜnÜcÜiÜaÜ/Ü`Ü,Ü Ü{Ü ÜeÜsÜtÜaÜdÜoÜ Ü}Ü)Ü;Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜgÜeÜtÜAÜdÜmÜiÜnÜAÜlÜuÜmÜnÜoÜsÜ Ü=Ü Ü(ÜsÜeÜaÜrÜcÜhÜ:Ü ÜsÜtÜrÜiÜnÜgÜ Ü=Ü Ü'Ü'Ü)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜgÜeÜtÜ<ÜUÜsÜuÜaÜrÜiÜoÜAÜdÜmÜiÜnÜ[Ü]Ü>Ü(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜlÜuÜmÜnÜoÜsÜ/Ü?ÜqÜ=Ü$Ü{ÜsÜeÜaÜrÜcÜhÜ}Ü`Ü)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜcÜrÜeÜaÜtÜeÜAÜdÜmÜiÜnÜAÜlÜuÜmÜnÜoÜ Ü=Ü Ü(ÜdÜaÜtÜaÜ:Ü ÜaÜnÜyÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜoÜsÜtÜ(Ü'Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜlÜuÜmÜnÜoÜsÜ/Ü'Ü,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜgÜeÜtÜAÜdÜmÜiÜnÜAÜlÜuÜmÜnÜoÜDÜeÜtÜaÜlÜlÜeÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜgÜeÜtÜ<ÜUÜsÜuÜaÜrÜiÜoÜAÜdÜmÜiÜnÜ>Ü(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜlÜuÜmÜnÜoÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/Ü`Ü)Ü;Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜaÜsÜiÜgÜnÜaÜrÜPÜlÜaÜnÜAÜlÜuÜmÜnÜoÜ Ü=Ü Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ,Ü ÜpÜlÜaÜnÜ_ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜpÜoÜsÜtÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜlÜuÜmÜnÜoÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/ÜaÜsÜiÜgÜnÜaÜrÜ-ÜpÜlÜaÜnÜ/Ü`Ü,Ü Ü{Ü ÜpÜlÜaÜnÜ_ÜiÜdÜ Ü}Ü)Ü;Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜgÜeÜtÜAÜdÜmÜiÜnÜCÜlÜaÜsÜeÜsÜ Ü=Ü Ü(Ü)Ü Ü=Ü>Ü ÜaÜpÜiÜ.ÜgÜeÜtÜ(Ü'Ü/ÜaÜdÜmÜiÜnÜ/ÜcÜlÜaÜsÜeÜsÜ/Ü'Ü)Ü;Ü
+Ü
+Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜuÜpÜdÜaÜtÜeÜAÜdÜmÜiÜnÜAÜlÜuÜmÜnÜoÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ,Ü ÜdÜaÜtÜaÜ:Ü ÜPÜaÜrÜtÜiÜaÜlÜ<ÜUÜsÜuÜaÜrÜiÜoÜAÜdÜmÜiÜnÜ>Ü)Ü:Ü ÜPÜrÜoÜmÜiÜsÜeÜ<ÜUÜsÜuÜaÜrÜiÜoÜAÜdÜmÜiÜnÜ>Ü Ü=Ü>Ü Ü{Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜrÜeÜsÜ Ü=Ü ÜaÜwÜaÜiÜtÜ ÜaÜpÜiÜ.ÜpÜuÜtÜ(Ü`Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜlÜuÜmÜnÜoÜsÜ/Ü$Ü{ÜiÜdÜ}Ü/Ü`Ü,Ü ÜdÜaÜtÜaÜ)Ü;Ü
+Ü Ü ÜrÜeÜtÜuÜrÜnÜ ÜrÜeÜsÜ.ÜdÜaÜtÜaÜ;Ü
+Ü}Ü;Ü
+Ü

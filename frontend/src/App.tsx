@@ -1,138 +1,139 @@
-/* Developed by FireSeed - Fueling Innovation */
-import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Dashboard } from './pages/Dashboard'
-import { Login } from './pages/Login'
-import { useClientProfile } from './hooks/useClientProfile'
-import { api } from './lib/api'
-
-import { AdminLayout } from './layouts/AdminLayout'
-import { AgendaAdmin } from './pages/admin/AgendaAdmin'
-import { PlantillasAdmin } from './pages/admin/PlantillasAdmin'
-import { AlumnosAdmin } from './pages/admin/AlumnosAdmin'
-import { ProfesoresAdmin } from './pages/admin/ProfesoresAdmin'
-import { PlanesAdmin } from './pages/admin/PlanesAdmin'
-import { ClasesAdmin } from './pages/admin/ClasesAdmin'
-
-import { ProfesorLayout } from './layouts/ProfesorLayout'
-import { ProfesorDashboard } from './pages/profesor/ProfesorDashboard'
-
-function AppRoutes() {
-  const location = useLocation()
-  const { profile, loading, error, refetch } = useClientProfile()
-
-  const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout/')
-      refetch() // Will fail and show login
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-violet-900 font-medium bg-background">Cargando...</div>
-  }
-
-  if (error || !profile) {
-    return <Login onLoginSuccess={refetch} />
-  }
-
-  // Rutas exclusivas para el Staff / Admin
-  if (profile.rol === 'ADMIN') {
-    return (
-      <Routes>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="agenda" replace />} />
-          <Route path="agenda" element={<AgendaAdmin />} />
-          <Route path="esquema" element={<PlantillasAdmin />} />
-          <Route path="alumnos" element={<AlumnosAdmin />} />
-          <Route path="profesores" element={<ProfesoresAdmin />} />
-          <Route path="planes" element={<PlanesAdmin />} />
-          <Route path="clases" element={<ClasesAdmin />} />
-        </Route>
-        {/* Si un admin intenta ir a la ruta de cliente, lo forzamos a volver a su panel */}
-        <Route path="*" element={<Navigate to="/admin/agenda" replace />} />
-      </Routes>
-    )
-  }
-
-  // Rutas exclusivas para Profesores
-  if (profile.rol === 'PROFESOR') {
-    return (
-      <Routes>
-        <Route path="/profesor" element={<ProfesorLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<ProfesorDashboard />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/profesor/dashboard" replace />} />
-      </Routes>
-    )
-  }
-
-  // Rutas exclusivas para Clientes
-  return (
-    <Routes>
-      <Route path="/" element={
-        <div className="min-h-screen flex flex-col bg-background">
-          <header className="bg-white/70 backdrop-blur-xl saturate-150 border-b border-violett-100/50 shadow-sm sticky top-0 z-40">
-            <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-violet-900 flex items-center justify-center text-white font-bold italic">V</div>
-                <span className="font-bold text-xl text-violet-900 tracking-tight">Violett<span className="text-violet-400">Pilates</span></span>
-              </div>
-              <nav className="flex gap-4">
-                <button onClick={handleLogout} className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors ml-4">
-                  Cerrar Sesión
-                </button>
-              </nav>
-            </div>
-          </header>
-          <main className="flex-1 w-full p-4 md:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.32, 0.72, 0, 1] } }}
-                exit={{ opacity: 0, transition: { duration: 0.15 } }}
-              >
-                <Dashboard />
-              </motion.div>
-            </AnimatePresence>
-          </main>
-          <footer className="py-8 mt-12 bg-white border-t border-violet-100 text-center">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-              Powered by <span className="text-violet-700 font-bold">FireSeed</span>
-            </p>
-          </footer>
-        </div>
-      } />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  )
-}
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    },
-  },
-});
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Toaster position="top-right" richColors />
-        <AppRoutes />
-      </BrowserRouter>
-    </QueryClientProvider>
-  )
-}
-
-export default App
+Ü/Ü*Ü ÜDÜeÜvÜeÜlÜoÜpÜeÜdÜ ÜbÜyÜ ÜFÜiÜrÜeÜSÜeÜeÜdÜ Ü-Ü ÜFÜuÜeÜlÜiÜnÜgÜ ÜIÜnÜnÜoÜvÜaÜtÜiÜoÜnÜ Ü*Ü/Ü
+ÜiÜmÜpÜoÜrÜtÜ ÜRÜeÜaÜcÜtÜ ÜfÜrÜoÜmÜ Ü'ÜrÜeÜaÜcÜtÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜQÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜ,Ü ÜQÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜPÜrÜoÜvÜiÜdÜeÜrÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü@ÜtÜaÜnÜsÜtÜaÜcÜkÜ/ÜrÜeÜaÜcÜtÜ-ÜqÜuÜeÜrÜyÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜTÜoÜaÜsÜtÜeÜrÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜsÜoÜnÜnÜeÜrÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜBÜrÜoÜwÜsÜeÜrÜRÜoÜuÜtÜeÜrÜ,Ü ÜRÜoÜuÜtÜeÜsÜ,Ü ÜRÜoÜuÜtÜeÜ,Ü ÜNÜaÜvÜiÜgÜaÜtÜeÜ,Ü ÜuÜsÜeÜLÜoÜcÜaÜtÜiÜoÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜrÜeÜaÜcÜtÜ-ÜrÜoÜuÜtÜeÜrÜ-ÜdÜoÜmÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜmÜoÜtÜiÜoÜnÜ,Ü ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜfÜrÜaÜmÜeÜrÜ-ÜmÜoÜtÜiÜoÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜDÜaÜsÜhÜbÜoÜaÜrÜdÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜDÜaÜsÜhÜbÜoÜaÜrÜdÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜLÜoÜgÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜLÜoÜgÜiÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜuÜsÜeÜCÜlÜiÜeÜnÜtÜPÜrÜoÜfÜiÜlÜeÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜhÜoÜoÜkÜsÜ/ÜuÜsÜeÜCÜlÜiÜeÜnÜtÜPÜrÜoÜfÜiÜlÜeÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜaÜpÜiÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜlÜiÜbÜ/ÜaÜpÜiÜ'Ü
+Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜAÜdÜmÜiÜnÜLÜaÜyÜoÜuÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜlÜaÜyÜoÜuÜtÜsÜ/ÜAÜdÜmÜiÜnÜLÜaÜyÜoÜuÜtÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜAÜgÜeÜnÜdÜaÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜaÜdÜmÜiÜnÜ/ÜAÜgÜeÜnÜdÜaÜAÜdÜmÜiÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜPÜlÜaÜnÜtÜiÜlÜlÜaÜsÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜaÜdÜmÜiÜnÜ/ÜPÜlÜaÜnÜtÜiÜlÜlÜaÜsÜAÜdÜmÜiÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜAÜlÜuÜmÜnÜoÜsÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜaÜdÜmÜiÜnÜ/ÜAÜlÜuÜmÜnÜoÜsÜAÜdÜmÜiÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜaÜdÜmÜiÜnÜ/ÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜAÜdÜmÜiÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜPÜlÜaÜnÜeÜsÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜaÜdÜmÜiÜnÜ/ÜPÜlÜaÜnÜeÜsÜAÜdÜmÜiÜnÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜCÜlÜaÜsÜeÜsÜAÜdÜmÜiÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜaÜdÜmÜiÜnÜ/ÜCÜlÜaÜsÜeÜsÜAÜdÜmÜiÜnÜ'Ü
+Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜPÜrÜoÜfÜeÜsÜoÜrÜLÜaÜyÜoÜuÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜlÜaÜyÜoÜuÜtÜsÜ/ÜPÜrÜoÜfÜeÜsÜoÜrÜLÜaÜyÜoÜuÜtÜ'Ü
+ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜPÜrÜoÜfÜeÜsÜoÜrÜDÜaÜsÜhÜbÜoÜaÜrÜdÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü/ÜpÜaÜgÜeÜsÜ/ÜpÜrÜoÜfÜeÜsÜoÜrÜ/ÜPÜrÜoÜfÜeÜsÜoÜrÜDÜaÜsÜhÜbÜoÜaÜrÜdÜ'Ü
+Ü
+ÜfÜuÜnÜcÜtÜiÜoÜnÜ ÜAÜpÜpÜRÜoÜuÜtÜeÜsÜ(Ü)Ü Ü{Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜlÜoÜcÜaÜtÜiÜoÜnÜ Ü=Ü ÜuÜsÜeÜLÜoÜcÜaÜtÜiÜoÜnÜ(Ü)Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ Ü{Ü ÜpÜrÜoÜfÜiÜlÜeÜ,Ü ÜlÜoÜaÜdÜiÜnÜgÜ,Ü ÜeÜrÜrÜoÜrÜ,Ü ÜrÜeÜfÜeÜtÜcÜhÜ Ü}Ü Ü=Ü ÜuÜsÜeÜCÜlÜiÜeÜnÜtÜPÜrÜoÜfÜiÜlÜeÜ(Ü)Ü
+Ü
+Ü Ü ÜcÜoÜnÜsÜtÜ ÜhÜaÜnÜdÜlÜeÜLÜoÜgÜoÜuÜtÜ Ü=Ü ÜaÜsÜyÜnÜcÜ Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
+Ü Ü Ü Ü ÜtÜrÜyÜ Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜaÜwÜaÜiÜtÜ ÜaÜpÜiÜ.ÜpÜoÜsÜtÜ(Ü'Ü/ÜaÜuÜtÜhÜ/ÜlÜoÜgÜoÜuÜtÜ/Ü'Ü)Ü
+Ü Ü Ü Ü Ü Ü ÜrÜeÜfÜeÜtÜcÜhÜ(Ü)Ü Ü/Ü/Ü ÜWÜiÜlÜlÜ ÜfÜaÜiÜlÜ ÜaÜnÜdÜ ÜsÜhÜoÜwÜ ÜlÜoÜgÜiÜnÜ
+Ü Ü Ü Ü Ü}Ü ÜcÜaÜtÜcÜhÜ Ü(ÜeÜrÜrÜ)Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜcÜoÜnÜsÜoÜlÜeÜ.ÜeÜrÜrÜoÜrÜ(ÜeÜrÜrÜ)Ü
+Ü Ü Ü Ü Ü}Ü
+Ü Ü Ü}Ü
+Ü
+Ü Ü ÜiÜfÜ Ü(ÜlÜoÜaÜdÜiÜnÜgÜ)Ü Ü{Ü
+Ü Ü Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜmÜiÜnÜ-ÜhÜ-ÜsÜcÜrÜeÜeÜnÜ ÜfÜlÜeÜxÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜcÜeÜnÜtÜeÜrÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜ-Ü9Ü0Ü0Ü ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜbÜgÜ-ÜbÜaÜcÜkÜgÜrÜoÜuÜnÜdÜ"Ü>ÜCÜaÜrÜgÜaÜnÜdÜoÜ.Ü.Ü.Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü}Ü
+Ü
+Ü Ü ÜiÜfÜ Ü(ÜeÜrÜrÜoÜrÜ Ü|Ü|Ü Ü!ÜpÜrÜoÜfÜiÜlÜeÜ)Ü Ü{Ü
+Ü Ü Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü<ÜLÜoÜgÜiÜnÜ ÜoÜnÜLÜoÜgÜiÜnÜSÜuÜcÜcÜeÜsÜsÜ=Ü{ÜrÜeÜfÜeÜtÜcÜhÜ}Ü Ü/Ü>Ü
+Ü Ü Ü}Ü
+Ü
+Ü Ü Ü/Ü/Ü ÜRÜuÜtÜaÜsÜ ÜeÜxÜcÜlÜuÜsÜiÜvÜaÜsÜ ÜpÜaÜrÜaÜ ÜeÜlÜ ÜSÜtÜaÜfÜfÜ Ü/Ü ÜAÜdÜmÜiÜnÜ
+Ü Ü ÜiÜfÜ Ü(ÜpÜrÜoÜfÜiÜlÜeÜ.ÜrÜoÜlÜ Ü=Ü=Ü=Ü Ü'ÜAÜDÜMÜIÜNÜ'Ü)Ü Ü{Ü
+Ü Ü Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜsÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"Ü/ÜaÜdÜmÜiÜnÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜAÜdÜmÜiÜnÜLÜaÜyÜoÜuÜtÜ Ü/Ü>Ü}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜiÜnÜdÜeÜxÜ ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜNÜaÜvÜiÜgÜaÜtÜeÜ ÜtÜoÜ=Ü"ÜaÜgÜeÜnÜdÜaÜ"Ü ÜrÜeÜpÜlÜaÜcÜeÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜaÜgÜeÜnÜdÜaÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜAÜgÜeÜnÜdÜaÜAÜdÜmÜiÜnÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜeÜsÜqÜuÜeÜmÜaÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜPÜlÜaÜnÜtÜiÜlÜlÜaÜsÜAÜdÜmÜiÜnÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜaÜlÜuÜmÜnÜoÜsÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜAÜlÜuÜmÜnÜoÜsÜAÜdÜmÜiÜnÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜpÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜAÜdÜmÜiÜnÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜpÜlÜaÜnÜeÜsÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜPÜlÜaÜnÜeÜsÜAÜdÜmÜiÜnÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜcÜlÜaÜsÜeÜsÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜCÜlÜaÜsÜeÜsÜAÜdÜmÜiÜnÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜRÜoÜuÜtÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü{Ü/Ü*Ü ÜSÜiÜ ÜuÜnÜ ÜaÜdÜmÜiÜnÜ ÜiÜnÜtÜeÜnÜtÜaÜ ÜiÜrÜ ÜaÜ ÜlÜaÜ ÜrÜuÜtÜaÜ ÜdÜeÜ ÜcÜlÜiÜeÜnÜtÜeÜ,Ü ÜlÜoÜ ÜfÜoÜrÜzÜaÜmÜoÜsÜ ÜaÜ ÜvÜoÜlÜvÜeÜrÜ ÜaÜ ÜsÜuÜ ÜpÜaÜnÜeÜlÜ Ü*Ü/Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"Ü*Ü"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜNÜaÜvÜiÜgÜaÜtÜeÜ ÜtÜoÜ=Ü"Ü/ÜaÜdÜmÜiÜnÜ/ÜaÜgÜeÜnÜdÜaÜ"Ü ÜrÜeÜpÜlÜaÜcÜeÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜRÜoÜuÜtÜeÜsÜ>Ü
+Ü Ü Ü Ü Ü)Ü
+Ü Ü Ü}Ü
+Ü
+Ü Ü Ü/Ü/Ü ÜRÜuÜtÜaÜsÜ ÜeÜxÜcÜlÜuÜsÜiÜvÜaÜsÜ ÜpÜaÜrÜaÜ ÜPÜrÜoÜfÜeÜsÜoÜrÜeÜsÜ
+Ü Ü ÜiÜfÜ Ü(ÜpÜrÜoÜfÜiÜlÜeÜ.ÜrÜoÜlÜ Ü=Ü=Ü=Ü Ü'ÜPÜRÜOÜFÜEÜSÜOÜRÜ'Ü)Ü Ü{Ü
+Ü Ü Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜsÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"Ü/ÜpÜrÜoÜfÜeÜsÜoÜrÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜPÜrÜoÜfÜeÜsÜoÜrÜLÜaÜyÜoÜuÜtÜ Ü/Ü>Ü}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜiÜnÜdÜeÜxÜ ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜNÜaÜvÜiÜgÜaÜtÜeÜ ÜtÜoÜ=Ü"ÜdÜaÜsÜhÜbÜoÜaÜrÜdÜ"Ü ÜrÜeÜpÜlÜaÜcÜeÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"ÜdÜaÜsÜhÜbÜoÜaÜrÜdÜ"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜPÜrÜoÜfÜeÜsÜoÜrÜDÜaÜsÜhÜbÜoÜaÜrÜdÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜRÜoÜuÜtÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"Ü*Ü"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜNÜaÜvÜiÜgÜaÜtÜeÜ ÜtÜoÜ=Ü"Ü/ÜpÜrÜoÜfÜeÜsÜoÜrÜ/ÜdÜaÜsÜhÜbÜoÜaÜrÜdÜ"Ü ÜrÜeÜpÜlÜaÜcÜeÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜRÜoÜuÜtÜeÜsÜ>Ü
+Ü Ü Ü Ü Ü)Ü
+Ü Ü Ü}Ü
+Ü
+Ü Ü Ü/Ü/Ü ÜRÜuÜtÜaÜsÜ ÜeÜxÜcÜlÜuÜsÜiÜvÜaÜsÜ ÜpÜaÜrÜaÜ ÜCÜlÜiÜeÜnÜtÜeÜsÜ
+Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
+Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜsÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"Ü/Ü"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜmÜiÜnÜ-ÜhÜ-ÜsÜcÜrÜeÜeÜnÜ ÜfÜlÜeÜxÜ ÜfÜlÜeÜxÜ-ÜcÜoÜlÜ ÜbÜgÜ-ÜbÜaÜcÜkÜgÜrÜoÜuÜnÜdÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜhÜeÜaÜdÜeÜrÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ/Ü7Ü0Ü ÜbÜaÜcÜkÜdÜrÜoÜpÜ-ÜbÜlÜuÜrÜ-ÜxÜlÜ ÜsÜaÜtÜuÜrÜaÜtÜeÜ-Ü1Ü5Ü0Ü ÜbÜoÜrÜdÜeÜrÜ-ÜbÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü1Ü0Ü0Ü/Ü5Ü0Ü ÜsÜhÜaÜdÜoÜwÜ-ÜsÜmÜ ÜsÜtÜiÜcÜkÜyÜ ÜtÜoÜpÜ-Ü0Ü ÜzÜ-Ü4Ü0Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜmÜaÜxÜ-ÜwÜ-Ü5ÜxÜlÜ ÜmÜxÜ-ÜaÜuÜtÜoÜ ÜpÜxÜ-Ü4Ü ÜhÜ-Ü1Ü6Ü ÜfÜlÜeÜxÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜbÜeÜtÜwÜeÜeÜnÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜgÜaÜpÜ-Ü2Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-Ü8Ü ÜhÜ-Ü8Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜfÜuÜlÜlÜ ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜ-Ü9Ü0Ü0Ü ÜfÜlÜeÜxÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜcÜeÜnÜtÜeÜrÜ ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜiÜtÜaÜlÜiÜcÜ"Ü>ÜVÜ<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜxÜlÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜ-Ü9Ü0Ü0Ü ÜtÜrÜaÜcÜkÜiÜnÜgÜ-ÜtÜiÜgÜhÜtÜ"Ü>ÜVÜiÜoÜlÜeÜtÜtÜ<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜ-Ü4Ü0Ü0Ü"Ü>ÜPÜiÜlÜaÜtÜeÜsÜ<Ü/ÜsÜpÜaÜnÜ>Ü<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜnÜaÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜgÜaÜpÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜbÜuÜtÜtÜoÜnÜ ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{ÜhÜaÜnÜdÜlÜeÜLÜoÜgÜoÜuÜtÜ}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü5Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü9Ü0Ü0Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ-ÜcÜoÜlÜoÜrÜsÜ ÜmÜlÜ-Ü4Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜCÜeÜrÜrÜaÜrÜ ÜSÜeÜsÜiÜóÜnÜ
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜbÜuÜtÜtÜoÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜnÜaÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜhÜeÜaÜdÜeÜrÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜaÜiÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ-Ü1Ü ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü4Ü ÜmÜdÜ:ÜpÜ-Ü8Ü"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ ÜmÜoÜdÜeÜ=Ü"ÜwÜaÜiÜtÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜkÜeÜyÜ=Ü{ÜlÜoÜcÜaÜtÜiÜoÜnÜ.ÜpÜaÜtÜhÜnÜaÜmÜeÜ}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜiÜnÜiÜtÜiÜaÜlÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜyÜ:Ü Ü1Ü0Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜaÜnÜiÜmÜaÜtÜeÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü1Ü,Ü ÜyÜ:Ü Ü0Ü,Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ:Ü Ü{Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ:Ü Ü0Ü.Ü4Ü,Ü ÜeÜaÜsÜeÜ:Ü Ü[Ü0Ü.Ü3Ü2Ü,Ü Ü0Ü.Ü7Ü2Ü,Ü Ü0Ü,Ü Ü1Ü]Ü Ü}Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜeÜxÜiÜtÜ=Ü{Ü{Ü ÜoÜpÜaÜcÜiÜtÜyÜ:Ü Ü0Ü,Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ:Ü Ü{Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ:Ü Ü0Ü.Ü1Ü5Ü Ü}Ü Ü}Ü}Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜDÜaÜsÜhÜbÜoÜaÜrÜdÜ Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜmÜoÜtÜiÜoÜnÜ.ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜAÜnÜiÜmÜaÜtÜeÜPÜrÜeÜsÜeÜnÜcÜeÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜmÜaÜiÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜfÜoÜoÜtÜeÜrÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜyÜ-Ü8Ü ÜmÜtÜ-Ü1Ü2Ü ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ ÜbÜoÜrÜdÜeÜrÜ-ÜtÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜ-Ü1Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜcÜeÜnÜtÜeÜrÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜxÜsÜ ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü4Ü0Ü0Ü ÜuÜpÜpÜeÜrÜcÜaÜsÜeÜ ÜtÜrÜaÜcÜkÜiÜnÜgÜ-ÜwÜiÜdÜeÜsÜtÜ"Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜPÜoÜwÜeÜrÜeÜdÜ ÜbÜyÜ Ü<ÜsÜpÜaÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜ-Ü7Ü0Ü0Ü ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ"Ü>ÜFÜiÜrÜeÜSÜeÜeÜdÜ<Ü/ÜsÜpÜaÜnÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜpÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜfÜoÜoÜtÜeÜrÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜRÜoÜuÜtÜeÜ ÜpÜaÜtÜhÜ=Ü"Ü*Ü"Ü ÜeÜlÜeÜmÜeÜnÜtÜ=Ü{Ü<ÜNÜaÜvÜiÜgÜaÜtÜeÜ ÜtÜoÜ=Ü"Ü/Ü"Ü ÜrÜeÜpÜlÜaÜcÜeÜ Ü/Ü>Ü}Ü Ü/Ü>Ü
+Ü Ü Ü Ü Ü<Ü/ÜRÜoÜuÜtÜeÜsÜ>Ü
+Ü Ü Ü)Ü
+Ü}Ü
+Ü
+ÜcÜoÜnÜsÜtÜ ÜqÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜ Ü=Ü ÜnÜeÜwÜ ÜQÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜ(Ü{Ü
+Ü Ü ÜdÜeÜfÜaÜuÜlÜtÜOÜpÜtÜiÜoÜnÜsÜ:Ü Ü{Ü
+Ü Ü Ü Ü ÜqÜuÜeÜrÜiÜeÜsÜ:Ü Ü{Ü
+Ü Ü Ü Ü Ü Ü ÜrÜeÜfÜeÜtÜcÜhÜOÜnÜWÜiÜnÜdÜoÜwÜFÜoÜcÜuÜsÜ:Ü ÜfÜaÜlÜsÜeÜ,Ü
+Ü Ü Ü Ü Ü Ü ÜsÜtÜaÜlÜeÜTÜiÜmÜeÜ:Ü Ü1Ü0Ü0Ü0Ü Ü*Ü Ü6Ü0Ü Ü*Ü Ü5Ü,Ü Ü/Ü/Ü Ü5Ü ÜmÜiÜnÜuÜtÜeÜsÜ
+Ü Ü Ü Ü Ü}Ü,Ü
+Ü Ü Ü}Ü,Ü
+Ü}Ü)Ü;Ü
+Ü
+ÜfÜuÜnÜcÜtÜiÜoÜnÜ ÜAÜpÜpÜ(Ü)Ü Ü{Ü
+Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
+Ü Ü Ü Ü Ü<ÜQÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜPÜrÜoÜvÜiÜdÜeÜrÜ ÜcÜlÜiÜeÜnÜtÜ=Ü{ÜqÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜ}Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<ÜBÜrÜoÜwÜsÜeÜrÜRÜoÜuÜtÜeÜrÜ>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜTÜoÜaÜsÜtÜeÜrÜ ÜpÜoÜsÜiÜtÜiÜoÜnÜ=Ü"ÜtÜoÜpÜ-ÜrÜiÜgÜhÜtÜ"Ü ÜrÜiÜcÜhÜCÜoÜlÜoÜrÜsÜ Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜAÜpÜpÜRÜoÜuÜtÜeÜsÜ Ü/Ü>Ü
+Ü Ü Ü Ü Ü Ü Ü<Ü/ÜBÜrÜoÜwÜsÜeÜrÜRÜoÜuÜtÜeÜrÜ>Ü
+Ü Ü Ü Ü Ü<Ü/ÜQÜuÜeÜrÜyÜCÜlÜiÜeÜnÜtÜPÜrÜoÜvÜiÜdÜeÜrÜ>Ü
+Ü Ü Ü)Ü
+Ü}Ü
+Ü
+ÜeÜxÜpÜoÜrÜtÜ ÜdÜeÜfÜaÜuÜlÜtÜ ÜAÜpÜpÜ
+Ü
