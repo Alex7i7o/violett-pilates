@@ -1,8 +1,9 @@
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import React, { useState, useEffect } from 'react';
 import { Skeleton } from "../../components/ui/Skeleton";
 import { toast } from "sonner";
 import { Modal } from '../../components/ui/Modal';
-import { getAdminAgenda, updateAsistencia, createAdminTurno, getAdminClases, getAdminProfesores } from '../../lib/adminApi';
+import { getAdminAgenda, updateAsistencia, createAdminTurno, updateAdminTurno, deleteAdminTurno, getAdminClases, getAdminProfesores } from '../../lib/adminApi';
 import type { TurnoAdmin } from '../../lib/adminApi';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -23,7 +24,9 @@ export function AgendaAdmin() {
 
   const [clases, setClases] = useState<any[]>([]);
   const [profesores, setProfesores] = useState<any[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
+  const [turnoToDelete, setTurnoToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" });
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -76,20 +79,53 @@ export function AgendaAdmin() {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createAdminTurno({
+      const data = {
         clase: formData.clase,
         profesor: formData.profesor || null,
         fecha: formData.fecha,
         hora_inicio: formData.hora_inicio,
         hora_fin: formData.hora_fin
-      });
+      };
+      if (editingTurnoId) {
+        await updateAdminTurno(editingTurnoId, data);
+        toast.success("Turno modificado correctamente");
+      } else {
+        await createAdminTurno(data);
+        toast.success("Turno creado correctamente");
+      }
       setIsModalOpen(false);
+      setEditingTurnoId(null);
       fetchAgenda();
     } catch (e) {
-      toast.error("Error creando el turno puntual")
+      toast.error("Error al guardar el turno");
+    }
+  };
+
+  const handleEditClick = (turno: any) => {
+    setEditingTurnoId(turno.id);
+    setFormData({
+      clase: turno.clase,
+      profesor: turno.profesor || "",
+      fecha: turno.fecha,
+      hora_inicio: turno.hora_inicio,
+      hora_fin: turno.hora_fin
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteTurno = async () => {
+    if (!turnoToDelete) return;
+    try {
+      await deleteAdminTurno(turnoToDelete);
+      toast.success("Turno cancelado correctamente");
+      fetchAgenda();
+    } catch (e) {
+      toast.error("Error al cancelar el turno");
+    } finally {
+      setTurnoToDelete(null);
     }
   };
 
@@ -97,7 +133,7 @@ export function AgendaAdmin() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-3xl font-bold text-violett-900">Agenda</h2>
-        <Button onClick={() => setIsModalOpen(true)}>+ Agregar Clase</Button>
+        <Button onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" }); setIsModalOpen(true); }}>+ Agregar Clase</Button>
       </div>
       
       <Card>
@@ -202,7 +238,19 @@ export function AgendaAdmin() {
                                                   initialText={r.estado === 'TOMADA' ? '✓ Presente (Deshacer)' : 'Presente'}
                                                   successText={r.estado === 'TOMADA' ? 'Deshecho' : 'Asistió'}
                                                 />
-                                              </motion.div>
+                                          
+      <ConfirmModal
+        isOpen={!!turnoToDelete}
+        onClose={() => setTurnoToDelete(null)}
+        onConfirm={handleDeleteTurno}
+        title="Cancelar Turno"
+        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        confirmText="Sí, Cancelar"
+        cancelText="No, Volver"
+        isDestructive={true}
+      />
+    </motion.div>
+
                                             )}
                                             {(r.estado === 'CONFIRMADA' || r.estado === 'AUSENTE') && (
                                               <motion.div 
@@ -223,10 +271,34 @@ export function AgendaAdmin() {
                                                   initialText={r.estado === 'AUSENTE' ? '✗ Ausente (Deshacer)' : 'Ausente'}
                                                   successText={r.estado === 'AUSENTE' ? 'Deshecho' : 'Faltó'}
                                                 />
-                                              </motion.div>
+                                          
+      <ConfirmModal
+        isOpen={!!turnoToDelete}
+        onClose={() => setTurnoToDelete(null)}
+        onConfirm={handleDeleteTurno}
+        title="Cancelar Turno"
+        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        confirmText="Sí, Cancelar"
+        cancelText="No, Volver"
+        isDestructive={true}
+      />
+    </motion.div>
+
                                             )}
                                           </AnimatePresence>
-                                        </motion.div>
+                                    
+      <ConfirmModal
+        isOpen={!!turnoToDelete}
+        onClose={() => setTurnoToDelete(null)}
+        onConfirm={handleDeleteTurno}
+        title="Cancelar Turno"
+        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        confirmText="Sí, Cancelar"
+        cancelText="No, Volver"
+        isDestructive={true}
+      />
+    </motion.div>
+
                                       </li>
                                     ))}
                                   </motion.ul>
@@ -238,8 +310,8 @@ export function AgendaAdmin() {
                           )}
                         </td>
                         <td className="py-4 px-6 align-top text-right space-y-2">
-                          <Button className="w-full" variant="outline">Modificar</Button>
-                          <Button className="w-full bg-red-500 hover:bg-red-600 text-white">Cancelar</Button>
+                          <Button className="w-full" variant="outline" onClick={() => handleEditClick(turno)}>Modificar</Button>
+                          <Button className="w-full bg-red-500 hover:bg-red-600 text-white" onClick={() => setTurnoToDelete(turno.id)}>Cancelar</Button>
                         </td>
                       </motion.tr>
                     ))}
@@ -251,8 +323,8 @@ export function AgendaAdmin() {
         </Card>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Turno Puntual">
-        <form onSubmit={handleCreate} className="space-y-4">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTurnoId ? "Modificar Turno" : "Crear Turno Puntual"}>
+        <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
             <label className="block text-sm font-semibold mb-1">Clase</label>
             <select required value={formData.clase} onChange={e => setFormData({...formData, clase: e.target.value})} className="w-full p-2 border rounded-xl bg-white">
@@ -287,7 +359,19 @@ export function AgendaAdmin() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!turnoToDelete}
+        onClose={() => setTurnoToDelete(null)}
+        onConfirm={handleDeleteTurno}
+        title="Cancelar Turno"
+        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        confirmText="Sí, Cancelar"
+        cancelText="No, Volver"
+        isDestructive={true}
+      />
     </motion.div>
+
   );
 }
 
