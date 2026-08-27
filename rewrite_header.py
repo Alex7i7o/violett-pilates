@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿content = """import React, { useState } from 'react';
 import { Badge } from '../ui/Badge';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -81,3 +81,8 @@ export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
     </>
   );
 }
+"""
+
+with open('frontend/src/components/dashboard/ClientProfileHeader.tsx', 'w', encoding='utf-8') as f:
+    f.write(content)
+print("Rewrote header")
