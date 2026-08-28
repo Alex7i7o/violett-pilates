@@ -1,53 +1,44 @@
-import React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../lib/api';
+﻿import os
+import re
 
-export function ProfesorLayout() {
-  const location = useLocation();
-  React.useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
-  const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+files_to_update = [
+    'frontend/src/layouts/AdminLayout.tsx',
+    'frontend/src/layouts/ProfesorLayout.tsx'
+]
 
-  const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout/');
-      window.location.href = '/';
-    } catch (e) {
-      window.location.href = '/';
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen bg-background font-sans">
-      <main className="flex-1 overflow-auto flex flex-col">
-        <header className="bg-white/70 backdrop-blur-xl saturate-150 border-b border-violett-100/50 shadow-sm sticky top-0 z-40">
-          <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-violett-900 flex items-center justify-center text-white font-bold italic">V</div>
-              <span className="font-bold text-xl text-violett-900 tracking-tight">Violett<span className="text-violett-400">Staff</span></span>
-            </div>
-            <nav className="flex items-center gap-4">
-              <button onClick={handleLogout} className="text-sm font-medium text-rose-600 hover:text-rose-700 transition-colors">
-                Cerrar Sesión
-              </button>
-            </nav>
-          </div>
-        </header>
+for filepath in files_to_update:
+    if not os.path.exists(filepath):
+        continue
         
-        <div className="p-4 sm:p-8 max-w-6xl mx-auto w-full flex-1">
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.32, 0.72, 0, 1] } }}
-              exit={{ opacity: 0, transition: { duration: 0.15 } }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Add mobile state
+    if "isMobileMenuOpen" not in content:
+        content = content.replace("const navigate = useNavigate();", "const navigate = useNavigate();\n  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);")
+
+    # Add close on route change
+    if "React.useEffect(() => {" not in content and "isMobileMenuOpen" in content:
+        content = content.replace("const location = useLocation();", "const location = useLocation();\n  React.useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);")
+
+    # Change aside to be hidden on mobile
+    content = content.replace('<aside className="w-64 bg-card', '<aside className="hidden lg:flex w-64 shrink-0 bg-card')
+    
+    # Add Hamburger button to header
+    hamburger = """
+        <header className="px-4 lg:px-8 py-4 lg:py-6 flex items-center justify-between lg:justify-end border-b lg:border-none border-violett-100 bg-background sticky top-0 z-10">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden p-2 text-violett-900 rounded-lg hover:bg-violett-50"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+"""
+    # Replace header start
+    content = re.sub(r'<header className="[^"]+ flex items-center justify-end">', hamburger.strip(), content)
+
+    # Add Mobile Menu JSX right before </main>
+    mobile_menu_jsx = """
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -108,8 +99,12 @@ export function ProfesorLayout() {
           </>
         )}
       </AnimatePresence>
+    """
     
-      </main>
-    </div>
-  );
-}
+    if "isMobileMenuOpen &&" not in content:
+        content = content.replace("</main>", mobile_menu_jsx + "\n      </main>")
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+print("Layouts updated for mobile")
