@@ -127,7 +127,7 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/pilates/app">
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Toaster position="top-right" richColors />
         <AppRoutes />
       </BrowserRouter>
