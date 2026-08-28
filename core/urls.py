@@ -1,6 +1,7 @@
 # Developed by FireSeed - Fueling Innovation
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views_auth import ThrottledLoginView
 from .views import ClientHistoryView, TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, CancelRecurrenciaView, GoogleLogin, CrearResenaView
 from .views_webhooks import MercadoPagoWebhookView
 from .admin_views import (
@@ -22,6 +23,7 @@ urlpatterns = [
     path('webhooks/mercadopago/', MercadoPagoWebhookView.as_view(), name='webhook_mp'),
 
     path('auth/registration/', include('dj_rest_auth.registration.urls')),
+    path('auth/login/', ThrottledLoginView.as_view(), name='throttled_login'),
     path('auth/', include('dj_rest_auth.urls')),
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
     

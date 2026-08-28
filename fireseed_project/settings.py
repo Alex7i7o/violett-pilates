@@ -168,7 +168,8 @@ REST_FRAMEWORK = {
         'anon': '10/min',
         'user': '100/min',
         'reserva': '10/min',
-        'auth': '5/min'
+        'auth': '5/min',
+        'webhook': '200/min'
     }
 }
 

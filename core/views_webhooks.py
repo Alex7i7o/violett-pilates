@@ -1,4 +1,5 @@
 from django.utils import timezone
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -7,7 +8,11 @@ from django.conf import settings
 from .models import TransaccionBancaria
 from datetime import datetime
 
+class WebhookThrottle(ScopedRateThrottle):
+    scope = 'webhook'
+
 class MercadoPagoWebhookView(APIView):
+    throttle_classes = [WebhookThrottle]
     authentication_classes = [] # No requiere auth para el webhook
     permission_classes = []
 

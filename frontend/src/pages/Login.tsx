@@ -208,7 +208,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 onClick={toggleRegisterMode}
                 className="text-sm text-violett-700 hover:text-violett-900 font-bold underline transition-colors"
               >
-                No tengo cuenta, registrarme
+                Registrarme
               </button>
             </div>
           )}
