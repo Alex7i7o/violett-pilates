@@ -1,44 +1,43 @@
-ÜiÜmÜpÜoÜrÜtÜ Ü*Ü ÜaÜsÜ ÜRÜeÜaÜcÜtÜ ÜfÜrÜoÜmÜ Ü"ÜrÜeÜaÜcÜtÜ"Ü
-ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜcÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü"Ü.Ü.Ü/Ü.Ü.Ü/ÜlÜiÜbÜ/ÜuÜtÜiÜlÜsÜ"Ü
-Ü
-ÜeÜxÜpÜoÜrÜtÜ ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜBÜuÜtÜtÜoÜnÜPÜrÜoÜpÜsÜ ÜeÜxÜtÜeÜnÜdÜsÜ ÜRÜeÜaÜcÜtÜ.ÜBÜuÜtÜtÜoÜnÜHÜTÜMÜLÜAÜtÜtÜrÜiÜbÜuÜtÜeÜsÜ<ÜHÜTÜMÜLÜBÜuÜtÜtÜoÜnÜEÜlÜeÜmÜeÜnÜtÜ>Ü Ü{Ü
-Ü Ü ÜvÜaÜrÜiÜaÜnÜtÜ?Ü:Ü Ü'ÜdÜeÜfÜaÜuÜlÜtÜ'Ü Ü|Ü Ü'ÜoÜuÜtÜlÜiÜnÜeÜ'Ü Ü|Ü Ü'ÜgÜhÜoÜsÜtÜ'Ü Ü|Ü Ü'ÜlÜiÜnÜkÜ'Ü Ü|Ü Ü'ÜdÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ'Ü
-Ü Ü ÜsÜiÜzÜeÜ?Ü:Ü Ü'ÜdÜeÜfÜaÜuÜlÜtÜ'Ü Ü|Ü Ü'ÜsÜmÜ'Ü Ü|Ü Ü'ÜlÜgÜ'Ü Ü|Ü Ü'ÜiÜcÜoÜnÜ'Ü
-Ü}Ü
-Ü
-ÜcÜoÜnÜsÜtÜ ÜBÜuÜtÜtÜoÜnÜ Ü=Ü ÜRÜeÜaÜcÜtÜ.ÜfÜoÜrÜwÜaÜrÜdÜRÜeÜfÜ<ÜHÜTÜMÜLÜBÜuÜtÜtÜoÜnÜEÜlÜeÜmÜeÜnÜtÜ,Ü ÜBÜuÜtÜtÜoÜnÜPÜrÜoÜpÜsÜ>Ü(Ü
-Ü Ü Ü(Ü{Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ,Ü ÜvÜaÜrÜiÜaÜnÜtÜ Ü=Ü Ü'ÜdÜeÜfÜaÜuÜlÜtÜ'Ü,Ü ÜsÜiÜzÜeÜ Ü=Ü Ü'ÜdÜeÜfÜaÜuÜlÜtÜ'Ü,Ü Ü.Ü.Ü.ÜpÜrÜoÜpÜsÜ Ü}Ü,Ü ÜrÜeÜfÜ)Ü Ü=Ü>Ü Ü{Ü
-Ü Ü Ü Ü Ü
-Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜvÜaÜrÜiÜaÜnÜtÜsÜ Ü=Ü Ü{Ü
-Ü Ü Ü Ü Ü Ü ÜdÜeÜfÜaÜuÜlÜtÜ:Ü Ü"ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü8Ü0Ü0Ü ÜsÜhÜaÜdÜoÜwÜ-ÜsÜoÜfÜtÜ"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜdÜeÜsÜtÜrÜuÜcÜtÜiÜvÜeÜ:Ü Ü"ÜbÜgÜ-ÜrÜeÜdÜ-Ü5Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜrÜeÜdÜ-Ü6Ü0Ü0Ü ÜsÜhÜaÜdÜoÜwÜ-ÜsÜoÜfÜtÜ"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜoÜuÜtÜlÜiÜnÜeÜ:Ü Ü"ÜbÜoÜrÜdÜeÜrÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü2Ü0Ü0Ü ÜbÜgÜ-ÜtÜrÜaÜnÜsÜpÜaÜrÜeÜnÜtÜ ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜgÜhÜoÜsÜtÜ:Ü Ü"ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜlÜiÜnÜkÜ:Ü Ü"ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü6Ü0Ü0Ü ÜuÜnÜdÜeÜrÜlÜiÜnÜeÜ-ÜoÜfÜfÜsÜeÜtÜ-Ü4Ü ÜhÜoÜvÜeÜrÜ:ÜuÜnÜdÜeÜrÜlÜiÜnÜeÜ"Ü,Ü
-Ü Ü Ü Ü Ü}Ü
-Ü Ü Ü Ü Ü
-Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜsÜiÜzÜeÜsÜ Ü=Ü Ü{Ü
-Ü Ü Ü Ü Ü Ü ÜdÜeÜfÜaÜuÜlÜtÜ:Ü Ü"ÜhÜ-Ü1Ü0Ü ÜpÜxÜ-Ü4Ü ÜpÜyÜ-Ü2Ü"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜsÜmÜ:Ü Ü"ÜhÜ-Ü9Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜmÜdÜ ÜpÜxÜ-Ü3Ü"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜlÜgÜ:Ü Ü"ÜhÜ-Ü1Ü1Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜmÜdÜ ÜpÜxÜ-Ü8Ü ÜtÜeÜxÜtÜ-ÜlÜgÜ"Ü,Ü
-Ü Ü Ü Ü Ü Ü ÜiÜcÜoÜnÜ:Ü Ü"ÜhÜ-Ü1Ü0Ü ÜwÜ-Ü1Ü0Ü"Ü,Ü
-Ü Ü Ü Ü Ü}Ü
-Ü
-Ü Ü Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
-Ü Ü Ü Ü Ü Ü Ü<ÜbÜuÜtÜtÜoÜnÜ
-Ü Ü Ü Ü Ü Ü Ü Ü ÜrÜeÜfÜ=Ü{ÜrÜeÜfÜ}Ü
-Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü{ÜcÜnÜ(Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü"ÜiÜnÜlÜiÜnÜeÜ-ÜfÜlÜeÜxÜ ÜiÜtÜeÜmÜsÜ-ÜcÜeÜnÜtÜeÜrÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜcÜeÜnÜtÜeÜrÜ ÜwÜhÜiÜtÜeÜsÜpÜaÜcÜeÜ-ÜnÜoÜwÜrÜaÜpÜ ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜrÜiÜnÜgÜ-ÜoÜfÜfÜsÜeÜtÜ-ÜbÜaÜcÜkÜgÜrÜoÜuÜnÜdÜ ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ-Ü[ÜtÜrÜaÜnÜsÜfÜoÜrÜmÜ,ÜbÜaÜcÜkÜgÜrÜoÜuÜnÜdÜ-ÜcÜoÜlÜoÜrÜ,ÜbÜoÜrÜdÜeÜrÜ-ÜcÜoÜlÜoÜrÜ,ÜcÜoÜlÜoÜrÜ]Ü ÜdÜuÜrÜaÜtÜiÜoÜnÜ-Ü1Ü5Ü0Ü ÜeÜaÜsÜeÜ-ÜoÜuÜtÜ ÜfÜoÜcÜuÜsÜ-ÜvÜiÜsÜiÜbÜlÜeÜ:ÜoÜuÜtÜlÜiÜnÜeÜ-ÜnÜoÜnÜeÜ ÜfÜoÜcÜuÜsÜ-ÜvÜiÜsÜiÜbÜlÜeÜ:ÜrÜiÜnÜgÜ-Ü2Ü ÜfÜoÜcÜuÜsÜ-ÜvÜiÜsÜiÜbÜlÜeÜ:ÜrÜiÜnÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü0Ü ÜdÜiÜsÜaÜbÜlÜeÜdÜ:ÜpÜoÜiÜnÜtÜeÜrÜ-ÜeÜvÜeÜnÜtÜsÜ-ÜnÜoÜnÜeÜ ÜdÜiÜsÜaÜbÜlÜeÜdÜ:ÜoÜpÜaÜcÜiÜtÜyÜ-Ü5Ü0Ü ÜaÜcÜtÜiÜvÜeÜ:ÜsÜcÜaÜlÜeÜ-Ü[Ü0Ü.Ü9Ü7Ü]Ü"Ü,Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜvÜaÜrÜiÜaÜnÜtÜsÜ[ÜvÜaÜrÜiÜaÜnÜtÜ]Ü,Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜiÜzÜeÜsÜ[ÜsÜiÜzÜeÜ]Ü,Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ
-Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü{Ü.Ü.Ü.ÜpÜrÜoÜpÜsÜ}Ü
-Ü Ü Ü Ü Ü Ü Ü/Ü>Ü
-Ü Ü Ü Ü Ü)Ü
-Ü Ü Ü}Ü
-Ü)Ü
-ÜBÜuÜtÜtÜoÜnÜ.ÜdÜiÜsÜpÜlÜaÜyÜNÜaÜmÜeÜ Ü=Ü Ü"ÜBÜuÜtÜtÜoÜnÜ"Ü
-Ü
-ÜeÜxÜpÜoÜrÜtÜ Ü{Ü ÜBÜuÜtÜtÜoÜnÜ Ü}Ü
-Ü
+import * as React from "react"
+import { cn } from "../../lib/utils"
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'outline' | 'ghost' | 'link' | 'destructive'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
+    
+    const variants = {
+      default: "bg-violett-900 text-white hover:bg-violett-800 shadow-soft",
+      destructive: "bg-red-500 text-white hover:bg-red-600 shadow-soft",
+      outline: "border border-violett-200 bg-transparent hover:bg-violett-50 text-violett-900",
+      ghost: "hover:bg-violett-50 text-violett-900",
+      link: "text-violett-600 underline-offset-4 hover:underline",
+    }
+    
+    const sizes = {
+      default: "h-10 px-4 py-2",
+      sm: "h-9 rounded-md px-3",
+      lg: "h-11 rounded-md px-8 text-lg",
+      icon: "h-10 w-10",
+    }
+
+    return (
+      <button
+        ref={ref}
+        className={cn(
+          "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-[transform,background-color,border-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violett-500 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
+          variants[variant],
+          sizes[size],
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button }

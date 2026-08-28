@@ -1,34 +1,33 @@
-ÜiÜmÜpÜoÜrÜtÜ ÜRÜeÜaÜcÜtÜ ÜfÜrÜoÜmÜ Ü'ÜrÜeÜaÜcÜtÜ'Ü;Ü
-Ü
-ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜSÜeÜlÜeÜcÜtÜFÜiÜeÜlÜdÜPÜrÜoÜpÜsÜ ÜeÜxÜtÜeÜnÜdÜsÜ ÜRÜeÜaÜcÜtÜ.ÜSÜeÜlÜeÜcÜtÜHÜTÜMÜLÜAÜtÜtÜrÜiÜbÜuÜtÜeÜsÜ<ÜHÜTÜMÜLÜSÜeÜlÜeÜcÜtÜEÜlÜeÜmÜeÜnÜtÜ>Ü Ü{Ü
-Ü Ü ÜlÜaÜbÜeÜlÜ?Ü:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
-Ü Ü ÜoÜpÜtÜiÜoÜnÜsÜ:Ü Ü{Ü ÜvÜaÜlÜuÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü ÜlÜaÜbÜeÜlÜ:Ü ÜsÜtÜrÜiÜnÜgÜ Ü}Ü[Ü]Ü;Ü
-Ü Ü ÜeÜrÜrÜoÜrÜ?Ü:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
-Ü}Ü
-Ü
-ÜeÜxÜpÜoÜrÜtÜ ÜcÜoÜnÜsÜtÜ ÜSÜeÜlÜeÜcÜtÜFÜiÜeÜlÜdÜ:Ü ÜRÜeÜaÜcÜtÜ.ÜFÜCÜ<ÜSÜeÜlÜeÜcÜtÜFÜiÜeÜlÜdÜPÜrÜoÜpÜsÜ>Ü Ü=Ü Ü(Ü{Ü Ü
-Ü Ü ÜlÜaÜbÜeÜlÜ,Ü Ü
-Ü Ü ÜoÜpÜtÜiÜoÜnÜsÜ,Ü Ü
-Ü Ü ÜeÜrÜrÜoÜrÜ,Ü Ü
-Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ Ü=Ü Ü'Ü'Ü,Ü Ü
-Ü Ü Ü.Ü.Ü.ÜpÜrÜoÜpÜsÜ Ü
-Ü}Ü)Ü Ü=Ü>Ü Ü{Ü
-Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
-Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜwÜ-ÜfÜuÜlÜlÜ"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü{ÜlÜaÜbÜeÜlÜ Ü&Ü&Ü Ü<ÜlÜaÜbÜeÜlÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜlÜoÜcÜkÜ ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜmÜbÜ-Ü1Ü ÜtÜeÜxÜtÜ-ÜfÜoÜrÜeÜgÜrÜoÜuÜnÜdÜ"Ü>Ü{ÜlÜaÜbÜeÜlÜ}Ü<Ü/ÜlÜaÜbÜeÜlÜ>Ü}Ü
-Ü Ü Ü Ü Ü Ü Ü<ÜsÜeÜlÜeÜcÜtÜ
-Ü Ü Ü Ü Ü Ü Ü Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü{Ü`ÜwÜ-ÜfÜuÜlÜlÜ ÜpÜ-Ü2Ü.Ü5Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜbÜoÜrÜdÜeÜrÜ Ü$Ü{ÜeÜrÜrÜoÜrÜ Ü?Ü Ü'ÜbÜoÜrÜdÜeÜrÜ-ÜrÜeÜdÜ-Ü5Ü0Ü0Ü'Ü Ü:Ü Ü'ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü2Ü0Ü0Ü'Ü}Ü ÜfÜoÜcÜuÜsÜ:ÜoÜuÜtÜlÜiÜnÜeÜ-ÜnÜoÜnÜeÜ ÜfÜoÜcÜuÜsÜ:ÜrÜiÜnÜgÜ-Ü2Ü ÜfÜoÜcÜuÜsÜ:ÜrÜiÜnÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü0Ü ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ Ü$Ü{ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ}Ü`Ü}Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü{Ü.Ü.Ü.ÜpÜrÜoÜpÜsÜ}Ü
-Ü Ü Ü Ü Ü Ü Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜoÜpÜtÜiÜoÜnÜ ÜvÜaÜlÜuÜeÜ=Ü"Ü"Ü>ÜSÜeÜlÜeÜcÜcÜiÜoÜnÜaÜrÜ.Ü.Ü.Ü<Ü/ÜoÜpÜtÜiÜoÜnÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜoÜpÜtÜiÜoÜnÜsÜ.ÜmÜaÜpÜ(Ü(ÜoÜpÜtÜ)Ü Ü=Ü>Ü Ü(Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜoÜpÜtÜiÜoÜnÜ ÜkÜeÜyÜ=Ü{ÜoÜpÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü ÜvÜaÜlÜuÜeÜ=Ü{ÜoÜpÜtÜ.ÜvÜaÜlÜuÜeÜ}Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜoÜpÜtÜ.ÜlÜaÜbÜeÜlÜ}Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜoÜpÜtÜiÜoÜnÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü)Ü}Ü
-Ü Ü Ü Ü Ü Ü Ü<Ü/ÜsÜeÜlÜeÜcÜtÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü{ÜeÜrÜrÜoÜrÜ Ü&Ü&Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜrÜeÜdÜ-Ü5Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜxÜsÜ ÜmÜtÜ-Ü1Ü ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ"Ü>Ü{ÜeÜrÜrÜoÜrÜ}Ü<Ü/ÜpÜ>Ü}Ü
-Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü)Ü;Ü
-Ü}Ü;Ü
-Ü
+import React from 'react';
+
+interface SelectFieldProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string;
+  options: { value: string; label: string }[];
+  error?: string;
+}
+
+export const SelectField: React.FC<SelectFieldProps> = ({ 
+  label, 
+  options, 
+  error, 
+  className = '', 
+  ...props 
+}) => {
+  return (
+    <div className="w-full">
+      {label && <label className="block text-sm font-semibold mb-1 text-foreground">{label}</label>}
+      <select
+        className={`w-full p-2.5 rounded-xl border ${error ? 'border-red-500' : 'border-violett-200'} focus:outline-none focus:ring-2 focus:ring-violett-500 bg-white ${className}`}
+        {...props}
+      >
+        <option value="">Seleccionar...</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {error && <p className="text-red-500 text-xs mt-1 font-medium">{error}</p>}
+    </div>
+  );
+};

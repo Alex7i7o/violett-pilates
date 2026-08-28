@@ -1,109 +1,108 @@
-Ü﻿ÜiÜmÜpÜoÜrÜtÜ ÜRÜeÜaÜcÜtÜ,Ü Ü{Ü ÜuÜsÜeÜEÜfÜfÜeÜcÜtÜ,Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜrÜeÜaÜcÜtÜ'Ü;Ü
-ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜMÜoÜdÜaÜlÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/ÜuÜiÜ/ÜMÜoÜdÜaÜlÜ'Ü;Ü
-ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜCÜaÜrÜdÜ,Ü ÜCÜaÜrÜdÜHÜeÜaÜdÜeÜrÜ,Ü ÜCÜaÜrÜdÜTÜiÜtÜlÜeÜ,Ü ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/ÜuÜiÜ/ÜCÜaÜrÜdÜ'Ü;Ü
-ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜBÜuÜtÜtÜoÜnÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/ÜuÜiÜ/ÜBÜuÜtÜtÜoÜnÜ'Ü;Ü
-ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜaÜpÜiÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'Ü.Ü.Ü/Ü.Ü.Ü/ÜlÜiÜbÜ/ÜaÜpÜiÜ'Ü;Ü
-ÜiÜmÜpÜoÜrÜtÜ Ü{Ü ÜtÜoÜaÜsÜtÜ Ü}Ü ÜfÜrÜoÜmÜ Ü'ÜsÜoÜnÜnÜeÜrÜ'Ü;Ü
-Ü
-ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜPÜlÜaÜnÜ Ü{Ü
-Ü Ü ÜiÜdÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
-Ü Ü ÜnÜoÜmÜbÜrÜeÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
-Ü Ü ÜdÜeÜsÜcÜrÜiÜpÜcÜiÜoÜnÜ:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
-Ü Ü ÜpÜrÜeÜcÜiÜoÜ:Ü ÜnÜuÜmÜbÜeÜrÜ;Ü
-Ü Ü ÜcÜlÜaÜsÜeÜsÜ_ÜiÜnÜcÜlÜuÜiÜdÜaÜsÜ:Ü ÜnÜuÜmÜbÜeÜrÜ;Ü
-Ü Ü ÜdÜuÜrÜaÜcÜiÜoÜnÜ_ÜdÜiÜaÜsÜ:Ü ÜnÜuÜmÜbÜeÜrÜ;Ü
-Ü}Ü
-Ü
-ÜiÜnÜtÜeÜrÜfÜaÜcÜeÜ ÜPÜrÜoÜpÜsÜ Ü{Ü
-Ü Ü ÜiÜsÜOÜpÜeÜnÜ:Ü ÜbÜoÜoÜlÜeÜaÜnÜ;Ü
-Ü Ü ÜoÜnÜCÜlÜoÜsÜeÜ:Ü Ü(Ü)Ü Ü=Ü>Ü ÜvÜoÜiÜdÜ;Ü
-Ü Ü ÜcÜuÜrÜrÜeÜnÜtÜPÜlÜaÜnÜ?Ü:Ü ÜsÜtÜrÜiÜnÜgÜ;Ü
-Ü}Ü
-Ü
-ÜeÜxÜpÜoÜrÜtÜ ÜfÜuÜnÜcÜtÜiÜoÜnÜ ÜPÜlÜaÜnÜSÜeÜlÜeÜcÜtÜiÜoÜnÜMÜoÜdÜaÜlÜ(Ü{Ü ÜiÜsÜOÜpÜeÜnÜ,Ü ÜoÜnÜCÜlÜoÜsÜeÜ,Ü ÜcÜuÜrÜrÜeÜnÜtÜPÜlÜaÜnÜ Ü}Ü:Ü ÜPÜrÜoÜpÜsÜ)Ü Ü{Ü
-Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜpÜlÜaÜnÜeÜsÜ,Ü ÜsÜeÜtÜPÜlÜaÜnÜeÜsÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜPÜlÜaÜnÜ[Ü]Ü>Ü(Ü[Ü]Ü)Ü;Ü
-Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜlÜoÜaÜdÜiÜnÜgÜ,Ü ÜsÜeÜtÜLÜoÜaÜdÜiÜnÜgÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ(ÜtÜrÜuÜeÜ)Ü;Ü
-Ü Ü ÜcÜoÜnÜsÜtÜ Ü[ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ,Ü ÜsÜeÜtÜSÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ]Ü Ü=Ü ÜuÜsÜeÜSÜtÜaÜtÜeÜ<ÜPÜlÜaÜnÜ Ü|Ü ÜnÜuÜlÜlÜ>Ü(ÜnÜuÜlÜlÜ)Ü;Ü
-Ü
-Ü Ü ÜuÜsÜeÜEÜfÜfÜeÜcÜtÜ(Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
-Ü Ü Ü Ü ÜiÜfÜ Ü(ÜiÜsÜOÜpÜeÜnÜ)Ü Ü{Ü
-Ü Ü Ü Ü Ü Ü ÜaÜpÜiÜ.ÜgÜeÜtÜ<ÜPÜlÜaÜnÜ[Ü]Ü>Ü(Ü'Ü/ÜaÜdÜmÜiÜnÜ/ÜpÜlÜaÜnÜeÜsÜ/Ü'Ü)Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü.ÜtÜhÜeÜnÜ(ÜrÜeÜsÜ Ü=Ü>Ü Ü{Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜPÜlÜaÜnÜeÜsÜ(ÜrÜeÜsÜ.ÜdÜaÜtÜaÜ)Ü;Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜLÜoÜaÜdÜiÜnÜgÜ(ÜfÜaÜlÜsÜeÜ)Ü;Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü}Ü)Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü.ÜcÜaÜtÜcÜhÜ(Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜtÜoÜaÜsÜtÜ.ÜeÜrÜrÜoÜrÜ(Ü"ÜEÜrÜrÜoÜrÜ ÜaÜlÜ ÜcÜaÜrÜgÜaÜrÜ ÜlÜoÜsÜ ÜpÜlÜaÜnÜeÜsÜ"Ü)Ü;Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜLÜoÜaÜdÜiÜnÜgÜ(ÜfÜaÜlÜsÜeÜ)Ü;Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü}Ü)Ü;Ü
-Ü Ü Ü Ü Ü}Ü ÜeÜlÜsÜeÜ Ü{Ü
-Ü Ü Ü Ü Ü Ü ÜsÜeÜtÜSÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ(ÜnÜuÜlÜlÜ)Ü;Ü
-Ü Ü Ü Ü Ü}Ü
-Ü Ü Ü}Ü,Ü Ü[ÜiÜsÜOÜpÜeÜnÜ]Ü)Ü;Ü
-Ü
-Ü Ü ÜcÜoÜnÜsÜtÜ ÜhÜaÜnÜdÜlÜeÜWÜhÜaÜtÜsÜAÜpÜpÜRÜeÜdÜiÜrÜeÜcÜtÜ Ü=Ü Ü(Ü)Ü Ü=Ü>Ü Ü{Ü
-Ü Ü Ü Ü ÜiÜfÜ Ü(Ü!ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ)Ü ÜrÜeÜtÜuÜrÜnÜ;Ü
-Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜpÜhÜoÜnÜeÜNÜuÜmÜbÜeÜrÜ Ü=Ü Ü"Ü5Ü4Ü9Ü1Ü1Ü2Ü3Ü4Ü5Ü6Ü7Ü8Ü9Ü"Ü;Ü Ü/Ü/Ü ÜCÜaÜmÜbÜiÜaÜrÜ ÜpÜoÜrÜ ÜeÜlÜ ÜrÜeÜaÜlÜ
-Ü Ü Ü Ü ÜcÜoÜnÜsÜtÜ ÜmÜeÜsÜsÜaÜgÜeÜ Ü=Ü Ü`ÜHÜoÜlÜaÜ ÜVÜiÜoÜlÜeÜtÜtÜ ÜPÜiÜlÜaÜtÜeÜsÜ!Ü ÜYÜaÜ ÜrÜeÜaÜlÜiÜcÜéÜ ÜlÜaÜ ÜtÜrÜaÜnÜsÜfÜeÜrÜeÜnÜcÜiÜaÜ ÜpÜaÜrÜaÜ ÜaÜdÜqÜuÜiÜrÜiÜrÜ ÜeÜlÜ ÜpÜlÜaÜnÜ Ü*Ü$Ü{ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ.ÜnÜoÜmÜbÜrÜeÜ}Ü*Ü ÜpÜoÜrÜ Ü$Ü$Ü{ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ.ÜpÜrÜeÜcÜiÜoÜ}Ü.Ü ÜTÜeÜ ÜaÜdÜjÜuÜnÜtÜoÜ ÜeÜlÜ ÜcÜoÜmÜpÜrÜoÜbÜaÜnÜtÜeÜ:Ü`Ü;Ü
-Ü Ü Ü Ü ÜwÜiÜnÜdÜoÜwÜ.ÜoÜpÜeÜnÜ(Ü`ÜhÜtÜtÜpÜsÜ:Ü/Ü/ÜwÜaÜ.ÜmÜeÜ/Ü$Ü{ÜpÜhÜoÜnÜeÜNÜuÜmÜbÜeÜrÜ}Ü?ÜtÜeÜxÜtÜ=Ü$Ü{ÜeÜnÜcÜoÜdÜeÜUÜRÜIÜCÜoÜmÜpÜoÜnÜeÜnÜtÜ(ÜmÜeÜsÜsÜaÜgÜeÜ)Ü}Ü`Ü,Ü Ü'Ü_ÜbÜlÜaÜnÜkÜ'Ü)Ü;Ü
-Ü Ü Ü Ü ÜoÜnÜCÜlÜoÜsÜeÜ(Ü)Ü;Ü
-Ü Ü Ü}Ü;Ü
-Ü
-Ü Ü ÜiÜfÜ Ü(Ü!ÜiÜsÜOÜpÜeÜnÜ)Ü ÜrÜeÜtÜuÜrÜnÜ ÜnÜuÜlÜlÜ;Ü
-Ü
-Ü Ü ÜrÜeÜtÜuÜrÜnÜ Ü(Ü
-Ü Ü Ü Ü Ü<ÜMÜoÜdÜaÜlÜ ÜiÜsÜOÜpÜeÜnÜ=Ü{ÜiÜsÜOÜpÜeÜnÜ}Ü ÜoÜnÜCÜlÜoÜsÜeÜ=Ü{ÜoÜnÜCÜlÜoÜsÜeÜ}Ü ÜtÜiÜtÜlÜeÜ=Ü"ÜAÜdÜqÜuÜiÜrÜiÜrÜ ÜoÜ ÜRÜeÜnÜoÜvÜaÜrÜ ÜPÜlÜaÜnÜ"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü{ÜlÜoÜaÜdÜiÜnÜgÜ Ü?Ü Ü(Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜ-Ü8Ü ÜtÜeÜxÜtÜ-ÜcÜeÜnÜtÜeÜrÜ ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü5Ü0Ü0Ü"Ü>ÜCÜaÜrÜgÜaÜnÜdÜoÜ ÜpÜlÜaÜnÜeÜsÜ ÜdÜiÜsÜpÜoÜnÜiÜbÜlÜeÜsÜ.Ü.Ü.Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü)Ü Ü:Ü Ü!ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ Ü?Ü Ü(Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü4Ü ÜmÜaÜxÜ-ÜhÜ-Ü[Ü6Ü0ÜvÜhÜ]Ü ÜoÜvÜeÜrÜfÜlÜoÜwÜ-ÜyÜ-ÜaÜuÜtÜoÜ ÜpÜrÜ-Ü2Ü"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü{ÜpÜlÜaÜnÜeÜsÜ.ÜmÜaÜpÜ(ÜpÜlÜaÜnÜ Ü=Ü>Ü Ü(Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜ ÜkÜeÜyÜ=Ü{ÜpÜlÜaÜnÜ.ÜiÜdÜ}Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜcÜuÜrÜsÜoÜrÜ-ÜpÜoÜiÜnÜtÜeÜrÜ ÜhÜoÜvÜeÜrÜ:ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü0Ü ÜtÜrÜaÜnÜsÜiÜtÜiÜoÜnÜ-ÜcÜoÜlÜoÜrÜsÜ"Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜSÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ(ÜpÜlÜaÜnÜ)Ü}Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜHÜeÜaÜdÜeÜrÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜpÜbÜ-Ü2Ü"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜTÜiÜtÜlÜeÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜxÜlÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü"Ü>Ü{ÜpÜlÜaÜnÜ.ÜnÜoÜmÜbÜrÜeÜ}Ü<Ü/ÜCÜaÜrÜdÜTÜiÜtÜlÜeÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜHÜeÜaÜdÜeÜrÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜjÜuÜsÜtÜiÜfÜyÜ-ÜbÜeÜtÜwÜeÜeÜnÜ ÜiÜtÜeÜmÜsÜ-ÜeÜnÜdÜ"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü6Ü0Ü0Ü ÜmÜbÜ-Ü1Ü"Ü>Ü{ÜpÜlÜaÜnÜ.ÜcÜlÜaÜsÜeÜsÜ_ÜiÜnÜcÜlÜuÜiÜdÜaÜsÜ}Ü ÜcÜlÜaÜsÜeÜsÜ Ü/Ü Ü{ÜpÜlÜaÜnÜ.ÜdÜuÜrÜaÜcÜiÜoÜnÜ_ÜdÜiÜaÜsÜ}Ü ÜdÜíÜaÜsÜ<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-Ü2ÜxÜlÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü7Ü0Ü0Ü"Ü>Ü$Ü{ÜpÜlÜaÜnÜ.ÜpÜrÜeÜcÜiÜoÜ}Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜvÜaÜrÜiÜaÜnÜtÜ=Ü"ÜoÜuÜtÜlÜiÜnÜeÜ"Ü ÜsÜiÜzÜeÜ=Ü"ÜsÜmÜ"Ü>ÜSÜeÜlÜeÜcÜcÜiÜoÜnÜaÜrÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜCÜoÜnÜtÜeÜnÜtÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜCÜaÜrÜdÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü)Ü)Ü}Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü)Ü Ü:Ü Ü(Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü6Ü"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜgÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü5Ü0Ü ÜpÜ-Ü4Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜxÜlÜ ÜbÜoÜrÜdÜeÜrÜ ÜbÜoÜrÜdÜeÜrÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü1Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜcÜeÜnÜtÜeÜrÜ"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜhÜ3Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜlÜgÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜmÜbÜ-Ü2Ü"Ü>ÜEÜlÜeÜgÜiÜsÜtÜeÜ:Ü Ü{ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ.ÜnÜoÜmÜbÜrÜeÜ}Ü<Ü/ÜhÜ3Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-Ü2ÜxÜlÜ ÜfÜoÜnÜtÜ-ÜbÜlÜaÜcÜkÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü7Ü0Ü0Ü ÜmÜbÜ-Ü4Ü"Ü>Ü$Ü{ÜsÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ.ÜpÜrÜeÜcÜiÜoÜ}Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜbÜgÜ-ÜwÜhÜiÜtÜeÜ ÜpÜ-Ü4Ü ÜrÜoÜuÜnÜdÜeÜdÜ-ÜlÜgÜ ÜsÜhÜaÜdÜoÜwÜ-ÜsÜmÜ ÜtÜeÜxÜtÜ-ÜlÜeÜfÜtÜ ÜmÜbÜ-Ü4Ü"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜfÜoÜnÜtÜ-ÜsÜeÜmÜiÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü5Ü0Ü0Ü ÜuÜpÜpÜeÜrÜcÜaÜsÜeÜ ÜtÜrÜaÜcÜkÜiÜnÜgÜ-ÜwÜiÜdÜeÜrÜ ÜmÜbÜ-Ü2Ü"Ü>ÜDÜaÜtÜoÜsÜ ÜpÜaÜrÜaÜ ÜTÜrÜaÜnÜsÜfÜeÜrÜeÜnÜcÜiÜaÜ<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ"Ü>ÜCÜVÜUÜ Ü/Ü ÜAÜLÜIÜAÜSÜ:Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜlÜgÜ ÜfÜoÜnÜtÜ-ÜbÜoÜlÜdÜ ÜtÜeÜxÜtÜ-ÜvÜiÜoÜlÜeÜtÜtÜ-Ü9Ü0Ü0Ü ÜsÜeÜlÜeÜcÜtÜ-ÜaÜlÜlÜ"Ü>ÜvÜiÜoÜlÜeÜtÜtÜ.ÜpÜiÜlÜaÜtÜeÜsÜ.ÜmÜpÜ<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜoÜnÜtÜ-ÜmÜeÜdÜiÜuÜmÜ ÜmÜtÜ-Ü2Ü"Ü>ÜTÜiÜtÜuÜlÜaÜrÜ:Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü7Ü0Ü0Ü"Ü>ÜVÜiÜoÜlÜeÜtÜtÜ ÜPÜiÜlÜaÜtÜeÜsÜ<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜtÜeÜxÜtÜ-ÜsÜmÜ ÜtÜeÜxÜtÜ-ÜgÜrÜaÜyÜ-Ü6Ü0Ü0Ü ÜsÜpÜaÜcÜeÜ-ÜyÜ-Ü2Ü"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ>Ü1Ü.Ü ÜRÜeÜaÜlÜiÜzÜaÜ ÜlÜaÜ ÜtÜrÜaÜnÜsÜfÜeÜrÜeÜnÜcÜiÜaÜ ÜdÜeÜsÜdÜeÜ ÜtÜuÜ ÜhÜoÜmÜeÜbÜaÜnÜkÜiÜnÜgÜ ÜoÜ ÜbÜiÜlÜlÜeÜtÜeÜrÜaÜ ÜvÜiÜrÜtÜuÜaÜlÜ.Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ>Ü2Ü.Ü ÜGÜuÜaÜrÜdÜaÜ ÜuÜnÜaÜ ÜcÜaÜpÜtÜuÜrÜaÜ ÜdÜeÜ ÜpÜaÜnÜtÜaÜlÜlÜaÜ ÜdÜeÜlÜ ÜcÜoÜmÜpÜrÜoÜbÜaÜnÜtÜeÜ.Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜpÜ>Ü3Ü.Ü ÜPÜrÜeÜsÜiÜoÜnÜaÜ ÜeÜlÜ ÜbÜoÜtÜóÜnÜ ÜdÜeÜ ÜaÜbÜaÜjÜoÜ ÜpÜaÜrÜaÜ ÜeÜnÜvÜiÜaÜrÜnÜoÜsÜ ÜeÜlÜ ÜcÜoÜmÜpÜrÜoÜbÜaÜnÜtÜeÜ ÜpÜoÜrÜ ÜWÜhÜaÜtÜsÜAÜpÜpÜ.Ü<Ü/ÜpÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜdÜiÜvÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ ÜgÜaÜpÜ-Ü4Ü"Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜvÜaÜrÜiÜaÜnÜtÜ=Ü"ÜoÜuÜtÜlÜiÜnÜeÜ"Ü ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ-Ü1Ü"Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{Ü(Ü)Ü Ü=Ü>Ü ÜsÜeÜtÜSÜeÜlÜeÜcÜtÜeÜdÜPÜlÜaÜnÜ(ÜnÜuÜlÜlÜ)Ü}Ü>ÜVÜoÜlÜvÜeÜrÜ<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<ÜBÜuÜtÜtÜoÜnÜ ÜcÜlÜaÜsÜsÜNÜaÜmÜeÜ=Ü"ÜfÜlÜeÜxÜ-Ü1Ü ÜbÜgÜ-ÜgÜrÜeÜeÜnÜ-Ü6Ü0Ü0Ü ÜhÜoÜvÜeÜrÜ:ÜbÜgÜ-ÜgÜrÜeÜeÜnÜ-Ü7Ü0Ü0Ü ÜtÜeÜxÜtÜ-ÜwÜhÜiÜtÜeÜ"Ü ÜoÜnÜCÜlÜiÜcÜkÜ=Ü{ÜhÜaÜnÜdÜlÜeÜWÜhÜaÜtÜsÜAÜpÜpÜRÜeÜdÜiÜrÜeÜcÜtÜ}Ü>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü ÜYÜaÜ ÜpÜaÜgÜuÜéÜ Ü(ÜEÜnÜvÜiÜaÜrÜ ÜWÜhÜaÜtÜsÜAÜpÜpÜ)Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜBÜuÜtÜtÜoÜnÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü Ü Ü<Ü/ÜdÜiÜvÜ>Ü
-Ü Ü Ü Ü Ü Ü Ü)Ü}Ü
-Ü Ü Ü Ü Ü<Ü/ÜMÜoÜdÜaÜlÜ>Ü
-Ü Ü Ü)Ü;Ü
-Ü}Ü
-Ü
+﻿import React, { useEffect, useState } from 'react';
+import { Modal } from '../ui/Modal';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { api } from '../../lib/api';
+import { toast } from 'sonner';
+
+interface Plan {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  clases_incluidas: number;
+  duracion_dias: number;
+}
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  currentPlan?: string;
+}
+
+export function PlanSelectionModal({ isOpen, onClose, currentPlan }: Props) {
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get<Plan[]>('/admin/planes/')
+        .then(res => {
+          setPlanes(res.data);
+          setLoading(false);
+        })
+        .catch(() => {
+          toast.error("Error al cargar los planes");
+          setLoading(false);
+        });
+    } else {
+      setSelectedPlan(null);
+    }
+  }, [isOpen]);
+
+  const handleWhatsAppRedirect = () => {
+    if (!selectedPlan) return;
+    const phoneNumber = "5491123456789"; // Cambiar por el real
+    const message = `Hola Violett Pilates! Ya realicé la transferencia para adquirir el plan *${selectedPlan.nombre}* por $${selectedPlan.precio}. Te adjunto el comprobante:`;
+    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Adquirir o Renovar Plan">
+      {loading ? (
+        <div className="p-8 text-center text-gray-500">Cargando planes disponibles...</div>
+      ) : !selectedPlan ? (
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          {planes.map(plan => (
+            <Card key={plan.id} className="cursor-pointer hover:border-violett-500 transition-colors" onClick={() => setSelectedPlan(plan)}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl text-violett-900">{plan.nombre}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-end">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">{plan.clases_incluidas} clases / {plan.duracion_dias} días</p>
+                    <p className="text-2xl font-bold text-violett-700">${plan.precio}</p>
+                  </div>
+                  <Button variant="outline" size="sm">Seleccionar</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-violett-50 p-4 rounded-xl border border-violett-100 text-center">
+            <h3 className="text-lg font-bold text-violett-900 mb-2">Elegiste: {selectedPlan.nombre}</h3>
+            <p className="text-2xl font-black text-violett-700 mb-4">${selectedPlan.precio}</p>
+            
+            <div className="bg-white p-4 rounded-lg shadow-sm text-left mb-4">
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Datos para Transferencia</p>
+              <p className="font-medium">CVU / ALIAS:</p>
+              <p className="text-lg font-bold text-violett-900 select-all">violett.pilates.mp</p>
+              <p className="font-medium mt-2">Titular:</p>
+              <p className="text-gray-700">Violett Pilates</p>
+            </div>
+            
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>1. Realiza la transferencia desde tu homebanking o billetera virtual.</p>
+              <p>2. Guarda una captura de pantalla del comprobante.</p>
+              <p>3. Presiona el botón de abajo para enviarnos el comprobante por WhatsApp.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-4">
+            <Button variant="outline" className="flex-1" onClick={() => setSelectedPlan(null)}>Volver</Button>
+            <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsAppRedirect}>
+              Ya pagué (Enviar WhatsApp)
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
