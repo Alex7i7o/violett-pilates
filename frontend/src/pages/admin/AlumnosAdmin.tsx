@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { getAdminAlumnos, createAdminAlumno, updateAdminAlumno, asignarPlanAlumno } from '../../lib/adminApi';
 import type { UsuarioAdmin } from '../../lib/adminApi';
 import { api } from '../../lib/api';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { AlumnoForm, type AlumnoFormData } from '../../components/admin/AlumnoForm';
@@ -158,9 +159,13 @@ export function AlumnosAdmin() {
         </CardContent>
       </Card>
 
-      {loading ? (
-        <p className="text-muted py-4">Buscando...</p>
-      ) : (
+              {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {filteredAlumnos.map(alumno => (

@@ -2,6 +2,7 @@
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { api } from '../../lib/api';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -102,7 +103,8 @@ export function PlanesAdmin() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <div className="overflow-x-auto w-full max-w-[100vw]">
+              <table className="w-full text-left min-w-[800px]">
               <thead className="bg-violett-50/50">
                 <tr>
                   <th className="py-4 px-6 text-sm font-bold text-violett-900">Nombre</th>
@@ -133,6 +135,7 @@ export function PlanesAdmin() {
                 </AnimatePresence>
               </tbody>
             </table>
+            </div>
             {!loading && planes.length === 0 && (
               <div className="p-8 text-center text-muted">No hay planes registrados.</div>
             )}

@@ -2,6 +2,8 @@
 import { Modal } from './Modal'
 import { Button } from './Button'
 import { FeedbackButton } from './FeedbackButton'
+import { haptics } from '../../lib/haptics';
+
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -24,6 +26,27 @@ export function ConfirmModal({
   cancelText = 'Cancelar',
   isDestructive = false
 }: ConfirmModalProps) {
+  React.useEffect(() => {
+    if (isOpen) {
+      if (isDestructive) {
+        haptics.warning();
+      } else {
+        haptics.light();
+      }
+    }
+  }, [isOpen, isDestructive]);
+
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (isDestructive) {
+        haptics.warning();
+      } else {
+        haptics.light();
+      }
+    }
+  }, [isOpen, isDestructive]);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <p className="text-muted mb-6 whitespace-pre-wrap">{message}</p>

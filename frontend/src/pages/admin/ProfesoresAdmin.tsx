@@ -5,6 +5,7 @@ import { SelectField } from '../../components/ui/SelectField';
 import { toast } from "sonner";
 import { getAdminProfesores, createAdminProfesor, updateAdminProfesor, deleteAdminProfesor } from '../../lib/adminApi';
 import type { Profesor } from '../../lib/adminApi';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ProfesorForm, type ProfesorFormData } from '../../components/admin/ProfesorForm';
@@ -83,7 +84,8 @@ export function ProfesoresAdmin() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <div className="overflow-x-auto w-full max-w-[100vw]">
+              <table className="w-full text-left min-w-[800px]">
               <thead className="bg-violett-50/50">
                 <tr>
                   <th className="py-4 px-6 text-sm font-bold text-violett-900">Profesor</th>
@@ -129,6 +131,7 @@ export function ProfesoresAdmin() {
                 </AnimatePresence>
               </tbody>
             </table>
+            </div>
             {!loading && profesores.length === 0 && (
               <div className="p-8 text-center text-muted">No hay profesores registrados.</div>
             )}

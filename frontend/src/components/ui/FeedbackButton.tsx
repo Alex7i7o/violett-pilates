@@ -2,6 +2,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { Button, type ButtonProps } from './Button';
+import { haptics } from '../../lib/haptics';
+
 
 interface FeedbackButtonProps extends ButtonProps {
   successIcon?: React.ReactNode;
@@ -24,6 +26,14 @@ export function FeedbackButton({
 }: FeedbackButtonProps) {
   const [internalStatus, setInternalStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const status = externalStatus !== undefined ? externalStatus : internalStatus;
+
+  // Fire haptics on status change
+  React.useEffect(() => {
+    if (status === 'success') {
+      haptics.success();
+    }
+  }, [status]);
+
 
   const handleClick = async (e: React.MouseEvent) => {
     if (status !== 'idle') {
@@ -51,7 +61,7 @@ export function FeedbackButton({
   return (
     <motion.button
       layout
-      onClick={handleClick}
+      onClick={(e) => { haptics.light(); handleClick(e); }}
       className={cn(
         "relative flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium transition-[background-color,border-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violett-500 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97]",
         {

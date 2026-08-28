@@ -2,6 +2,7 @@
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { toast } from "sonner";
 import { api } from '../../lib/api';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
