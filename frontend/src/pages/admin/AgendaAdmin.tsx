@@ -244,7 +244,7 @@ export function AgendaAdmin() {
         onClose={() => setTurnoToDelete(null)}
         onConfirm={handleDeleteTurno}
         title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        message="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
         confirmText="Sí, Cancelar"
         cancelText="No, Volver"
         isDestructive={true}
@@ -277,7 +277,7 @@ export function AgendaAdmin() {
         onClose={() => setTurnoToDelete(null)}
         onConfirm={handleDeleteTurno}
         title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        message="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
         confirmText="Sí, Cancelar"
         cancelText="No, Volver"
         isDestructive={true}
@@ -292,7 +292,7 @@ export function AgendaAdmin() {
         onClose={() => setTurnoToDelete(null)}
         onConfirm={handleDeleteTurno}
         title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        message="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
         confirmText="Sí, Cancelar"
         cancelText="No, Volver"
         isDestructive={true}
@@ -365,7 +365,7 @@ export function AgendaAdmin() {
         onClose={() => setTurnoToDelete(null)}
         onConfirm={handleDeleteTurno}
         title="Cancelar Turno"
-        description="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
+        message="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
         confirmText="Sí, Cancelar"
         cancelText="No, Volver"
         isDestructive={true}

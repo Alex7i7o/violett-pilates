@@ -76,7 +76,7 @@ export function BookingGrid({
     return (
       <div className="space-y-4">
         {[1, 2, 3].map(i => (
-          <Skeleton key={i} className="h-32 w-full" />
+          <Selection key={i} className="h-32 w-full" />
         ))}
       </div>
     )

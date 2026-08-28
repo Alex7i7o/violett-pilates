@@ -93,7 +93,7 @@ export function AlumnosAdmin() {
       await updateAdminAlumno(selectedAlumno.id, editFormData);
       toast.success('Datos actualizados');
       setIsEditingSelected(false);
-      fetchData();
+      fetchAlumnos();
       setSelectedAlumno({ ...selectedAlumno, ...editFormData });
     } catch (e) {
       toast.error('Error al actualizar datos');
@@ -120,7 +120,7 @@ export function AlumnosAdmin() {
     try {
       await api.post('/admin/alumnos/', data);
       toast.success('Alumna creada exitosamente');
-      fetchData();
+      fetchAlumnos();
       setShowNewModal(false);
     } catch (e: any) {
       console.error(e);

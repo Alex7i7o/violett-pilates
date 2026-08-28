@@ -38,7 +38,7 @@ export function AlumnoForm({ initialData, planes, onSubmit, onCancel, isSubmitti
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(sanitizedData);
+    onSubmit(formData);
   };
 
   return (

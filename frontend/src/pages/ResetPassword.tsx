@@ -72,7 +72,7 @@ export function ResetPassword() {
               required 
             />
             <FeedbackButton 
-              status={status} 
+              status={status === 'error' ? 'idle' : status} 
               type="submit" 
               className="w-full py-4 text-base mt-2" 
               initialText="Guardar contraseña" 

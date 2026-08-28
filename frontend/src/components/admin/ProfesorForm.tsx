@@ -33,7 +33,7 @@ export function ProfesorForm({ initialData, onSubmit, onCancel, isSubmitting, su
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(sanitizedData);
+    onSubmit(formData);
   };
 
   return (

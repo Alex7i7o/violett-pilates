@@ -61,7 +61,7 @@ export function ForgotPassword() {
                   required 
                 />
                 <FeedbackButton 
-                  status={status} 
+                  status={status === 'error' ? 'idle' : status} 
                   type="submit" 
                   className="w-full py-4 text-base" 
                   initialText="Enviar enlace" 
