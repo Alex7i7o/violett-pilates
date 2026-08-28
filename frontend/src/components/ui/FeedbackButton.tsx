@@ -74,11 +74,7 @@ export function FeedbackButton({
         },
         className
       )}
-      animate={{
-        width: status === 'loading' ? (size === 'sm' ? 36 : 40) : undefined,
-        paddingLeft: status === 'loading' ? 0 : undefined,
-        paddingRight: status === 'loading' ? 0 : undefined,
-      }}
+      
       transition={{ type: "spring", bounce: 0, duration: 0.6 }}
       style={{ overflow: 'hidden' }}
       {...(props as any)}
