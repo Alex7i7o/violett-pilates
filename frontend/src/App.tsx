@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
+
+import { ForgotPassword } from './pages/ForgotPassword'
+import { ResetPassword } from './pages/ResetPassword'
+
 import { useClientProfile } from './hooks/useClientProfile'
 import { api } from './lib/api'
 
@@ -37,8 +41,15 @@ function AppRoutes() {
     return <div className="min-h-screen flex items-center justify-center text-violet-900 font-medium bg-background">Cargando...</div>
   }
 
-  if (error || !profile) {
-    return <Login onLoginSuccess={refetch} />
+if (error || !profile) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login onLoginSuccess={refetch} />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
   }
 
   // Rutas exclusivas para el Staff / Admin
