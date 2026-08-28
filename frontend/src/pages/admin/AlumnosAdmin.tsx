@@ -19,6 +19,8 @@ export function AlumnosAdmin() {
   const [minAge, setMinAge] = useState('');
   const [maxAge, setMaxAge] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('Todos');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sexoFilter, setSexoFilter] = useState('Todos');
   const [loading, setLoading] = useState(false);
   
   const [selectedAlumno, setSelectedAlumno] = useState<UsuarioAdmin | null>(null);
@@ -133,6 +135,7 @@ export function AlumnosAdmin() {
   const filteredAlumnos = alumnos.filter(a => {
     if (minAge && (a.edad === null || a.edad < parseInt(minAge))) return false;
     if (maxAge && (a.edad === null || a.edad > parseInt(maxAge))) return false;
+    if (sexoFilter !== 'Todos' && a.sexo !== sexoFilter) return false;
     if (estadoFilter !== 'Todos') {
       const estadoCalculado = a.plan_activo?.estado_calculado || 'Sin plan';
       if (estadoFilter !== estadoCalculado) return false;
@@ -147,17 +150,93 @@ export function AlumnosAdmin() {
         <Button onClick={() => setShowNewModal(true)}>+ Nueva Alumna</Button>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <input 
-            type="text"
-            placeholder="Buscar por nombre, apellido o teléfono..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full max-w-xl p-3 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 shadow-sm"
-          />
-        </CardContent>
-      </Card>
+              <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex gap-4 items-center">
+              <div className="relative flex-1 max-w-2xl">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                <input 
+                  type="text"
+                  placeholder="Buscar por nombre, apellido o teléfono..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-violett-200 focus:outline-none focus:ring-2 focus:ring-violett-500 shadow-sm"
+                />
+              </div>
+              <Button 
+                variant={showFilters ? 'primary' : 'outline'} 
+                onClick={() => setShowFilters(!showFilters)}
+                className="shrink-0 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                Filtros
+              </Button>
+            </div>
+            
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                  animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                  exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                  className="overflow-hidden border-t border-violett-100"
+                >
+                  <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Edad Mínima</label>
+                      <input 
+                        type="number" 
+                        value={minAge} 
+                        onChange={(e) => setMinAge(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-violett-200 focus:ring-2 focus:ring-violett-500 outline-none text-sm"
+                        placeholder="Ej: 18"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Edad Máxima</label>
+                      <input 
+                        type="number" 
+                        value={maxAge} 
+                        onChange={(e) => setMaxAge(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-violett-200 focus:ring-2 focus:ring-violett-500 outline-none text-sm"
+                        placeholder="Ej: 60"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Género</label>
+                      <select 
+                        value={sexoFilter}
+                        onChange={(e) => setSexoFilter(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-violett-200 focus:ring-2 focus:ring-violett-500 outline-none text-sm bg-white"
+                      >
+                        <option value="Todos">Todos</option>
+                        <option value="F">Femenino</option>
+                        <option value="M">Masculino</option>
+                        <option value="O">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Estado del Plan</label>
+                      <select 
+                        value={estadoFilter}
+                        onChange={(e) => setEstadoFilter(e.target.value)}
+                        className="w-full p-2 rounded-lg border border-violett-200 focus:ring-2 focus:ring-violett-500 outline-none text-sm bg-white"
+                      >
+                        <option value="Todos">Todos</option>
+                        <option value="Activo">Activo</option>
+                        <option value="Por vencer">Por vencer</option>
+                        <option value="Vencido">Vencido</option>
+                        <option value="Sin plan">Sin plan</option>
+                      </select>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
 
               {loading ? (
           <div className="space-y-4">
