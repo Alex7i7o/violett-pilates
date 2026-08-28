@@ -23,6 +23,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const [sexo, setSexo] = useState('')
 
   const [error, setError] = useState('')
+  const navigate = useNavigate();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle')
 
   const toggleAdminMode = () => {
@@ -197,6 +198,11 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 required
               />
             </div>
+            {!isAdminMode && !isRegisterMode && (
+              <div className="flex justify-end mt-2">
+                <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-violett-600 hover:text-violett-800 transition-colors font-medium">¿Olvidaste tu contraseña?</button>
+              </div>
+            )}
             {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
             <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className={`w-full py-6 text-base ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} initialText="Ingresar" successText="¡Bienvenido!" /></div>
           </form>
