@@ -1,0 +1,23 @@
+﻿{
+  "client_id": "violett_estetica",
+  "business_name": "Violett Estética",
+  "domain": "estetica.violett.com.ar",
+  "theme": {
+    "primary_main": "#EC4899",
+    "primary_hover": "#BE185D",
+    "primary_light": "#FCE7F3",
+    "text_foreground": "#4C1D95",
+    "border_radius": "1rem"
+  },
+  "features": {
+    "online_payments": true,
+    "class_packs": false,
+    "client_registration": true,
+    "whatsapp_reminders": true
+  },
+  "copywriting": {
+    "hero_title": "Realza tu belleza natural",
+    "hero_subtitle": "Reserva tu turno de estética online",
+    "cta_login": "Ingresar al Portal"
+  }
+}

@@ -1,18 +1,80 @@
 ﻿version: '3.8'
 
 services:
-  db:
+  # === APP 1: VIOLETT PILATES ===
+  backend_pilates:
+    build:
+      context: ../engine-booking-core
+      dockerfile: docker/Dockerfile.backend
+    env_file: .env
+    volumes:
+      - ./config_pilates/client-config.json:/app/config/client-config.json
+    depends_on:
+      - db_pilates
+    restart: always
+
+  frontend_pilates:
+    build:
+      context: ../engine-booking-core
+      dockerfile: docker/Dockerfile.frontend
+    volumes:
+      - ./config_pilates/client-config.json:/usr/share/nginx/html/client-config.json
+    restart: always
+
+  db_pilates:
     image: postgres:15
-    container_name: violett_postgres
     environment:
-      POSTGRES_DB: violett_db
+      POSTGRES_DB: violett_pilates
       POSTGRES_USER: violett_user
       POSTGRES_PASSWORD: violett_password
-    ports:
-      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - pgdata_pilates:/var/lib/postgresql/data
+    restart: always
+
+  # === APP 2: VIOLETT ESTETICA ===
+  backend_estetica:
+    build:
+      context: ../engine-booking-core
+      dockerfile: docker/Dockerfile.backend
+    env_file: .env
+    volumes:
+      - ./config_estetica/client-config.json:/app/config/client-config.json
+    depends_on:
+      - db_estetica
+    restart: always
+
+  frontend_estetica:
+    build:
+      context: ../engine-booking-core
+      dockerfile: docker/Dockerfile.frontend
+    volumes:
+      - ./config_estetica/client-config.json:/usr/share/nginx/html/client-config.json
+    restart: always
+
+  db_estetica:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: violett_estetica
+      POSTGRES_USER: violett_user
+      POSTGRES_PASSWORD: violett_password
+    volumes:
+      - pgdata_estetica:/var/lib/postgresql/data
+    restart: always
+
+  # === PROXY (Maneja el dominio y divide el trafico) ===
+  nginx_proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend_pilates
+      - backend_pilates
+      - frontend_estetica
+      - backend_estetica
+    restart: always
 
 volumes:
-  postgres_data:
+  pgdata_pilates:
+  pgdata_estetica:

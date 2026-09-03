@@ -1,0 +1,14 @@
+﻿version: '3.8'
+
+services:
+  # Servidor web super rápido (Nginx)
+  web-server:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      # Inyectamos nuestra configuración
+      - ./nginx.landing.conf:/etc/nginx/conf.d/default.conf:ro
+      # Montamos la carpeta "dist" que genera Vite (nuestra web compilada)
+      - ../landings/dist:/var/www/landings:ro
+    restart: always
