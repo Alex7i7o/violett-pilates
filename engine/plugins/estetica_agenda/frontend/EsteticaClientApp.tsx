@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 export const EsteticaClientApp = () => {
   const { profile } = useClientProfile();
   const location = useLocation();
+  const { deferredPrompt, isIOS, isStandalone, promptInstall } = useInstallPrompt();
 
   const handleLogout = async () => {
     try {
