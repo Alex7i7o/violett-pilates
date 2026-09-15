@@ -1,0 +1,57 @@
+{
+  "client_id": "violett_pilates",
+  "business_name": "Violett Pilates",
+  "domain": "pilates.violett.com.ar",
+  "theme": {
+    "primary_main": "#34236F",
+    "primary_hover": "#2A1C5A",
+    "primary_light": "#F4EBF1",
+    "text_foreground": "#2B1A53",
+    "border_radius": "1rem"
+  },
+  "features": {
+    "online_payments": true,
+    "class_packs": false,
+    "client_registration": true,
+    "whatsapp_reminders": false
+  },
+  "copywriting": {
+    "hero_title": "Bienvenida a Violett Pilates",
+    "hero_subtitle": "Reserva tus clases y gestiona tus planes",
+    "cta_login": "Ingresar al Portal"
+  },
+  "active_plugins": [
+    "profesores",
+    "membresias",
+    "pagos",
+    "comunicaciones",
+    "automatizaciones",
+    "resenas",
+    "fichas_medicas",
+    "recurrencias"
+  ],
+  "plugin_config": {
+    "automatizaciones": {
+      "cancel_empty_classes": {
+        "enabled": true,
+        "min_students": 2,
+        "hours_before_class": 24
+      },
+      "generate_templates": {
+        "enabled": true
+      }
+    },
+    "comunicaciones": {
+      "whatsapp_enabled": true,
+      "email_enabled": true
+    },
+    "core": {
+      "cupo_maximo_defecto": 10,
+      "cupo_minimo_defecto": 1,
+      "horas_limite_cancelacion": 12,
+      "horas_evaluacion_automatica": 25,
+      "dias_vencimiento_plan": 30,
+      "dias_alerta_vencimiento": 5
+    }
+  }
+}

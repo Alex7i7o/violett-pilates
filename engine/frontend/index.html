@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon-pilates.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" href="/favicon-pilates-dark.png" media="(prefers-color-scheme: dark)" />
+    
+    <link rel="manifest" href="/manifest.json" />
+
+    <script>
+      (function() {
+        var isEstetica = window.location.pathname.includes('/estetica');
+        
+        // Dynamically load the correct manifest so we can have 2 PWAs on the same phone
+        var manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+          // Keep the base path injected by Vite, just replace the filename
+          var currentHref = manifestLink.getAttribute('href') || '';
+          var basePath = currentHref.substring(0, currentHref.lastIndexOf('/') + 1);
+          manifestLink.setAttribute('href', basePath + (isEstetica ? 'manifest_estetica.json' : 'manifest_pilates.json'));
+        }
+
+        // Update Apple PWA meta tags
+        var titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (titleMeta && isEstetica) {
+          titleMeta.setAttribute('content', 'V Estética');
+        }
+      })();
+    </script>
+
+    <meta name="theme-color" content="#34236F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Violett" />
+    <link rel="apple-touch-icon" href="/logo-icon.png" />
+    <!-- Prevent scaling on input focus -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
+
+    <title>Violett Pilates</title>
+  
+    <script>
+      window.addEventListener('error', function(e) {
+        document.body.innerHTML += '<div style="color:red; background:#fee; padding:20px; font-family:sans-serif; position:fixed; top:0; left:0; right:0; z-index:9999; overflow-wrap: break-word;">' + e.message + '<br><small>' + e.filename + ':' + e.lineno + '</small></div>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        document.body.innerHTML += '<div style="color:red; background:#fee; padding:20px; font-family:sans-serif; position:fixed; top:0; left:0; right:0; z-index:9999; overflow-wrap: break-word;">Unhandled Promise: ' + (e.reason && e.reason.message || e.reason) + '</div>';
+      });
+    </script>
+</head>
+  <body>
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // Use Vite's magic BASE_URL replacement
+          navigator.serviceWorker.register('%VITE_BASE_URL%sw.js').catch(err => console.log('SW config error', err));
+        });
+      }
+    </script>
+
+  </body>
+</html>

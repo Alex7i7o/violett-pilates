@@ -1,0 +1,7 @@
+{
+  "name": "engine-booking-core",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ]
+}

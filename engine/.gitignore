@@ -1,0 +1,9 @@
+backend/venv/
+backend/db.sqlite3
+**/__pycache__/
+**/node_modules/
+.env
+**/playwright-report/
+**/test-results/
+.DS_Store
+
