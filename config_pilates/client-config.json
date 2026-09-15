@@ -1,4 +1,4 @@
-﻿{
+{
   "client_id": "violett_pilates",
   "business_name": "Violett Pilates",
   "domain": "pilates.violett.com.ar",
@@ -13,11 +13,20 @@
     "online_payments": true,
     "class_packs": false,
     "client_registration": true,
-    "whatsapp_reminders": false
+    "whatsapp_reminders": false,
+    "google_login": true
   },
   "copywriting": {
     "hero_title": "Bienvenida a Violett Pilates",
     "hero_subtitle": "Reserva tus clases y gestiona tus planes",
     "cta_login": "Ingresar al Portal"
-  }
+  },
+  "active_plugins": [
+    "profesores",
+    "membresias",
+    "recurrencias",
+    "resenas",
+    "pagos",
+    "webpush"
+  ]
 }

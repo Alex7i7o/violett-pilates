@@ -1,24 +1,29 @@
-﻿version: '3.8'
-
 services:
   # === APP 1: VIOLETT PILATES ===
   backend_pilates:
     build:
-      context: ../engine-booking-core
-      dockerfile: docker/Dockerfile.backend
+      context: ./engine
+      dockerfile: Dockerfile.backend
     env_file: .env
+    environment:
+      - DATABASE_URL=postgres://violett_user:violett_password@db_pilates:5432/violett_pilates
     volumes:
       - ./config_pilates/client-config.json:/app/config/client-config.json
+      - ./media:/app/media
     depends_on:
       - db_pilates
     restart: always
 
   frontend_pilates:
     build:
-      context: ../engine-booking-core
-      dockerfile: docker/Dockerfile.frontend
+      context: ./engine
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_BASE_URL: /pilates/app/
     volumes:
       - ./config_pilates/client-config.json:/usr/share/nginx/html/client-config.json
+    links:
+      - backend_pilates:backend
     restart: always
 
   db_pilates:
@@ -34,21 +39,28 @@ services:
   # === APP 2: VIOLETT ESTETICA ===
   backend_estetica:
     build:
-      context: ../engine-booking-core
-      dockerfile: docker/Dockerfile.backend
+      context: ./engine
+      dockerfile: Dockerfile.backend
     env_file: .env
+    environment:
+      - DATABASE_URL=postgres://violett_user:violett_password@db_estetica:5432/violett_estetica
     volumes:
       - ./config_estetica/client-config.json:/app/config/client-config.json
+      - ./media:/app/media
     depends_on:
       - db_estetica
     restart: always
 
   frontend_estetica:
     build:
-      context: ../engine-booking-core
-      dockerfile: docker/Dockerfile.frontend
+      context: ./engine
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_BASE_URL: /estetica/app/
     volumes:
       - ./config_estetica/client-config.json:/usr/share/nginx/html/client-config.json
+    links:
+      - backend_estetica:backend
     restart: always
 
   db_estetica:
@@ -68,6 +80,8 @@ services:
       - "80:80"
     volumes:
       - ./proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./landings/dist:/usr/share/nginx/html/landings:ro
+      - ./media:/usr/share/nginx/html/media:ro
     depends_on:
       - frontend_pilates
       - backend_pilates
