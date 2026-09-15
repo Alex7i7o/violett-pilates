@@ -2,7 +2,7 @@ import { toast } from 'sonner';
 import { useClientConfig } from '../context/ClientConfigContext';
 import { Eye, EyeOff } from 'lucide-react';
 /* Developed by FireSeed - Fueling Innovation */
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
