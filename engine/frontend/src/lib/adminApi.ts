@@ -75,6 +75,7 @@ export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE' | 'CON
 
 export const getAdminAlumnos = (search: string = '') => api.get<UsuarioAdmin[]>(`/admin/alumnos/?q=${search}`);
 export const createAdminAlumno = (data: any) => api.post('/admin/alumnos/', data);
+export const deleteAdminAlumno = (id: string) => api.delete(`/admin/alumnos/${id}/`);
 export const getAdminAlumnoDetalle = (id: string) => api.get<UsuarioAdmin>(`/admin/alumnos/${id}/`);
 export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/admin/alumnos/${id}/asignar-plan/`, { plan_id });
 

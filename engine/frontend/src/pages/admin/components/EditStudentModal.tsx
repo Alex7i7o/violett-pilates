@@ -3,6 +3,7 @@ import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { Button } from '../../../components/ui/Button';
 import { api } from '../../../lib/api';
+import { deleteAdminAlumno } from '../../../lib/adminApi';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Plus, Minus } from 'lucide-react';
@@ -26,6 +27,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
   const alumno = rawAlumno || prevAlumnoRef.current;
 
   const [loading, setLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Perfil State
   const [nombre, setNombre] = useState('');
@@ -107,6 +109,21 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       setRecurrencias(res.data);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteAlumno = async () => {
+    try {
+      setLoading(true);
+      await deleteAdminAlumno(alumno.id);
+      toast.success(isEstetica ? "Paciente eliminado" : "Alumna eliminada");
+      setShowDeleteConfirm(false);
+      onClose();
+      onUpdate();
+    } catch(e) {
+      toast.error("Error al eliminar");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -233,7 +250,12 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                 <label className="block text-sm font-medium mb-1">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value.toLowerCase())} className="w-full p-2 border rounded-lg" />
               </div>
-              <Button onClick={handleUpdatePerfil} disabled={loading} className="w-full">Guardar Perfil</Button>
+              <div className="flex gap-2">
+                <Button onClick={handleUpdatePerfil} disabled={loading} className="flex-1">Guardar Perfil</Button>
+                <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 px-3 transition-colors" title={isEstetica ? "Eliminar Paciente" : "Eliminar Alumno"}>
+                  <Trash2 size={20} />
+                </Button>
+              </div>
           </div>
         )}
 
@@ -361,6 +383,17 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
         title="Eliminar Horario Fijo"
         message="¿Seguro que deseas eliminar este horario fijo para el alumno? Esto cancelará todas sus reservas futuras asociadas a este horario."
         confirmText="Sí, eliminar"
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteAlumno}
+        title={isEstetica ? "Eliminar Paciente" : "Eliminar Alumna"}
+        message={isEstetica ? "¿Estás segura de que deseas eliminar este paciente? Esta acción no se puede deshacer y borrará sus billeteras y turnos." : "¿Estás segura de que deseas eliminar esta alumna? Esta acción no se puede deshacer y borrará su plan y turnos."}
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        isDestructive={true}
       />
     </Modal>
   );
