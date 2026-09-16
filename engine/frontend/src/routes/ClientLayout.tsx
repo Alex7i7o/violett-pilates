@@ -3,10 +3,13 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InstallAppModal } from '../components/ui/InstallAppModal';
+import { useClientConfig } from '../context/ClientConfigContext';
 
 export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const config = useClientConfig();
+  const isEstetica = config.client_id === 'violett_estetica';
 
   const tabs = [
     { path: '/', label: 'Inicio', icon: Home },
@@ -20,10 +23,10 @@ export function ClientLayout() {
       <header className="hidden md:flex bg-white/60 backdrop-blur-[20px] saturate-[180%] border-b border-primary-light/40 shadow-sm sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <img src={isEstética ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-12 object-contain drop-shadow-sm" />
+            <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-12 object-contain drop-shadow-sm" />
             <div className="flex flex-col justify-center">
-               <span className="font-bold text-lg text-primary-main tracking-tight leading-tight">{isEstética ? 'Panel de Pacientes' : 'Panel de Alumnas'}</span>
-               <span className="text-xs font-semibold text-violett-400 uppercase tracking-widest leading-none">Violett Pilates</span>
+               <span className="font-bold text-lg text-primary-main tracking-tight leading-tight">{isEstetica ? 'Panel de Pacientes' : 'Panel de Alumnas'}</span>
+               <span className="text-xs font-semibold text-violett-400 uppercase tracking-widest leading-none">{isEstetica ? 'Violett Estética' : 'Violett Pilates'}</span>
             </div>
           </div>
           <nav className="flex gap-1 bg-muted/10 p-1 rounded-xl">
