@@ -55,3 +55,24 @@ El error del auto-cǭlculo de la hora fin (por falta de seleccionar clase) exist
 - Las migraciones en las bases de datos locales (`db.sqlite3` separados).
 
 > **Nota para el futuro**: Cada vez que reparemos un bug importante de la lgica base, se anotarǭ aqu y (si corresponde) se migrarǭ al engine original para que no vuelva a heredarse roto a clientes nuevos.
+
+### 15 de Septiembre 2026 - Fixes de Despliegue y Autenticación en Producción
+
+**Error:** Nginx en los contenedores frontend no arrancaba, quedando en ciclo de reinicio continuo, devolviendo error 502 Bad Gateway en Cloudflare.
+**Causa:** El archivo 
+ginx.conf del frontend fue guardado desde Windows con codificación UTF-8 con BOM (Byte Order Mark). Nginx en Linux (Alpine) no soporta el caracter invisible U+FEFF al inicio del archivo y crasheaba con error de sintaxis en la línea 1.
+**Solución:** Se eliminó el BOM guardando el archivo estrictamente como UTF-8 sin marca de orden de bytes.
+
+**Error:** Los frontends se mezclaron tras el despliegue; al ingresar a /pilates/app/login el navegador descargaba el HTML de la estética, intentaba pedir archivos JavaScript de /estetica/app/assets/ y terminaba en pantalla blanca (Error 404).
+**Causa:** Al estar construidos sobre el mismo Dockerfile y context, y no tener nombres de imagen asignados explícitamente en docker-compose.yml, Docker BuildKit reutilizó capas de caché de manera cruzada.
+**Solución:** Se asignaron identificadores image: explícitos en el docker-compose.yml (iolettpilates-frontend-pilates y iolettpilates-frontend-estetica) y se agregó la bandera --no-cache en el script subir_a_prod.sh para forzar la independencia absoluta de ambos builds.
+
+**Error:** Error 500 (Internal Server Error) al intentar registrar un nuevo usuario desde el frontend. La UI mostraba un listado de índices numéricos y caracteres (ej: 70: t | 71: i).
+**Causa:** 
+1. La UI mostraba símbolos raros porque el backend respondía con la página HTML por defecto de Django Server Error (500) en vez de JSON, y el frontend la procesaba iterando los caracteres (string) al intentar mapear los errores.
+2. El error 500 subyacente ocurría porque librerías internas de autenticación (dj-rest-auth y llauth) ejecutaban código de validación asumiendo campos o variables de estado que entraban en conflicto con la ausencia total del campo username en nuestra base de datos. Además, el serializador intentaba guardar campos inexistentes (echa_nacimiento, contacto_emergencia) al vuelo.
+**Solución:** 
+1. Se limpió CustomRegisterSerializer para que solo parsee los campos que realmente existen en el modelo Usuario.
+2. Se implementó un CustomAccountAdapter propio para interceptar la lógica de llauth y evitar crasheos por la ausencia del username.
+3. Se envolvió el método save() del registro en un 	ry/except que atrapa cualquier excepción crítica y la devuelve forzadamente como un error 400 (Bad Request) en formato JSON, para que el frontend nunca vuelva a romperse imprimiendo un HTML letra por letra.
+
