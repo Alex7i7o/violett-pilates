@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+﻿import { toast } from 'sonner';
 import { useClientConfig } from '../context/ClientConfigContext';
 import { Eye, EyeOff } from 'lucide-react';
 /* Developed by FireSeed - Fueling Innovation */
@@ -11,7 +11,7 @@ import { api } from '../lib/api'
 
 export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const config = useClientConfig();
-  const isEstética = config.client_id === 'violett_estetica';
+  const isEstÃ©tica = config.client_id === 'violett_estetica';
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [isRegisterMode, setIsRegisterMode] = useState(false)
   
@@ -78,9 +78,9 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     } catch (err: any) {
       setStatus('idle')
       if (err.response?.data?.non_field_errors) {
-        let msg = err.response.data.non_field_errors[0]; if (msg === "Unable to log in with provided credentials.") { msg = "El correo o la contraseña son incorrectos."; } setError(msg);
+        let msg = err.response.data.non_field_errors[0]; if (msg === "Unable to log in with provided credentials.") { msg = "El correo o la contraseÃ±a son incorrectos."; } setError(msg);
       } else {
-        setError('Error de conexión o credenciales inválidas.')
+        setError('Error de conexiÃ³n o credenciales invÃ¡lidas.')
       }
     }
   }
@@ -92,7 +92,8 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
     try {
       const registerData = {
-        email,
+        username: email,
+          email,
                 password1: password,
         password2: password,
         password,
@@ -114,7 +115,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               if (err.response?.data) {
         const errors = err.response.data
         if (errors.email) {
-          setError('El correo ingresado ya está registrado o es inválido.');
+          setError('El correo ingresado ya estÃ¡ registrado o es invÃ¡lido.');
         } else {
           const errorMessages = Object.entries(errors).map(([key, val]) => `${key}: ${val}`).join(' | ')
           setError(errorMessages)
@@ -130,7 +131,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
       <div className="min-h-screen flex items-center justify-center p-4 py-12">
         <Card className="w-full max-w-md shadow-glass max-h-[95dvh] overflow-y-auto hide-scrollbar">
           <CardHeader className="text-center pb-2">
-            <img src={isEstética ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
+            <img src={isEstÃ©tica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
             <CardTitle className="text-2xl text-primary-main">Crear mi cuenta</CardTitle>
           </CardHeader>
           <CardContent>
@@ -156,16 +157,16 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Contraseña</label>
+                <label className="text-sm font-semibold text-foreground">ContraseÃ±a</label>
                 <div className="relative mt-1">
-                  <input type={showPassword ? "text" : "password"} required value={password} onChange={e=>setPassword(e.target.value)} minLength={8} placeholder="Mínimo 8 caracteres" />
+                  <input type={showPassword ? "text" : "password"} required value={password} onChange={e=>setPassword(e.target.value)} minLength={8} placeholder="MÃ­nimo 8 caracteres" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Teléfono (WhatsApp)</label>
+                <label className="text-sm font-semibold text-foreground">TelÃ©fono (WhatsApp)</label>
                 <input type="text" required maxLength={30} value={telefono} onChange={e=>setTelefono(e.target.value)} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -186,15 +187,15 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
               <div>
                 <label className="text-sm font-semibold text-foreground">Contacto de Emergencia</label>
-                <input type="text" maxLength={50} value={contacto} onChange={e=>setContacto(e.target.value)} placeholder="Ej: Mamá (1145...)" className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                <input type="text" maxLength={50} value={contacto} onChange={e=>setContacto(e.target.value)} placeholder="Ej: MamÃ¡ (1145...)" className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Notas Médicas o Lesiones</label>
+                <label className="text-sm font-semibold text-foreground">Notas MÃ©dicas o Lesiones</label>
                 <textarea maxLength={300} value={notas} onChange={e=>setNotas(e.target.value)} rows={2} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main"></textarea>
               </div>
 
               {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-              <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className="w-full py-6 text-base" initialText="Comenzar en Violett Pilates" successText="¡Bienvenido!" /></div>
+              <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className="w-full py-6 text-base" initialText="Comenzar en Violett Pilates" successText="Â¡Bienvenido!" /></div>
           </form>
 
           
@@ -232,8 +233,8 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
         {showInstallBanner && (
           <div className="fixed top-0 left-0 right-0 bg-primary-main text-white p-4 shadow-lg z-50 flex items-center justify-between">
             <div>
-              <p className="font-bold text-sm">¡Instalá la App!</p>
-              <p className="text-xs opacity-90">{isIOS ? "Tocá compartir y luego 'Agregar a Inicio'" : "Para una experiencia más rápida."}</p>
+              <p className="font-bold text-sm">Â¡InstalÃ¡ la App!</p>
+              <p className="text-xs opacity-90">{isIOS ? "TocÃ¡ compartir y luego 'Agregar a Inicio'" : "Para una experiencia mÃ¡s rÃ¡pida."}</p>
             </div>
             {!isIOS && (
               <button onClick={promptInstall} className="bg-white text-primary-main px-4 py-2 rounded-lg text-sm font-bold shadow-sm">
@@ -241,13 +242,13 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               </button>
             )}
             <button onClick={() => setShowInstallBanner(false)} className="ml-3 text-white/70 hover:text-white">
-               ✕
+               âœ•
             </button>
           </div>
         )}
         <Card className="w-full max-w-md shadow-glass">
         <CardHeader className="text-center pb-2">
-          <img src={isEstética ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
+          <img src={isEstÃ©tica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
           <CardTitle className="text-2xl text-primary-main">{config?.copywriting?.hero_title || 'Bienvenido'}</CardTitle>
           <p className="text-muted text-sm">{config?.copywriting?.hero_subtitle}</p>
         </CardHeader>
@@ -255,12 +256,12 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-sm font-semibold text-foreground">
-                {isAdminMode ? 'Email corporativo' : (isEstética ? 'Email' : 'Email de alumna')}
+                {isAdminMode ? 'Email corporativo' : (isEstÃ©tica ? 'Email' : 'Email de alumna')}
               </label>
               <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
             </div>
             <div>
-              <label className="text-sm font-semibold text-foreground">Contraseña</label>
+              <label className="text-sm font-semibold text-foreground">ContraseÃ±a</label>
               <div className="relative mt-1">
                 <input type={showPassword ? "text" : "password"} required value={password} onChange={e=>setPassword(e.target.value)} minLength={8} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
@@ -271,7 +272,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
             {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
             <div className="flex justify-center w-full">
-              <FeedbackButton status={status} type="submit" className={`w-full py-6 text-base ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} initialText="Ingresar" successText="¡Bienvenido!" />
+              <FeedbackButton status={status} type="submit" className={`w-full py-6 text-base ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} initialText="Ingresar" successText="Â¡Bienvenido!" />
             </div>
           </form>
 
@@ -293,3 +294,4 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     </div>
   )
 }
+
