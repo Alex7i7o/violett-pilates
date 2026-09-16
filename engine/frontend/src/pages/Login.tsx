@@ -11,7 +11,7 @@ import { api } from '../lib/api'
 
 export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const config = useClientConfig();
-  const isEstÃ©tica = config.client_id === 'violett_estetica';
+  const isEstética = config.client_id === 'violett_estetica';
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [isRegisterMode, setIsRegisterMode] = useState(false)
   
@@ -131,7 +131,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
       <div className="min-h-screen flex items-center justify-center p-4 py-12">
         <Card className="w-full max-w-md shadow-glass max-h-[95dvh] overflow-y-auto hide-scrollbar">
           <CardHeader className="text-center pb-2">
-            <img src={isEstÃ©tica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
+            <img src={isEstética ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
             <CardTitle className="text-2xl text-primary-main">Crear mi cuenta</CardTitle>
           </CardHeader>
           <CardContent>
@@ -248,7 +248,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
         )}
         <Card className="w-full max-w-md shadow-glass">
         <CardHeader className="text-center pb-2">
-          <img src={isEstÃ©tica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
+          <img src={isEstética ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
           <CardTitle className="text-2xl text-primary-main">{config?.copywriting?.hero_title || 'Bienvenido'}</CardTitle>
           <p className="text-muted text-sm">{config?.copywriting?.hero_subtitle}</p>
         </CardHeader>
@@ -256,7 +256,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-sm font-semibold text-foreground">
-                {isAdminMode ? 'Email corporativo' : (isEstÃ©tica ? 'Email' : 'Email de alumna')}
+                {isAdminMode ? 'Email corporativo' : (isEstética ? 'Email' : 'Email de alumna')}
               </label>
               <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
             </div>
@@ -294,4 +294,5 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     </div>
   )
 }
+
 
