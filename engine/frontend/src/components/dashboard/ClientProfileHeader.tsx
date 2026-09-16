@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Badge } from '../ui/Badge';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -41,10 +41,10 @@ export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Hola, {profile.name}</h1>
-          <p className="text-muted mt-1">Bienvenida de nuevo al {isEstÃ©tica ? 'Panel de Pacientes' : 'Panel de Alumnas'}.</p>
+          <p className="text-muted mt-1">Bienvenida de nuevo al {isEstetica ? 'Panel de Pacientes' : 'Panel de Alumnas'}.</p>
         </div>
         <Badge variant={profile.daysUntilExpiration < 7 ? "destructive" : "secondary"} className="text-sm px-4 py-1">
-          Vence en {profile.daysUntilExpiration} dÃ­as
+          Vence en {profile.daysUntilExpiration} dí­as
         </Badge>
       </div>
 
@@ -60,7 +60,7 @@ export function ClientProfileHeader({ profile }: ClientProfileHeaderProps) {
                 Plan agotado. Renovar el {formatExpirationDate(profile.expirationDate)}
               </p>
             ) : (
-              <p className="text-primary-light mt-2 text-sm">VÃ¡lido hasta el {formatExpirationDate(profile.expirationDate)}</p>
+              <p className="text-primary-light mt-2 text-sm">Válido hasta el {formatExpirationDate(profile.expirationDate)}</p>
             )}
             
             <Button 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { useClientConfig } from '../../context/ClientConfigContext';
 import { getAdminAlumnos, createAdminAlumno, updateAdminAlumno, asignarPlanAlumno } from '../../lib/adminApi';
@@ -18,10 +18,10 @@ import { EditStudentModal } from './components/EditStudentModal';
 
 export function AlumnosAdmin() {
   const config = useClientConfig();
-  const isEstÃ©tica = config.client_id === 'violett_estetica';
-  const labelPlural = isEstÃ©tica ? 'pacientes' : 'alumnas';
-  const labelSingular = isEstÃ©tica ? 'paciente' : 'alumna';
-  const LabelPluralTitle = isEstÃ©tica ? 'Pacientes' : 'Alumnas';
+  const isEstetica = config.client_id === 'violett_estetica';
+  const labelPlural = isEstetica ? 'pacientes' : 'alumnas';
+  const labelSingular = isEstetica ? 'paciente' : 'alumna';
+  const LabelPluralTitle = isEstetica ? 'Pacientes' : 'Alumnas';
   const [alumnos, setAlumnos] = useState<UsuarioAdmin[]>([]);
   const [search, setSearch] = useState('');
   const [minAge, setMinAge] = useState('');
@@ -66,7 +66,7 @@ export function AlumnosAdmin() {
   const handleDeleteAlumno = async (id: string) => {
     try {
       await api.delete(`/admin/alumnos/${id}/`);
-      toast.success(` eliminada eÃ©Ã©xitosamente`);
+      toast.success(` eliminada eééxitosamente`);
       setAlumnos(alumnos.filter(a => a.id !== id));
       if (selectedAlumno?.id === id) setSelectedAlumno(null);
     } catch (error) {
@@ -78,7 +78,7 @@ export function AlumnosAdmin() {
     setCreating(true);
     try {
       await api.post('/admin/alumnos/', data);
-      toast.success(` creada eÃ©Ã©xitosamente`);
+      toast.success(` creada eééxitosamente`);
       fetchAlumnos();
       setShowNewModal(false);
     } catch (e: any) {
@@ -129,7 +129,7 @@ export function AlumnosAdmin() {
                   </div>
                   <input 
                     type="text"
-                    placeholder="Buscar por nombre, apellido o telÃ©fono..."
+                    placeholder="Buscar por nombre, apellido o teléfono..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main shadow-sm"
@@ -156,8 +156,8 @@ export function AlumnosAdmin() {
                     <div className="pt-4 mt-4 border-t border-primary-light grid grid-cols-2 md:grid-cols-4 gap-4">
                       <SelectField label="Estado" name="estado" value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)} options={[{value:'Todos',label:'Todos'},{value:'Activo',label:'Activo'},{value:'Pendiente',label:'Pendiente'},{value:'Sin plan',label:'Sin plan'}]} />
                       <SelectField label="Sexo" name="sexo" value={sexoFilter} onChange={e => setSexoFilter(e.target.value)} options={[{value:'Todos',label:'Todos'},{value:'Femenino',label:'Femenino'},{value:'Masculino',label:'Masculino'},{value:'Otro',label:'Otro'}]} />
-                      <InputField label="Edad MÃ­nima" name="minAge" type="number" value={minAge} onChange={e => setMinAge(e.target.value)} />
-                      <InputField label="Edad MÃ¡xima" name="maxAge" type="number" value={maxAge} onChange={e => setMaxAge(e.target.value)} />
+                      <InputField label="Edad Mí­nima" name="minAge" type="number" value={minAge} onChange={e => setMinAge(e.target.value)} />
+                      <InputField label="Edad Máxima" name="maxAge" type="number" value={maxAge} onChange={e => setMaxAge(e.target.value)} />
                     </div>
                   </motion.div>
                 )}
@@ -183,8 +183,8 @@ export function AlumnosAdmin() {
                       <h3 className="text-xl font-bold text-foreground">{alumno.nombre || 'Sin Nombre'} {alumno.apellido || ''}</h3>
                       <p className="text-sm text-muted mt-1">
                         Email: {alumno.email || 'Sin email'}<br />
-                        TelÃ©fono: {alumno.telefono || 'Sin telÃ©fono'}<br />
-                        Edad: {(alumno.edad !== null && alumno.edad !== undefined) ? `${alumno.edad} aÃ±os` : '-'}
+                        Teléfono: {alumno.telefono || 'Sin teléfono'}<br />
+                        Edad: {(alumno.edad !== null && alumno.edad !== undefined) ? `${alumno.edad} años` : '-'}
                       </p>
                       
                       <div className="mt-5">
@@ -206,7 +206,7 @@ export function AlumnosAdmin() {
                             return (
                               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                                 <p className="text-sm font-bold text-amber-800">{plan.plan_nombre}</p>
-                                <p className="text-sm text-amber-700 mt-1">Pendiente de renovaciÃ³n (0 clases)</p>
+                                <p className="text-sm text-amber-700 mt-1">Pendiente de renovacií³n (0 clases)</p>
                                 <p className="text-xs text-amber-600 mt-1">Vence: {plan.fecha_vencimiento}</p>
                               </div>
                             );
@@ -261,7 +261,7 @@ export function AlumnosAdmin() {
         onClose={() => setAlumnoToDelete(null)}
         onConfirm={() => { if (alumnoToDelete) handleDeleteAlumno(alumnoToDelete); }}
         title={`Eliminar ${labelSingular}`}
-        message={`Â¿Seguro que deseas eliminar a est@ ${labelSingular}? Esta acciÃ³n no se puede deshacer.`}
+        message={`Â¿Seguro que deseas eliminar a est@ ${labelSingular}? Esta accií³n no se puede deshacer.`}
         confirmText="Eliminar"
         isDestructive={true}
       />
