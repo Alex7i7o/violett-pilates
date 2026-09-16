@@ -1,6 +1,7 @@
-services:
+﻿services:
   # === APP 1: VIOLETT PILATES ===
   backend_pilates:
+    image: violettpilates-backend-pilates
     build:
       context: ./engine
       dockerfile: Dockerfile.backend
@@ -15,6 +16,7 @@ services:
     restart: always
 
   frontend_pilates:
+    image: violettpilates-frontend-pilates
     build:
       context: ./engine
       dockerfile: Dockerfile.frontend
@@ -38,6 +40,7 @@ services:
 
   # === APP 2: VIOLETT ESTETICA ===
   backend_estetica:
+    image: violettpilates-backend-estetica
     build:
       context: ./engine
       dockerfile: Dockerfile.backend
@@ -52,6 +55,7 @@ services:
     restart: always
 
   frontend_estetica:
+    image: violettpilates-frontend-estetica
     build:
       context: ./engine
       dockerfile: Dockerfile.frontend
