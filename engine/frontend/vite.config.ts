@@ -3,6 +3,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+// Selects the correct plugin loader based on which client is being built.
+// VITE_CLIENT_ID is injected as a Docker build arg in docker-compose.yml.
+// For local dev, defaults to 'pilates'.
+const clientId = process.env.VITE_CLIENT_ID || 'pilates';
+const pluginLoaderPath = path.resolve(__dirname, `./src/core/pluginLoader.${clientId}.tsx`);
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -10,8 +16,15 @@ export default defineConfig({
     react()
   ],
   base: process.env.VITE_BASE_URL || '/',
+  define: {
+    // Make the client ID available at runtime for any component that needs it
+    'import.meta.env.VITE_CLIENT_ID': JSON.stringify(clientId),
+  },
   resolve: {
     alias: {
+      // This is the key alias: redirects all imports of 'pluginLoader' to the
+      // client-specific file, so Vite only bundles the plugins for that client.
+      '@/core/pluginLoader': pluginLoaderPath,
       '@': path.resolve(__dirname, './src'),
       '@plugins': path.resolve(__dirname, '../plugins'),
       'react': path.resolve(__dirname, 'node_modules/react'),

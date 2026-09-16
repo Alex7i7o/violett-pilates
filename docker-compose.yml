@@ -23,6 +23,7 @@
       dockerfile: Dockerfile.frontend
       args:
         VITE_BASE_URL: /pilates/app/
+        VITE_CLIENT_ID: pilates
     volumes:
       - ./config_pilates/client-config.json:/usr/share/nginx/html/client-config.json
     links:
@@ -63,6 +64,7 @@
       dockerfile: Dockerfile.frontend
       args:
         VITE_BASE_URL: /estetica/app/
+        VITE_CLIENT_ID: estetica
     volumes:
       - ./config_estetica/client-config.json:/usr/share/nginx/html/client-config.json
     links:
@@ -98,4 +100,5 @@
 volumes:
   pgdata_pilates:
   pgdata_estetica:
+
 

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { BookingGrid } from '../../components/booking/BookingGrid';
 import { useClientProfile } from '../../hooks/useClientProfile';
 import { useBookings } from '../../hooks/useBookings';
@@ -25,3 +25,4 @@ export function InicioView() {
     </div>
   );
 }
+

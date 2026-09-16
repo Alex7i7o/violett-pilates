@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e  # Detener si hay cualquier error
+set -e
 
 SERVER_IP="187.77.43.144"
 
@@ -16,17 +16,20 @@ scp ViolettPilates-Deploy.zip root@$SERVER_IP:/root/
 echo "🔄 3. Desplegando en servidor..."
 ssh root@$SERVER_IP << 'ENDSSH'
   set -e
-  echo "--- Descomprimiendo código fuente..."
+  echo "--- Deteniendo contenedores actuales..."
+  cd /root/ViolettPilates && docker compose down --remove-orphans || true
+
+  echo "--- Limpiando código fuente viejo para evitar archivos huérfanos..."
+  rm -rf /root/ViolettPilates/*
+
+  echo "--- Descomprimiendo código fuente nuevo..."
   unzip -o /root/ViolettPilates-Deploy.zip -d /root/ViolettPilates
   cd /root/ViolettPilates
 
-  echo "--- Deteniendo contenedores actuales..."
-  docker compose down --remove-orphans
-
-  echo "--- Construyendo frontend Pilates (sin caché)..."
+  echo "--- Construyendo frontend Pilates (separado, sin caché)..."
   docker compose build --no-cache frontend_pilates
 
-  echo "--- Construyendo frontend Estética (sin caché)..."
+  echo "--- Construyendo frontend Estética (separado, sin caché)..."
   docker compose build --no-cache frontend_estetica
 
   echo "--- Construyendo backend y proxy..."
@@ -35,7 +38,7 @@ ssh root@$SERVER_IP << 'ENDSSH'
   echo "--- Iniciando todos los servicios..."
   docker compose up -d
 
-  echo "--- Esperando que los backends arranquen..."
+  echo "--- Esperando que los backends arranquen (10s)..."
   sleep 10
 
   echo "--- Aplicando migraciones Pilates..."

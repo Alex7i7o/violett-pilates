@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInstallPrompt } from '../../../frontend/src/hooks/useInstallPrompt';
@@ -134,3 +134,4 @@ export const EsteticaClientApp = () => {
     </div>
   );
 };
+
