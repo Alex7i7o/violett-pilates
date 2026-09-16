@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useClientProfile } from '../hooks/useClientProfile';
+import { useClientConfig } from '../context/ClientConfigContext';
 import { api } from '../lib/api';
 
 import { Login } from '../pages/Login';
@@ -28,6 +29,7 @@ import { getPluginAdminRoutes, getPluginRoleRoute } from '../core/pluginLoader';
 
 export function BookingRoutes() {
   const location = useLocation();
+  const config = useClientConfig();
   const { profile, loading, error, refetch } = useClientProfile();
 
   const handleLogout = async () => {
@@ -64,7 +66,7 @@ export function BookingRoutes() {
 
   // Rutas exclusivas para el Staff / Admin
   if (profile.rol === 'ADMIN') {
-    const adminPluginRoutes = getPluginAdminRoutes();
+    const adminPluginRoutes = getPluginAdminRoutes(config.active_plugins);
     return (
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
@@ -89,7 +91,7 @@ export function BookingRoutes() {
   }
 
   // Verificar si hay una ruta exclusiva de rol inyectada por un plugin (Ej: Profesor)
-  const pluginRoleRoute = getPluginRoleRoute(profile.rol);
+  const pluginRoleRoute = getPluginRoleRoute(profile.rol, config.active_plugins);
   if (pluginRoleRoute) {
     return <>{pluginRoleRoute}</>;
   }

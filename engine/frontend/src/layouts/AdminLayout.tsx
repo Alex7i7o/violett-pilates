@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
@@ -30,7 +30,7 @@ export function AdminLayout() {
     }
   };
 
-  const pluginItems = getPluginAdminSidebarItems();
+  const pluginItems = getPluginAdminSidebarItems(config.active_plugins);
 
   let baseNavItems = [
     { name: 'Agenda', path: '/admin/agenda', icon: Calendar },
@@ -245,3 +245,4 @@ export function AdminLayout() {
     </div>
   );
 }
+
