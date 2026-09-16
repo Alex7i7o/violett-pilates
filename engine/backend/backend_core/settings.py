@@ -1,4 +1,4 @@
-# Developed by FireSeed - Fueling Innovation
+﻿# Developed by FireSeed - Fueling Innovation
 """
 Django settings for backend_core project.
 
@@ -193,6 +193,7 @@ ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_ADAPTER = 'core.adapter.CustomAccountAdapter'
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -212,7 +213,7 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # --- SECURITY & PRODUCTION COOKIES (FASE 3) ---
-# En producción, si DEBUG es False, se aplican políticas estrictas de cookies (HTTPS)
+# En producciÃ³n, si DEBUG es False, se aplican polÃ­ticas estrictas de cookies (HTTPS)
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -256,4 +257,5 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': True,
 }
+
 

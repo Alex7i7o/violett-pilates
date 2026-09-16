@@ -1,4 +1,4 @@
-from .models import Usuario, Clase, Turno, Reserva, PlantillaTurno
+﻿from .models import Usuario, Clase, Turno, Reserva, PlantillaTurno
 from rest_framework import serializers
 from backend_core.hooks import registry
 
@@ -41,9 +41,10 @@ class CancelTurnoSerializer(serializers.Serializer):
     turno_id = serializers.UUIDField()
 
 from dj_rest_auth.registration.serializers import RegisterSerializer
+import logging
+logger = logging.getLogger(__name__)
 
 class CustomRegisterSerializer(RegisterSerializer):
-    username = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     nombre = serializers.CharField(max_length=100)
     apellido = serializers.CharField(max_length=100)
     telefono = serializers.CharField(max_length=30, required=False, allow_blank=True)
@@ -54,22 +55,23 @@ class CustomRegisterSerializer(RegisterSerializer):
         data_dict['nombre'] = self.validated_data.get('nombre', '')
         data_dict['apellido'] = self.validated_data.get('apellido', '')
         data_dict['telefono'] = self.validated_data.get('telefono', '')
-        data_dict['contacto_emergencia'] = self.validated_data.get('contacto_emergencia', '')
-        data_dict['notas_medicas'] = self.validated_data.get('notas_medicas', '')
-        data_dict['fecha_nacimiento'] = self.validated_data.get('fecha_nacimiento', None)
-        data_dict['sexo'] = self.validated_data.get('sexo', '')
         return data_dict
 
     def custom_signup(self, request, user):
         user.nombre = self.cleaned_data.get('nombre', '')
         user.apellido = self.cleaned_data.get('apellido', '')
         user.telefono = self.cleaned_data.get('telefono', '')
-        user.contacto_emergencia = self.cleaned_data.get('contacto_emergencia', '')
-        user.notas_medicas = self.cleaned_data.get('notas_medicas', '')
-        user.fecha_nacimiento = self.cleaned_data.get('fecha_nacimiento')
-        user.sexo = self.cleaned_data.get('sexo', '')
         user.rol = 'CLIENTE'
         user.save()
+
+    def save(self, request):
+        try:
+            return super().save(request)
+        except Exception as e:
+            logger.error(f"Error in CustomRegisterSerializer.save: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise serializers.ValidationError({"server_error": f"Error saving user: {str(e)}"})
 
 
 class AdminReservaSerializer(serializers.ModelSerializer):
