@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -7,8 +7,8 @@ import { useClientConfig } from '../context/ClientConfigContext';
 import { api } from '../lib/api';
 
 import { Login } from '../pages/Login';
-import { ForgotPassword } from '../pages/ForgotPassword';
 import { ResetPassword } from '../pages/ResetPassword';
+import { ForgotPassword } from '../pages/ForgotPassword';
 import { Dashboard } from '../pages/Dashboard';
 import { ClientLayout } from './ClientLayout';
 import { InicioView } from '../pages/client/InicioView';
@@ -110,3 +110,4 @@ export function BookingRoutes() {
   );
 
 }
+
