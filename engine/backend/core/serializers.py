@@ -45,6 +45,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class CustomRegisterSerializer(RegisterSerializer):
+    username = None
     nombre = serializers.CharField(max_length=100)
     apellido = serializers.CharField(max_length=100)
     telefono = serializers.CharField(max_length=30, required=False, allow_blank=True)
@@ -149,3 +150,4 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         # El hook enrich_admin_usuario permite que los plugins inyecten data
         enriched_data = registry.execute('enrich_admin_usuario', data, instance=instance)
         return enriched_data
+

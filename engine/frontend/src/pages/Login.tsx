@@ -20,6 +20,9 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const [password, setPassword] = useState('password123')
   
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetStatus, setResetStatus] = useState("idle");
   
   // Install Prompt Hook
   const { deferredPrompt, isIOS, isStandalone, promptInstall } = useInstallPrompt();
@@ -66,6 +69,21 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     setError('')
   }
 
+  
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetStatus('loading');
+    try {
+      await api.post('/auth/password/reset/', { email: resetEmail });
+      setResetStatus('success');
+      if (typeof toast !== 'undefined') toast.success('Correo de recuperación enviado');
+      setTimeout(() => setShowForgotPassword(false), 3000);
+    } catch (err: any) {
+      setResetStatus('idle');
+      if (typeof toast !== 'undefined') toast.error('Error al enviar el correo. Verificá que el email sea correcto.');
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -96,7 +114,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
     try {
       const registerData = {
-        username: email,
+        
         email,
         password1: password,
         password2: password,
@@ -127,6 +145,19 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
         setError('Error al registrar usuario.')
       }
     }
+  }
+
+  
+                  </button>
+                <div className="text-center mt-4">
+                  <button type="button" onClick={() => setShowForgotPassword(false)} className="text-sm text-gray-500 underline">Cancelar</button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (isRegisterMode) {
@@ -166,7 +197,12 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
-                </div>
+                  </div>
+                  <div className="mt-2 text-right">
+                    <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-violett-500 hover:text-primary-main underline">
+                      ¿Olvidé mi contraseña?
+                    </button>
+                  </div>
               </div>
               <div>
                 <label className="text-sm font-semibold text-foreground">Teléfono (WhatsApp)</label>
