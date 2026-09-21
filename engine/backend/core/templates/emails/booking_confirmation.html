@@ -1,0 +1,26 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+    <h1>¡Turno Confirmado!</h1>
+    
+    <p>Hola {{ nombre }},</p>
+    
+    <p>Tu lugar ya está reservado. A continuación te dejamos los detalles de tu turno:</p>
+    
+    <div style="background-color: #F8F9FA; border-radius: 12px; padding: 24px; margin: 24px 0; border-left: 4px solid #34236F;">
+        <p style="margin: 0 0 12px 0;"><strong>Clase:</strong> {{ clase_nombre }}</p>
+        <p style="margin: 0 0 12px 0;"><strong>Día:</strong> {{ fecha }}</p>
+        <p style="margin: 0 0 12px 0;"><strong>Horario:</strong> {{ hora }} hs</p>
+        <p style="margin: 0;"><strong>Profesor/a:</strong> {{ profesor }}</p>
+    </div>
+    
+    <p>Recordá llegar 5 minutos antes para prepararte tranquilo/a.</p>
+
+    <div class="button-wrapper">
+        <a href="{{ app_url }}/mis-reservas" class="button">Ver mis turnos</a>
+    </div>
+    
+    <p style="font-size: 14px; color: #666; margin-top: 32px; border-top: 1px solid #eee; padding-top: 16px;">
+        <em>Política de cancelación: Podés cancelar o reprogramar tu turno desde la app hasta 24 horas antes del inicio de la clase sin perder tu crédito.</em>
+    </p>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+    <h1>¡Se liberó un cupo!</h1>
+    
+    <p>Hola {{ nombre }},</p>
+    
+    <p>Te avisamos que se acaba de liberar un lugar en una clase muy solicitada:</p>
+    
+    <div style="background-color: #F8F9FA; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #EAEAEA;">
+        <h3 style="margin-top: 0; color: #34236F;">{{ clase_nombre }}</h3>
+        <p style="margin: 0 0 8px 0;"><strong>Día:</strong> {{ fecha }}</p>
+        <p style="margin: 0;"><strong>Horario:</strong> {{ hora }} hs</p>
+    </div>
+    
+    <p>Los lugares vuelan rápido. Si querés sumarte, hacé clic en el botón de abajo para reservarlo antes de que se ocupe.</p>
+
+    <div class="button-wrapper">
+        <a href="{{ app_url }}/" class="button">Reservar ahora</a>
+    </div>
+{% endblock %}
