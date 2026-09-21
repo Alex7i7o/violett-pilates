@@ -151,3 +151,12 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         enriched_data = registry.execute('enrich_admin_usuario', data, instance=instance)
         return enriched_data
 
+from django.conf import settings
+from rest_framework import serializers
+from core.models import Usuario
+
+class CustomUserDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ('id', 'email', 'nombre', 'apellido', 'telefono', 'rol')
+        read_only_fields = ('email', 'rol')

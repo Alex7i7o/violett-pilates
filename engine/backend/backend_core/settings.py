@@ -183,6 +183,7 @@ REST_AUTH = {
     'JWT_AUTH_SECURE': not DEBUG,
     'JWT_AUTH_SAMESITE': 'Lax',
     'REGISTER_SERIALIZER': 'core.serializers.CustomRegisterSerializer',
+    'USER_DETAILS_SERIALIZER': 'core.serializers.CustomUserDetailsSerializer',
 }
 
 ACCOUNT_EMAIL_VERIFICATION = 'none'
@@ -272,5 +273,6 @@ SIMPLE_JWT = {
 
 # Password Reset Config
 PASSWORD_RESET_URL = os.environ.get('FRONTEND_URL', 'https://violett.com.ar/pilates/app/') + 'reset-password/{uid}/{token}'
+
 
 
