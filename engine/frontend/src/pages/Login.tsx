@@ -196,14 +196,6 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 <label className="text-sm font-semibold text-foreground">Notas Médicas o Lesiones</label>
                 <textarea maxLength={300} value={notas} onChange={e=>setNotas(e.target.value)} rows={2} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main"></textarea>
               </div>
-                
-
-
-              <div className="mt-2 text-right">
-                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-violett-500 hover:text-primary-main underline">
-                  ¿Olvidé mi contraseña?
-                </button>
-              </div>
 
               {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
               <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className="w-full py-6 text-base" initialText="Comenzar en Violett Pilates" successText="¡Bienvenido!" /></div>
@@ -280,6 +272,12 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 </button>
               </div>
             </div>
+
+              <div className="mt-2 text-right">
+                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-violett-500 hover:text-primary-main underline">
+                  ¿Olvidé mi contraseña?
+                </button>
+              </div>
 
             {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
             <div className="flex justify-center w-full">
