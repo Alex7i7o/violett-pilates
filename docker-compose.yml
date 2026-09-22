@@ -9,7 +9,7 @@
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - DATABASE_URL=postgres://violett_user:violett_password@db_pilates:5432/violett_pilates
-        - FRONTEND_URL=https://violett.com.ar/pilates/app/
+      - FRONTEND_URL=https://violett.com.ar/pilates/app/
     volumes:
       - ./config_pilates/client-config.json:/app/config/client-config.json
       - ./media:/app/media
@@ -51,7 +51,7 @@
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - DATABASE_URL=postgres://violett_user:violett_password@db_estetica:5432/violett_estetica
-        - FRONTEND_URL=https://violett.com.ar/estetica/app/
+      - FRONTEND_URL=https://violett.com.ar/estetica/app/
     volumes:
       - ./config_estetica/client-config.json:/app/config/client-config.json
       - ./media:/app/media
@@ -102,6 +102,7 @@
 volumes:
   pgdata_pilates:
   pgdata_estetica:
+
 
 
 
