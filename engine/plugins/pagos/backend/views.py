@@ -1,4 +1,4 @@
-﻿from rest_framework.views import APIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
@@ -21,7 +21,7 @@ class CheckoutView(APIView):
         item_type = ""
 
         if plan_id:
-            if 'membresias' not in [app.name for app in apps.get_app_configs()]:
+            if 'membresias' not in [app.label for app in apps.get_app_configs()]:
                 return Response({"detail": "Membresias no está activo."}, status=status.HTTP_400_BAD_REQUEST)
             from plugins.membresias.backend.models import Plan
             try:
