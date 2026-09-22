@@ -1,0 +1,15 @@
+﻿{% extends "emails/base.html" %}
+
+{% block content %}
+    <h1>¡Hola {{ user.nombre }}!</h1>
+    <p>¡Te damos la bienvenida a <strong>Violett</strong>!</p>
+    <p>Estamos muy felices de que te hayas sumado a nuestra comunidad. A partir de ahora, vas a poder gestionar tus planes, reservar tus clases y organizar tus horarios directamente desde nuestra plataforma.</p>
+    
+    <div class="button-wrapper">
+        <a href="{{ login_url }}" class="button">Ingresar a mi cuenta</a>
+    </div>
+    
+    <p>Si tenés alguna duda o consulta, podés responder directamente a este correo o contactarnos por WhatsApp.</p>
+    <p>¡Nos vemos en tu próxima sesión!</p>
+    <p><strong>El equipo de Violett</strong></p>
+{% endblock %}

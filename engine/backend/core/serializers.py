@@ -42,6 +42,9 @@ class CancelTurnoSerializer(serializers.Serializer):
 
 from dj_rest_auth.registration.serializers import RegisterSerializer
 import logging
+import threading
+from django.conf import settings
+from plugins.comunicaciones.backend.email_service import send_transactional_email
 logger = logging.getLogger(__name__)
 
 class CustomRegisterSerializer(RegisterSerializer):
@@ -64,6 +67,24 @@ class CustomRegisterSerializer(RegisterSerializer):
         user.telefono = self.cleaned_data.get('telefono', '')
         user.rol = 'CLIENTE'
         user.save()
+
+        # Send welcome email in a background thread to avoid blocking the response
+        def send_welcome():
+            try:
+                context = {
+                    'user': user,
+                    'login_url': getattr(settings, 'FRONTEND_URL', 'https://violett.com.ar/pilates/app') + '/login'
+                }
+                send_transactional_email(
+                    subject='¡Bienvenida a Violett!',
+                    template_name='emails/welcome.html',
+                    context=context,
+                    recipient_list=[user.email]
+                )
+            except Exception as e:
+                logger.error(f"Failed to send welcome email: {e}")
+                
+        threading.Thread(target=send_welcome, daemon=True).start()
 
     def save(self, request):
         try:
