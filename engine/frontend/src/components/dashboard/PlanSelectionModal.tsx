@@ -65,7 +65,7 @@ export function PlanSelectionModal({ isOpen, onClose, currentPlan }: Props) {
 
   const handleWhatsAppRedirect = () => {
     if (!selectedPlan || !aliasInfo) return;
-    const phoneNumber = "5491100000000"; // En prod, leer de config
+    const phoneNumber = config.contact_phone || "5491164142172"; // 1164142172 Violett
     const message = `Hola! Ya realicé la transferencia para adquirir el plan *${selectedPlan.nombre}* por $${Number(selectedPlan.precio).toLocaleString('es-AR')}. Te adjunto el comprobante:`;
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
     onClose();

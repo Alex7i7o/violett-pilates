@@ -4,6 +4,7 @@ export interface ClientConfig {
   client_id: string;
   business_name: string;
   domain: string;
+  contact_phone?: string;
   theme: {
     primary_main: string;
     primary_hover: string;
