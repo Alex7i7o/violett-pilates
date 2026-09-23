@@ -60,16 +60,12 @@ def cancelar_reserva(turno_id, usuario):
     
     dt = timezone.make_aware(datetime.datetime.combine(turno.fecha, turno.hora_inicio))
     now = timezone.now()
-    import json
-    import os
-    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'client-config.json')
-    horas_limite = 12
+    from backend_core.plugin_loader import get_plugin_config
     try:
-        with open(config_path, 'r') as f:
-            cfg = json.load(f)
-            horas_limite = cfg.get('plugin_config', {}).get('core', {}).get('horas_limite_cancelacion', 12)
-    except:
-        pass
+        core_config = get_plugin_config('core')
+        horas_limite = core_config.get('horas_limite_cancelacion', 24)
+    except Exception:
+        horas_limite = 24
     time_diff = dt - now
     
     if time_diff > datetime.timedelta(hours=horas_limite):

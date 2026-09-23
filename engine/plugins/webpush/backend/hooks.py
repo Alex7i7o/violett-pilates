@@ -38,7 +38,32 @@ def on_turno_cancelado_por_falta_cupo(data, **kwargs):
             send_webpush(r.usuario, title, body, data={'url': '/perfil'})
     return data
 
+
+def on_turno_alerta_cupo(data, **kwargs):
+    turno = data
+    if turno:
+        from core.models import Usuario
+        usuarios = Usuario.objects.filter(rol='CLIENTE')
+        clase = turno.clase
+        title = "¡Cupo disponible!"
+        body = f"Queda 1 lugar libre para la clase de {clase.nombre} del {turno.fecha.strftime('%d/%m')} a las {turno.hora_inicio.strftime('%H:%M')}."
+        for u in usuarios:
+            send_webpush(u, title, body, data={'url': '/'})
+    return data
+
+def on_reserva_recordatorio(data, **kwargs):
+    reserva = data
+    if reserva and reserva.turno:
+        usuario = reserva.usuario
+        turno = reserva.turno
+        clase = turno.clase
+        title = "Recordatorio de Clase"
+        body = f"Te esperamos mañana para la clase de {clase.nombre} a las {turno.hora_inicio.strftime('%H:%M')} hs."
+        send_webpush(usuario, title, body, data={'url': '/mis-reservas'})
+    return data
+
 registry.register('reserva_creada', on_reserva_creada)
+
 registry.register('reserva_cancelada_a_tiempo', on_reserva_cancelada_a_tiempo)
 registry.register('turno_cancelado_por_falta_cupo', on_turno_cancelado_por_falta_cupo)
 
@@ -77,3 +102,6 @@ def notify_bolsa_plantilla(sender, instance, created, **kwargs):
                 data={'url': '/profesor/dashboard#bolsa'}
             )
 
+
+registry.register('turno_alerta_cupo', on_turno_alerta_cupo)
+registry.register('reserva_recordatorio', on_reserva_recordatorio)
