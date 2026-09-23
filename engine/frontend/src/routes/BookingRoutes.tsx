@@ -56,9 +56,9 @@ export function BookingRoutes() {
   if (error || !profile) {
     return (
       <Routes>
-        <Route path="/login" element={<Login onLoginSuccess={refetch} />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
+        {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
+          <Route key={i} path={route.path} element={route.path === 'login' ? React.cloneElement(route.element as React.ReactElement, { onLoginSuccess: refetch }) : route.element} />
+        ))}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
