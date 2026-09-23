@@ -9,6 +9,11 @@ import React from 'react';
 const modules = import.meta.glob([
   '@plugins/profesores/frontend/routes.tsx',
   '@plugins/resenas/frontend/routes.tsx',
+  '@plugins/auth/frontend/routes.tsx',
+  '@plugins/membresias/frontend/routes.tsx',
+  '@plugins/pagos/frontend/routes.tsx',
+  '@plugins/recurrencias/frontend/routes.tsx',
+  '@plugins/webpush/frontend/routes.tsx',
 ], { eager: true });
 
 export interface PluginRoute {

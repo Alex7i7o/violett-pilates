@@ -11,6 +11,11 @@ const modules = import.meta.glob([
   '@plugins/estetica_paquetes/frontend/routes.tsx',
   '@plugins/estetica_servicios/frontend/routes.tsx',
   '@plugins/resenas/frontend/routes.tsx',
+  '@plugins/auth/frontend/routes.tsx',
+  '@plugins/membresias/frontend/routes.tsx',
+  '@plugins/pagos/frontend/routes.tsx',
+  '@plugins/recurrencias/frontend/routes.tsx',
+  '@plugins/webpush/frontend/routes.tsx',
 ], { eager: true });
 
 export interface PluginRoute {
