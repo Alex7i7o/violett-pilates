@@ -59,3 +59,17 @@ export const getPluginRoleRoute = (role: string, activePlugins: string[]): React
   }
   return null;
 };
+
+export const getPluginPublicRoutes = (activePlugins: string[]): PluginRoute[] => {
+  const routes: PluginRoute[] = [];
+  for (const path in modules) {
+    const pluginName = getPluginNameFromPath(path);
+    if (!activePlugins.includes(pluginName)) continue;
+    
+    const mod = modules[path] as any;
+    if (mod && mod.publicRoutes) {
+      routes.push(...mod.publicRoutes);
+    }
+  }
+  return routes;
+};

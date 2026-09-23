@@ -6,9 +6,9 @@ import { useClientProfile } from '../hooks/useClientProfile';
 import { useClientConfig } from '../context/ClientConfigContext';
 import { api } from '../lib/api';
 
-import { Login } from '../pages/Login';
-import { ResetPassword } from '../pages/ResetPassword';
-import { ForgotPassword } from '../pages/ForgotPassword';
+
+
+
 import { Dashboard } from '../pages/Dashboard';
 import { ClientLayout } from './ClientLayout';
 import { InicioView } from '../pages/client/InicioView';
@@ -25,7 +25,7 @@ import { PlanesAdmin } from '../pages/admin/PlanesAdmin';
 import { ClasesAdmin } from '../pages/admin/ClasesAdmin';
 import { ReglasNegocioAdmin } from '../pages/admin/ReglasNegocioAdmin';
 
-import { getPluginAdminRoutes, getPluginRoleRoute } from '../core/pluginLoader';
+import { getPluginAdminRoutes, getPluginRoleRoute, getPluginPublicRoutes } from '../core/pluginLoader';
 
 export function BookingRoutes() {
   const location = useLocation();

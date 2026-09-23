@@ -22,6 +22,7 @@
     "cta_login": "Ingresar al Portal"
   },
   "active_plugins": [
+    "auth",
     "profesores",
     "membresias",
     "recurrencias",
