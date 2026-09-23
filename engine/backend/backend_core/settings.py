@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
-from .plugin_loader import get_active_plugins
+from .plugin_loader import get_active_plugins, get_client_config
 from dotenv import load_dotenv
 import dj_database_url
 
@@ -76,10 +76,14 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'backend_core.urls'
 
+client_config = get_client_config()
+client_id = client_config.get('client_id', 'violett_pilates')
+client_dir = 'estetica' if 'estetica' in client_id else 'pilates'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR.parent.parent / 'plantillas_correos'],
+        'DIRS': [BASE_DIR.parent.parent / 'plantillas_correos' / client_dir],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
