@@ -184,6 +184,7 @@ REST_AUTH = {
     'JWT_AUTH_SAMESITE': 'Lax',
     'REGISTER_SERIALIZER': 'plugins.auth.backend.serializers.CustomRegisterSerializer',
     'USER_DETAILS_SERIALIZER': 'plugins.auth.backend.serializers.CustomUserDetailsSerializer',
+    'PASSWORD_RESET_SERIALIZER': 'plugins.auth.backend.serializers.CustomPasswordResetSerializer',
 }
 
 ACCOUNT_EMAIL_VERIFICATION = 'none'

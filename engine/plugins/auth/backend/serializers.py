@@ -56,3 +56,41 @@ class CustomRegisterSerializer(RegisterSerializer):
     def save(self, request):
         user = super().save(request)
         return user
+from dj_rest_auth.serializers import PasswordResetSerializer
+from django.contrib.auth.tokens import default_token_generator
+from allauth.account.utils import user_pk_to_url_str
+
+class CustomPasswordResetSerializer(PasswordResetSerializer):
+    def save(self):
+        request = self.context.get('request')
+        # self.reset_form is instantiated and validated in validate_email
+        if hasattr(self, 'reset_form') and hasattr(self.reset_form, 'users'):
+            users = self.reset_form.users
+        else:
+            return
+
+        for user in users:
+            temp_key = default_token_generator.make_token(user)
+            uid = user_pk_to_url_str(user)
+            
+            # Construir URL del frontend explícitamente para que no falle
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://violett.com.ar/pilates/app').rstrip('/')
+            reset_url = f"{frontend_url}/reset-password/{uid}/{temp_key}"
+            
+            context = {
+                'user': user,
+                'password_reset_url': reset_url,
+            }
+            
+            def send_reset():
+                try:
+                    send_transactional_email(
+                        subject='Violett - Restablecimiento de contraseña',
+                        template_name='account/email/password_reset_key_message.html',
+                        context=context,
+                        recipient_list=[user.email]
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send password reset email: {e}")
+            
+            threading.Thread(target=send_reset, daemon=True).start()
