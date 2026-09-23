@@ -1,9 +1,9 @@
 import { toast } from 'sonner';
-﻿import React, { useState } from 'react';
-import { Card, CardContent } from '../components/ui/Card';
-import { InputField } from '../components/ui/InputField';
-import { FeedbackButton } from '../components/ui/FeedbackButton';
-import { api } from '../lib/api';
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/Card';
+import { InputField } from '@/components/ui/InputField';
+import { FeedbackButton } from '@/components/ui/FeedbackButton';
+import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 

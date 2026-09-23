@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { api } from '../lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { api } from '@/lib/api';
 import { Eye, EyeOff } from 'lucide-react';
 
 export function ResetPassword() {

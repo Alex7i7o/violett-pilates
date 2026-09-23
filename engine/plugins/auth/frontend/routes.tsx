@@ -1,8 +1,8 @@
 import React from 'react';
 import { RouteObject } from 'react-router-dom';
-import { LoginPlugin } from './components/LoginPlugin';
-import { ForgotPasswordPlugin } from './components/ForgotPasswordPlugin';
-import { ResetPasswordPlugin } from './components/ResetPasswordPlugin';
+import { Login as LoginPlugin } from './components/LoginPlugin';
+import { ForgotPassword as ForgotPasswordPlugin } from './components/ForgotPasswordPlugin';
+import { ResetPassword as ResetPasswordPlugin } from './components/ResetPasswordPlugin';
 
 export const publicRoutes: RouteObject[] = [
   { path: 'login', element: <LoginPlugin /> },

@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
-import { useClientConfig } from '../context/ClientConfigContext';
-import { useInstallPrompt } from '../hooks/useInstallPrompt';
-import { FeedbackButton } from '../components/ui/FeedbackButton'
-import { api } from '../lib/api'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { useClientConfig } from '@/context/ClientConfigContext';
+import { useInstallPrompt } from '@/hooks/useInstallPrompt';
+import { FeedbackButton } from '@/components/ui/FeedbackButton'
+import { api } from '@/lib/api'
 
 export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const config = useClientConfig();
