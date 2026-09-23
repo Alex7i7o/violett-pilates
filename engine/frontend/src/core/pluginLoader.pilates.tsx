@@ -27,7 +27,7 @@ export interface PluginSidebarItem {
 }
 
 const getPluginNameFromPath = (path: string): string => {
-  const match = path.match(/@plugins\/([^/]+)\//);
+  const match = path.match(/plugins\/([^/]+)\//);
   return match ? match[1] : '';
 };
 
@@ -35,7 +35,7 @@ export const getPluginAdminRoutes = (activePlugins: string[]): PluginRoute[] => 
   const routes: PluginRoute[] = [];
   for (const path in modules) {
     const pluginName = getPluginNameFromPath(path);
-    if (!activePlugins.includes(pluginName)) continue;
+    if (!activePlugins.includes(pluginName) && pluginName !== 'auth') continue;
     const mod = modules[path] as any;
     if (mod && mod.adminRoutes) routes.push(...mod.adminRoutes);
   }
@@ -46,7 +46,7 @@ export const getPluginAdminSidebarItems = (activePlugins: string[]): PluginSideb
   const items: PluginSidebarItem[] = [];
   for (const path in modules) {
     const pluginName = getPluginNameFromPath(path);
-    if (!activePlugins.includes(pluginName)) continue;
+    if (!activePlugins.includes(pluginName) && pluginName !== 'auth') continue;
     const mod = modules[path] as any;
     if (mod && mod.adminSidebarItems) items.push(...mod.adminSidebarItems);
   }
@@ -56,7 +56,7 @@ export const getPluginAdminSidebarItems = (activePlugins: string[]): PluginSideb
 export const getPluginRoleRoute = (role: string, activePlugins: string[]): React.ReactNode | null => {
   for (const path in modules) {
     const pluginName = getPluginNameFromPath(path);
-    if (!activePlugins.includes(pluginName)) continue;
+    if (!activePlugins.includes(pluginName) && pluginName !== 'auth') continue;
     const mod = modules[path] as any;
     if (mod && mod.roleRoutes && mod.roleRoutes[role]) return mod.roleRoutes[role];
   }
@@ -67,7 +67,7 @@ export const getPluginPublicRoutes = (activePlugins: string[]): PluginRoute[] =>
   const routes: PluginRoute[] = [];
   for (const path in modules) {
     const pluginName = getPluginNameFromPath(path);
-    if (!activePlugins.includes(pluginName)) continue;
+    if (!activePlugins.includes(pluginName) && pluginName !== 'auth') continue;
     
     const mod = modules[path] as any;
     if (mod && mod.publicRoutes) {

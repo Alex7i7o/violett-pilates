@@ -56,8 +56,8 @@ export function BookingRoutes() {
   if (error || !profile) {
     return (
       <Routes>
-        {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
-          <Route key={i} path={route.path} element={route.path === 'login' ? React.cloneElement(route.element as React.ReactElement, { onLoginSuccess: refetch }) : route.element} />
+        {console.log('PUBLIC ROUTES:', getPluginPublicRoutes(config.active_plugins || []))} {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
+          <Route key={i} path={route.path} element={route.path === '/login' || route.path === 'login' ? React.cloneElement(route.element as React.ReactElement, { onLoginSuccess: refetch }) : route.element} />
         ))}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

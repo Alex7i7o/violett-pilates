@@ -5,9 +5,9 @@ import { ForgotPassword as ForgotPasswordPlugin } from './components/ForgotPassw
 import { ResetPassword as ResetPasswordPlugin } from './components/ResetPasswordPlugin';
 
 export const publicRoutes: RouteObject[] = [
-  { path: 'login', element: <LoginPlugin /> },
-  { path: 'forgot-password', element: <ForgotPasswordPlugin /> },
-  { path: 'reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> }
+  { path: '/login', element: <LoginPlugin /> },
+  { path: '/forgot-password', element: <ForgotPasswordPlugin /> },
+  { path: '/reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> }
 ];
 
 export const roleRoutes: Record<string, RouteObject[]> = {};
