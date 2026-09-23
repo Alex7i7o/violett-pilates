@@ -21,7 +21,6 @@ class WhatsAppClient:
         if not to_number:
             return False
             
-        # Limpiar el número (asumimos código de área internacional ya configurado o lo agregamos según país)
         phone = str(to_number).replace("+", "").replace("-", "").replace(" ", "")
 
         headers = {
@@ -45,7 +44,6 @@ class WhatsAppClient:
         try:
             response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
             if response.status_code in [200, 201]:
-                logger.info(f"[WHATSAPP OK] Mensaje enviado a {phone}")
                 return True
             else:
                 logger.error(f"[WHATSAPP ERROR] {response.status_code} - {response.text}")
@@ -54,9 +52,46 @@ class WhatsAppClient:
             logger.error(f"[WHATSAPP EXCEPTION] {e}")
             return False
 
+    def send_text_message(self, to_number, text_message):
+        '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
+        if not self.is_configured:
+            print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message}\n")
+            return True
+
+        if not to_number:
+            return False
+            
+        phone = str(to_number).replace("+", "").replace("-", "").replace(" ", "")
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": phone,
+            "type": "text",
+            "text": {
+                "preview_url": False,
+                "body": text_message
+            }
+        }
+        
+        try:
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
+            if response.status_code in [200, 201]:
+                return True
+            else:
+                logger.error(f"[WHATSAPP TEXT ERROR] {response.status_code} - {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"[WHATSAPP TEXT EXCEPTION] {e}")
+            return False
+
 def notificar_cancelacion_clase(usuario, turno):
     client = WhatsAppClient()
-    # Plantilla de ejemplo: "Hola {{1}}, la clase de {{2}} fue cancelada. {{3}}"
     components = [{
         "type": "body",
         "parameters": [
@@ -65,11 +100,10 @@ def notificar_cancelacion_clase(usuario, turno):
             {"type": "text", "text": "El crédito ha sido devuelto a tu plan."}
         ]
     }]
-    client._send_template(usuario.telefono or "1100000000", "clase_cancelada_admin", components)
+    client._send_template(usuario.telefono or "1164142172", "clase_cancelada_admin", components)
 
 def notificar_reserva_creada(usuario, turno):
     client = WhatsAppClient()
-    # Plantilla: "Hola {{1}}, tu reserva para {{2}} a las {{3}} está confirmada."
     components = [{
         "type": "body",
         "parameters": [
@@ -78,11 +112,10 @@ def notificar_reserva_creada(usuario, turno):
             {"type": "text", "text": turno.hora_inicio.strftime('%H:%M')}
         ]
     }]
-    client._send_template(usuario.telefono or "1100000000", "reserva_confirmada", components)
+    client._send_template(usuario.telefono or "1164142172", "reserva_confirmada", components)
 
 def notificar_cancelacion_usuario(usuario, turno):
     client = WhatsAppClient()
-    # Plantilla: "Hola {{1}}, cancelaste tu turno de {{2}}."
     components = [{
         "type": "body",
         "parameters": [
@@ -90,4 +123,4 @@ def notificar_cancelacion_usuario(usuario, turno):
             {"type": "text", "text": f"{turno.clase.nombre} el {turno.fecha}"}
         ]
     }]
-    client._send_template(usuario.telefono or "1100000000", "reserva_cancelada_usuario", components)
+    client._send_template(usuario.telefono or "1164142172", "reserva_cancelada_usuario", components)
