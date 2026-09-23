@@ -2,7 +2,7 @@ import zipfile
 import os
 
 print("Creating ultimate deploy zip...")
-folders = ['engine', 'proxy', 'config_pilates', 'config_estetica', 'landings']
+folders = ['engine', 'proxy', 'config_pilates', 'config_estetica', 'landings', 'plantillas_correos']
 files = ['docker-compose.yml', '.env.example', 'deploy.sh']
 
 def should_ignore(path):
