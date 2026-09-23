@@ -197,6 +197,12 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 <textarea maxLength={300} value={notas} onChange={e=>setNotas(e.target.value)} rows={2} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main"></textarea>
               </div>
 
+              <div className="flex items-start mt-4 mb-4">
+                <input type="checkbox" id="terms" required className="mt-1 mr-2 cursor-pointer accent-primary-main" />
+                <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer text-left">
+                  Acepto los <a href="/terminos" target="_blank" className="text-violett-600 underline hover:text-primary-main">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" className="text-violett-600 underline hover:text-primary-main">Política de Privacidad</a>.
+                </label>
+              </div>
               {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
               <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className="w-full py-6 text-base" initialText="Comenzar en Violett Pilates" successText="¡Bienvenido!" /></div>
           </form>
@@ -210,7 +216,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 onClick={toggleRegisterMode}
                 className="text-sm text-violett-700 hover:text-primary-main font-bold underline transition-colors"
               >
-                Registrarme
+                &larr; Volver al Inicio de Sesión
               </button>
             </div>
           )}
