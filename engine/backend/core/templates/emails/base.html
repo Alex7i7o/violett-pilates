@@ -4,114 +4,138 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        /* CSS reset & base styles */
-        body, table, td, div, p, a {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        /* Apple-inspired Reset */
+        body, table, td, div, p, a, h1, h2, h3, h4, h5, h6 {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             text-size-adjust: 100%;
             -webkit-text-size-adjust: 100%;
-        }
-        body {
             margin: 0;
             padding: 0;
-            background-color: #F8F9FA;
-            color: #1A1A1A;
-            line-height: 1.6;
+        }
+        body {
+            background-color: #F5F5F7;
+            color: #1D1D1F;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            padding: 24px;
         }
         table {
             border-spacing: 0;
             border-collapse: collapse;
         }
         
-        /* Container */
         .wrapper {
             width: 100%;
-            background-color: #F8F9FA;
-            padding: 40px 0;
+            background-color: #F5F5F7;
+            padding: 48px 0;
         }
+        
+        /* Card Container - Apple Style */
         .container {
-            max-width: 600px;
+            max-width: 520px;
             margin: 0 auto;
             background-color: #FFFFFF;
-            border-radius: 16px;
+            border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
         }
 
-        /* Header */
+        /* Default Header: Small logo to the left */
         .header {
-            background-color: #34236F;
-            padding: 32px 40px;
-            text-align: center;
+            padding: 32px 40px 16px 40px;
+            text-align: left;
         }
         .header img {
-            width: 140px;
-            height: auto;
+            height: 24px;
+            width: auto;
             display: block;
-            margin: 0 auto;
         }
 
         /* Content */
         .content {
-            padding: 40px;
+            padding: 0 40px 40px 40px;
         }
         .content h1 {
-            color: #34236F;
+            color: #1D1D1F;
             font-size: 24px;
-            font-weight: 700;
-            margin-top: 0;
-            margin-bottom: 24px;
-            letter-spacing: -0.5px;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em; /* Optical sizing */
         }
         .content p {
-            color: #4A4A4A;
+            color: #515154;
             font-size: 16px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            line-height: 1.6;
         }
 
-        /* Button */
+        /* Call to Action Button */
         .button-wrapper {
-            text-align: center;
             margin: 32px 0;
         }
         .button {
             display: inline-block;
-            background-color: #34236F;
+            background-color: #34236F; /* Brand color */
             color: #FFFFFF !important;
             text-decoration: none;
-            padding: 14px 32px;
+            padding: 16px 32px;
             border-radius: 999px;
             font-size: 16px;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            letter-spacing: -0.01em;
+            text-align: center;
         }
 
         /* Footer */
         .footer {
-            background-color: #F8F9FA;
             padding: 32px 40px;
-            text-align: center;
-            border-top: 1px solid #EAEAEA;
+            text-align: left;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            background-color: #FAFAFA;
         }
         .footer p {
-            color: #888888;
+            color: #86868B;
             font-size: 13px;
-            margin: 0;
-            line-height: 1.5;
+            margin-bottom: 8px;
+            line-height: 1.4;
         }
         .footer a {
             color: #34236F;
             text-decoration: none;
+        }
+
+        /* Apple-style subtle animation for webmail clients that support it */
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            .container {
+                animation: fade-in-up 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            }
+        }
+        @keyframes fade-in-up {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <table class="container" width="100%" cellpadding="0" cellspacing="0" role="presentation">
-            <!-- Header -->
+            <!-- Header Block for Extensibility -->
             <tr>
                 <td class="header">
-                    <!-- Replace with real logo URL later, using a placeholder text for now or hostinger hosted image -->
-                    <h2 style="color: white; margin: 0; font-size: 28px; letter-spacing: 1px;">Violett</h2>
+                    {% block header %}
+                    <a href="{{ frontend_url|default:'https://violett.com.ar' }}">
+                        <img src="https://violett.com.ar/pilates/logo-full.png" alt="Violett" />
+                    </a>
+                    {% endblock %}
                 </td>
             </tr>
             
@@ -126,7 +150,7 @@
             <tr>
                 <td class="footer">
                     <p>
-                        Recibiste este correo porque estás registrado en <strong>Violett</strong>.<br>
+                        Recibiste este correo porque estás registrado en Violett.<br>
                         Si no solicitaste esto, podés ignorar el mensaje de forma segura.
                     </p>
                 </td>

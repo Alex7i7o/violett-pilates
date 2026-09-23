@@ -1,15 +1,23 @@
-﻿{% extends "emails/base.html" %}
+{% extends "emails/base.html" %}
+
+{% block header %}
+<div style="text-align: center; padding: 48px 0 24px 0;">
+    <a href="{{ frontend_url|default:'https://violett.com.ar' }}">
+        <img src="https://violett.com.ar/pilates/logo-icon.png" alt="Violett" style="height: 64px; width: auto; margin: 0 auto; display: block;" />
+    </a>
+</div>
+{% endblock %}
 
 {% block content %}
-    <h1>¡Hola {{ user.nombre }}!</h1>
-    <p>¡Te damos la bienvenida a <strong>Violett</strong>!</p>
-    <p>Estamos muy felices de que te hayas sumado a nuestra comunidad. A partir de ahora, vas a poder gestionar tus planes, reservar tus clases y organizar tus horarios directamente desde nuestra plataforma.</p>
+    <h1 style="text-align: center;">Te damos la bienvenida.</h1>
     
-    <div class="button-wrapper">
-        <a href="{{ login_url }}" class="button">Ingresar a mi cuenta</a>
+    <p style="text-align: center;">Hola {{ user.nombre|default:"!" }}, nos emociona mucho tenerte acá. Tu cuenta en Violett ya está lista para que empieces a disfrutar de tus clases.</p>
+    
+    <div class="button-wrapper" style="text-align: center;">
+        <a href="{{ login_url }}" class="button">Iniciar Sesión</a>
     </div>
     
-    <p>Si tenés alguna duda o consulta, podés responder directamente a este correo o contactarnos por WhatsApp.</p>
-    <p>¡Nos vemos en tu próxima sesión!</p>
-    <p><strong>El equipo de Violett</strong></p>
+    <p style="font-size: 14px; text-align: center; margin-top: 32px; color: #86868B;">
+        Si tenés alguna duda, simplemente respondé a este correo.
+    </p>
 {% endblock %}
