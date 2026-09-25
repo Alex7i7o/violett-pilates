@@ -121,3 +121,33 @@ def generar_turnos_desde_plantillas():
             
     if nuevos_turnos > 0:
         print(f"[{timezone.now().strftime('%H:%M:%S')}] Generador de Plantillas: {nuevos_turnos} turnos nuevos.")
+def enviar_email_bienvenida(usuario, raw_password):
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+    from django.conf import settings
+    from backend_core.plugin_loader import get_client_config
+
+    client_id = get_client_config().get('client_id', 'violett_pilates')
+    client_dir = 'estetica' if 'estetica' in client_id else 'pilates'
+
+    context = {
+        'nombre': usuario.nombre,
+        'email': usuario.email,
+        'password': raw_password,
+        'frontend_url': settings.FRONTEND_URL
+    }
+
+    try:
+        html_content = render_to_string(f'emails/welcome.html', context)
+        subject = '¡Bienvenido a Violett Pilates!'
+        from_email = settings.DEFAULT_FROM_EMAIL
+        to_email = [usuario.email]
+        
+        msg = EmailMultiAlternatives(subject, html_content, from_email, to_email)
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
+        return True
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'Error al enviar email de bienvenida: {e}')
+        return False

@@ -11,10 +11,19 @@
 {% block content %}
     <h1 style="text-align: center;">Te damos la bienvenida.</h1>
     
-    <p style="text-align: center;">Hola {{ user.nombre|default:"!" }}, nos emociona mucho tenerte acá. Tu cuenta en Violett ya está lista para que empieces a disfrutar de tus clases.</p>
+    <p style="text-align: center;">Hola {{ nombre|default:user.nombre|default:"!" }}, nos emociona mucho tenerte acá. Tu cuenta ya está lista para que empieces a disfrutar de tus clases.</p>
     
-    <div class="button-wrapper" style="text-align: center;">
-        <a href="{{ login_url }}" class="button">Iniciar Sesión</a>
+    {% if password %}
+    <div style="background-color: #F5F5F7; border-radius: 12px; padding: 24px; margin: 32px 0; text-align: center;">
+        <p style="margin: 0; font-size: 14px; color: #86868B;">Tus credenciales de acceso:</p>
+        <p style="margin: 8px 0; font-size: 16px;"><strong>Email:</strong> {{ email }}</p>
+        <p style="margin: 8px 0; font-size: 16px;"><strong>Contraseña temporal:</strong> {{ password }}</p>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: #86868B;">(Te recomendamos cambiarla al ingresar por primera vez en tu Perfil)</p>
+    </div>
+    {% endif %}
+    
+    <div class="button-wrapper" style="text-align: center; margin-top: 24px;">
+        <a href="{{ frontend_url }}login" class="button">Iniciar Sesión</a>
     </div>
     
     <p style="font-size: 14px; text-align: center; margin-top: 32px; color: #86868B;">

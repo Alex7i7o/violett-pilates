@@ -19,17 +19,27 @@ class ProfesorViewSet(viewsets.ModelViewSet):
         profesor = serializer.save()
         if profesor.email:
             try:
+                import string
+                import random
                 from core.models import Usuario
+                from core.services import enviar_email_bienvenida
+                
+                raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                
                 u = Usuario.objects.create_user(
                     email=profesor.email,
                     nombre=profesor.nombre,
                     apellido=profesor.apellido,
-                    password='profesor123',
+                    password=raw_password,
                     rol='PROFESOR'
                 )
                 profesor.usuario = u
                 profesor.save()
+                
+                enviar_email_bienvenida(u, raw_password)
             except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error creando usuario profesor: {e}")
                 pass
 
     def perform_destroy(self, instance):

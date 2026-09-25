@@ -147,6 +147,11 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'nombre', 'apellido', 'telefono', 'is_active']
         
     def create(self, validated_data):
+        import string
+        import random
+        from core.services import enviar_email_bienvenida
+        from core.models import Usuario
+
         nombre_completo = validated_data.get('nombre', '').strip()
         parts = nombre_completo.split(' ', 1)
         if len(parts) > 1:
@@ -155,7 +160,18 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         else:
             validated_data['apellido'] = ''
             
-        user = super().create(validated_data)
+        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        
+        user = Usuario.objects.create_user(
+            email=validated_data['email'],
+            password=raw_password,
+            nombre=validated_data['nombre'],
+            apellido=validated_data.get('apellido', ''),
+            telefono=validated_data.get('telefono', ''),
+            rol='CLIENTE'
+        )
+        
+        enviar_email_bienvenida(user, raw_password)
         
         # Recuperamos datos crudos del request para inyectarlos al hook
         request = self.context.get('request')
