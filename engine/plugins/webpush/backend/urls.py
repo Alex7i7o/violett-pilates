@@ -1,6 +1,7 @@
-from django.urls import path
-from .views import SubscribeView
+﻿from django.urls import path
+from .views import SubscribeView, TestWebPushView
 
 urlpatterns = [
-    path('webpush/subscribe/', SubscribeView.as_view(), name='webpush_subscribe'),
+    path('subscribe/', SubscribeView.as_view(), name='webpush-subscribe'),
+    path('test/', TestWebPushView.as_view(), name='webpush-test'),
 ]

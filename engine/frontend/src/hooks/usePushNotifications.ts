@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { toast } from 'sonner';
 
 // Clave pública VAPID (Ejemplo para desarrollo)
-const PUBLIC_VAPID_KEY = "BDv-xW7-Xy5Z0m_9C8H4GjN6pLqL2UeO_fK3y1S_1gE_M3WdJ7Y5wT6yI7YxK6x2Z9L3wN1P8Q1V5O9K3X2G4R8=";
+const PUBLIC_VAPID_KEY = "BFRmOlPUpoJqyhBHnxdg8haRkqH-hEK77Z7kRNRtwDVb3L83ycG61jVucWeZE3jpPh2daoVo7HOfSLh61qby3vI";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
