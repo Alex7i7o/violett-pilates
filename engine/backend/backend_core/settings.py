@@ -236,7 +236,9 @@ CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:
 # Update REST_AUTH with secure cookies
 
 # Email Configuration (Resend)
-if DEBUG:
+_email_pw = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+if DEBUG and not _email_pw:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -244,7 +246,7 @@ else:
     EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'resend')
-    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+    EMAIL_HOST_PASSWORD = _email_pw
     DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Violett <hola@violett.com.ar>')
 
 

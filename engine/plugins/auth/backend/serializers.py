@@ -61,12 +61,17 @@ from django.contrib.auth.tokens import default_token_generator
 from allauth.account.utils import user_pk_to_url_str
 
 class CustomPasswordResetSerializer(PasswordResetSerializer):
+    def validate_email(self, value):
+        from core.models import Usuario
+        self.users = list(Usuario.objects.filter(email__iexact=value, is_active=True))
+        if not self.users:
+            raise serializers.ValidationError("No existe un usuario activo con este correo.")
+        return value
+
     def save(self):
         request = self.context.get('request')
-        # self.reset_form is instantiated and validated in validate_email
-        if hasattr(self, 'reset_form') and hasattr(self.reset_form, 'users'):
-            users = self.reset_form.users
-        else:
+        users = getattr(self, 'users', [])
+        if not users:
             return
 
         for user in users:
@@ -86,7 +91,7 @@ class CustomPasswordResetSerializer(PasswordResetSerializer):
                 try:
                     send_transactional_email(
                         subject='Violett - Restablecimiento de contraseña',
-                        template_name='account/email/password_reset_key_message.html',
+                        template_name='emails/password_reset_key_message.html',
                         context=context,
                         recipient_list=[user.email]
                     )
