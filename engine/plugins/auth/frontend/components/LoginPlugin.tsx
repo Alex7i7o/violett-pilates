@@ -1,6 +1,6 @@
 /* Developed by FireSeed - Fueling Innovation */
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -200,7 +200,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               <div className="flex items-start mt-4 mb-4">
                 <input type="checkbox" id="terms" required className="mt-1 mr-2 cursor-pointer accent-primary-main" />
                 <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer text-left">
-                  Acepto los <a href="/terminos" target="_blank" className="text-violett-600 underline hover:text-primary-main">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" className="text-violett-600 underline hover:text-primary-main">Política de Privacidad</a>.
+                  Acepto los <Link to="/terminos" target="_blank" className="text-violett-600 underline hover:text-primary-main">Términos y Condiciones</Link> y la <Link to="/privacidad" target="_blank" className="text-violett-600 underline hover:text-primary-main">Política de Privacidad</Link>.
                 </label>
               </div>
               {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
