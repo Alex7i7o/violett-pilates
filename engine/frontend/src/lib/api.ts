@@ -53,22 +53,14 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        if (!window.location.pathname.includes('/login')) {
-          const loginPath = baseUrl.endsWith('/') ? baseUrl + 'login' : baseUrl + '/login';
-          window.location.replace(loginPath);
-        }
+        // Removed forced window.location.replace to allow React Router to handle public routes gracefully
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
       }
     }
 
-    if (error.response?.status === 401) {
-      if (!window.location.pathname.includes('/login')) {
-        const loginPath = baseUrl.endsWith('/') ? baseUrl + 'login' : baseUrl + '/login';
-        window.location.replace(loginPath);
-      }
-    }
+    // Removed forced redirect for 401s to allow public routes to render
     
     return Promise.reject(error);
   }
