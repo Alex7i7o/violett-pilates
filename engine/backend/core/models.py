@@ -45,6 +45,16 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nombre', 'apellido']
 
+    def save(self, *args, **kwargs):
+        if self.nombre:
+            # title() convierte "juan perez" a "Juan Perez"
+            self.nombre = self.nombre.strip().title()
+        if self.apellido:
+            self.apellido = self.apellido.strip().title()
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
     class Meta:
         db_table = 'usuarios'
 
