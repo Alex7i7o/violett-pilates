@@ -13,6 +13,7 @@
     volumes:
       - ./config_pilates/client-config.json:/app/config/client-config.json
       - ./media:/app/media
+      - ./plantillas_correos:/plantillas_correos
     depends_on:
       - db_pilates
     restart: always
@@ -55,6 +56,7 @@
     volumes:
       - ./config_estetica/client-config.json:/app/config/client-config.json
       - ./media:/app/media
+      - ./plantillas_correos:/plantillas_correos
     depends_on:
       - db_estetica
     restart: always
