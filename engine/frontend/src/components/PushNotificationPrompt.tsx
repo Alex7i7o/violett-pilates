@@ -14,7 +14,23 @@ export function PushNotificationPrompt() {
     if (config.features?.webpush && isSupported && !isSubscribed && !dismissed) {
       // Delay showing the prompt to not overwhelm on initial load
       const timer = setTimeout(() => setIsVisible(true), 2000);
-      return (
+      return () => clearTimeout(timer);
+    }
+  }, [config.features?.webpush, isSupported, isSubscribed]);
+
+  if (!isVisible) return null;
+
+  const handleDismiss = () => {
+    setIsVisible(false);
+    localStorage.setItem('push_prompt_dismissed', 'true');
+  };
+
+  const handleSubscribe = async () => {
+    await subscribe();
+    setIsVisible(false);
+  };
+
+  return (
     <>
       <div className="fixed inset-0 bg-black/40 z-[100] md:hidden backdrop-blur-sm transition-opacity" onClick={handleDismiss} />
       
@@ -30,7 +46,7 @@ export function PushNotificationPrompt() {
           <div>
             <h4 className="font-bold text-gray-900 text-[1.1rem] md:text-sm">Activar Avisos</h4>
             <p className="text-gray-600 mt-1.5 text-[0.95rem] leading-snug md:text-sm md:mt-0.5">
-              Enterate al instante cuando se libera un lugar o tu clase está por empezar.
+              Enterate al instante cuando se libera un lugar o tu clase est por empezar.
             </p>
           </div>
         </div>
@@ -60,4 +76,5 @@ export function PushNotificationPrompt() {
         </div>
       </div>
     </>
-  );}
+  );
+}
