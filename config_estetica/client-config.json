@@ -28,7 +28,9 @@
     "estetica_paquetes",
     "estetica_agenda",
     "pagos",
-    "resenas"
+    "resenas",
+    "comunicaciones",
+    "webpush"
   ],
   "contact_phone": "5491164142172"
 }
