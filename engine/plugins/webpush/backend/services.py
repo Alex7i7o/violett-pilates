@@ -1,11 +1,11 @@
-﻿import json
+import json
 import logging
 from .models import PushSubscription
 from pywebpush import webpush, WebPushException
 
 logger = logging.getLogger(__name__)
 
-VAPID_PRIVATE_KEY = "HELAhHxLk377Cj8FPjWh_HSRAe7hoIHVFm68sOVE17E"
+VAPID_PRIVATE_KEY = "I7b2-6rtWOErgpT6nz7WfwD1KCVVraIVPelGOL1Le4A"
 VAPID_CLAIMS = {
     "sub": "mailto:hola@violett.com.ar"
 }

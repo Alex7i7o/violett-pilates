@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
 
-const PUBLIC_VAPID_KEY = "BFRmOlPUpoJqyhBHnxdg8haRkqH-hEK77Z7kRNRtwDVb3L83ycG61jVucWeZE3jpPh2daoVo7HOfSLh61qby3vI";
+const PUBLIC_VAPID_KEY = "BIsoqFOI92AtJUmzicZ_lXflJfXIukfd8ZjT5YldkZQBI7b2-6rtWOErgpT6nz7WfwD1KCVVraIVPelGOL1Le4A";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
