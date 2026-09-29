@@ -1,5 +1,4 @@
 ﻿import React from 'react';
-import { PushNotificationPrompt } from '../../components/PushNotificationPrompt';
 
 import { BookingGrid } from '../../components/booking/BookingGrid';
 import { useClientProfile } from '../../hooks/useClientProfile';
@@ -17,7 +16,7 @@ export function InicioView() {
         <p className="text-muted text-sm mt-1">Encontrá tu próxima clase</p>
       </div>
       
-      <PushNotificationPrompt />
+      
 
       <BookingGrid 
         turnos={turnos}

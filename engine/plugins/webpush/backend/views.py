@@ -28,17 +28,16 @@ class SubscribeView(APIView):
             }
         )
         
-        # Enviar un mensaje de bienvenida cuando se activa por primera vez en este dispositivo
-        if created:
-            def send_welcome():
-                time.sleep(1)
-                send_webpush(
-                    request.user,
-                    "¡Avisos activados con éxito!",
-                    "Bienvenida. Por acá te vamos a avisar cuando se libere un lugar en una clase.",
-                    {"url": "/"}
-                )
-            threading.Thread(target=send_welcome, daemon=True).start()
+        # Enviar un mensaje de bienvenida (siempre que el frontend mande el request de subscripcion, para que puedan testearlo)
+        def send_welcome():
+            time.sleep(2) # 2 segundos para dar tiempo a minimizar/cerrar el toast y ver la notificacion
+            send_webpush(
+                request.user,
+                "¡Avisos activados con éxito!",
+                "Bienvenida. Por acá te vamos a avisar cuando se libere un lugar en una clase.",
+                {"url": "/"}
+            )
+        threading.Thread(target=send_welcome, daemon=True).start()
 
         return Response({'detail': 'Subscription saved', 'created': created})
 

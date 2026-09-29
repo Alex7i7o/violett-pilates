@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InstallAppModal } from '../components/ui/InstallAppModal';
+import { PushNotificationPrompt } from '../components/PushNotificationPrompt';
 import { useClientConfig } from '../context/ClientConfigContext';
 
 export function ClientLayout() {
@@ -57,6 +58,7 @@ export function ClientLayout() {
         </motion.div>
       </main>
 
+      <PushNotificationPrompt />
       <nav className="flex md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-primary-light/40 z-40 pb-safe">
         <div className="flex w-full justify-around items-center h-[60px]">
           {tabs.map(tab => {
