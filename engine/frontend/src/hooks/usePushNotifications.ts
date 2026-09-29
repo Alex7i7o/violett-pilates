@@ -17,6 +17,65 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+/**
+ * Performs the full subscribe + server-save cycle.
+ * Always unsubscribes first to force a fresh subscription object,
+ * so even if the browser already has one, we re-register it with the server.
+ */
+async function doSubscribe(): Promise<boolean> {
+  console.log('[Push] Step 1: Requesting notification permission...');
+  const permission = await Notification.requestPermission();
+  console.log('[Push] Permission result:', permission);
+  if (permission !== 'granted') {
+    toast.error("Permiso denegado. Activalo en la configuracion del navegador.");
+    return false;
+  }
+
+  console.log('[Push] Step 2: Waiting for service worker...');
+  const registration = await navigator.serviceWorker.ready;
+  console.log('[Push] SW ready. Scope:', registration.scope);
+
+  // Always unsubscribe first so we get a fresh, clean subscription
+  // This ensures the endpoint saved in our DB is always in sync with the browser
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) {
+    console.log('[Push] Unsubscribing old subscription first...');
+    await existing.unsubscribe();
+  }
+
+  console.log('[Push] Step 3: Subscribing to Google FCM...');
+  let sub: PushSubscription;
+  try {
+    sub = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+    });
+    console.log('[Push] New subscription endpoint:', sub.endpoint.substring(0, 80) + '...');
+  } catch (err: any) {
+    console.error('[Push] pushManager.subscribe() FAILED:', err.name, err.message);
+    toast.error("Error al conectar con el servicio de notificaciones de Google.");
+    return false;
+  }
+
+  const p256dh = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(sub.getKey('p256dh')!))));
+  const auth = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(sub.getKey('auth')!))));
+
+  console.log('[Push] Step 4: Saving subscription in Violett server...');
+  try {
+    const res = await api.post('/webpush/subscribe/', {
+      endpoint: sub.endpoint,
+      keys: { p256dh, auth }
+    });
+    console.log('[Push] Server saved subscription:', res.data);
+  } catch (apiErr: any) {
+    console.error('[Push] /webpush/subscribe/ FAILED:', apiErr.response?.status, apiErr.response?.data || apiErr.message);
+    toast.error("Error al guardar la suscripcion en el servidor.");
+    return false;
+  }
+
+  return true;
+}
+
 export function usePushNotifications() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
@@ -26,7 +85,7 @@ export function usePushNotifications() {
       setIsSupported(true);
       checkSubscription();
     } else {
-      console.warn('[Push] serviceWorker or PushManager not supported in this browser.');
+      console.warn('[Push] serviceWorker or PushManager not supported.');
     }
   }, []);
 
@@ -51,66 +110,41 @@ export function usePushNotifications() {
       toast.error("Notificaciones no soportadas en este navegador.");
       return;
     }
-
     try {
-      console.log('[Push] Step 1: Requesting notification permission...');
-      const permission = await Notification.requestPermission();
-      console.log('[Push] Permission result:', permission);
-
-      if (permission !== 'granted') {
-        toast.error("Permiso de notificaciones denegado. Activalo desde la configuracion del navegador.");
-        return;
+      const ok = await doSubscribe();
+      if (ok) {
+        setIsSubscribed(true);
+        // Welcome push fires from the server after 2s
       }
-
-      console.log('[Push] Step 2: Waiting for service worker to be ready...');
-      const registration = await navigator.serviceWorker.ready;
-      console.log('[Push] SW ready. Scope:', registration.scope, '| Active SW:', registration.active?.scriptURL);
-
-      console.log('[Push] Step 3: Subscribing to push with VAPID key...');
-      let sub: PushSubscription;
-      try {
-        sub = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-        });
-        console.log('[Push] Subscribed! Endpoint:', sub.endpoint.substring(0, 80) + '...');
-      } catch (subscribeErr: any) {
-        console.error('[Push] pushManager.subscribe() FAILED:', subscribeErr);
-        console.error('[Push] Error name:', subscribeErr.name, '| message:', subscribeErr.message);
-        toast.error("Error al conectar con Google Push Services. Revisa la consola del navegador.");
-        return;
-      }
-
-      const p256dh = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(sub.getKey('p256dh')!))));
-      const auth = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(sub.getKey('auth')!))));
-
-      console.log('[Push] Step 4: Sending subscription to Violett server...');
-      try {
-        const res = await api.post('/webpush/subscribe/', {
-          endpoint: sub.endpoint,
-          keys: { p256dh, auth }
-        });
-        console.log('[Push] Server response:', res.data);
-      } catch (apiErr: any) {
-        console.error('[Push] API call to /webpush/subscribe/ FAILED:', apiErr.response?.data || apiErr.message);
-        toast.error("Error al guardar tu suscripcion en el servidor.");
-        return;
-      }
-
-      setIsSubscribed(true);
-      toast.success("Notificaciones activadas! En unos segundos deberia llegarte una de prueba.");
     } catch (e: any) {
-      console.error('[Push] Unexpected error during subscribe():', e);
-      toast.error("Error inesperado al activar notificaciones. Revisa la consola.");
+      console.error('[Push] Unexpected error:', e);
+      toast.error("Error inesperado. Revisa la consola.");
+    }
+  };
+
+  // Re-run the full subscribe flow even if already subscribed
+  // Use this to fix desync between browser and server
+  const reactivate = async () => {
+    if (!isSupported) return;
+    toast.info("Reactivando notificaciones...");
+    try {
+      const ok = await doSubscribe();
+      if (ok) {
+        setIsSubscribed(true);
+        toast.success("Notificaciones reactivadas! Deberia llegarte una de prueba en segundos.");
+      }
+    } catch (e: any) {
+      console.error('[Push] Unexpected error during reactivate:', e);
+      toast.error("Error inesperado. Revisa la consola.");
     }
   };
 
   const testPush = async () => {
     try {
-      console.log('[Push] Triggering test push sequence...');
+      console.log('[Push] Triggering test push...');
       const res = await api.get('/webpush/test/');
-      console.log('[Push] Test push started:', res.data);
-      toast.info("Secuencia de prueba iniciada. Espera 3 segundos...");
+      console.log('[Push] Test push response:', res.data);
+      toast.info("Notificacion de prueba enviada. Espera unos segundos...");
     } catch (e: any) {
       console.error('[Push] Test push failed:', e.response?.data || e.message);
       toast.error("Error al disparar notificacion de prueba.");
@@ -121,6 +155,7 @@ export function usePushNotifications() {
     isSupported,
     isSubscribed,
     subscribe,
+    reactivate,
     testPush,
   };
 }
