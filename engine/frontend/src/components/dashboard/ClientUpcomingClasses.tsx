@@ -56,9 +56,9 @@ export function ClientUpcomingClasses({ turnos, onCancelClick }: ClientUpcomingC
             <CardContent>
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-xl font-bold text-foreground mb-1">{turno.classType}</p>
-                  <p className="text-muted text-sm">{formatUpcomingDate(turno.date)}</p>
-                  <p className="text-muted text-sm font-medium">⏰ {turno.time} hs</p>
+                  <p className="text-lg font-bold text-foreground mb-1">{formatUpcomingDate(turno.date)}</p>
+                  <p className="text-primary-main font-semibold mb-1">⏰ {turno.time} hs</p>
+                  <p className="text-muted text-sm font-medium">{turno.classType}</p>
                 </div>
                 <button 
                   onClick={() => onCancelClick(turno)}

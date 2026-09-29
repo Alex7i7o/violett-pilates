@@ -5,8 +5,8 @@ import { api } from '../lib/api'
 export interface Recurrencia {
   id: string;
   dia_semana: number;
-  time: string;
-  classType: string;
+  hora_inicio: string;
+  clase_nombre: string;
   is_active: boolean;
 }
 

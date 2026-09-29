@@ -51,9 +51,9 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-xl font-bold text-foreground mb-1">{rec.classType}</p>
-                <p className="text-muted text-sm">Todos los {dayName}</p>
-                <p className="text-muted text-sm font-medium">⏰ {rec.time} hs</p>
+                <p className="text-lg font-bold text-foreground mb-1">Todos los {dayName}</p>
+                <p className="text-primary-main font-semibold mb-1">⏰ {rec.hora_inicio} hs</p>
+                <p className="text-muted text-sm font-medium">{rec.clase_nombre}</p>
               </CardContent>
               </Card>
             </motion.div>
