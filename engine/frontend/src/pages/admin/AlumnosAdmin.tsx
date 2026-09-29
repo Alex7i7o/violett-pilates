@@ -206,7 +206,7 @@ export function AlumnosAdmin() {
                             return (
                               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                                 <p className="text-sm font-bold text-amber-800">{plan.plan_nombre}</p>
-                                <p className="text-sm text-amber-700 mt-1">Pendiente de renovacií³n (0 clases)</p>
+                                <p className="text-sm text-amber-700 mt-1">Pendiente de renovacion (0 clases)</p>
                                 <p className="text-xs text-amber-600 mt-1">Vence: {plan.fecha_vencimiento}</p>
                               </div>
                             );
