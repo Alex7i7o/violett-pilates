@@ -55,8 +55,15 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Use Vite's magic BASE_URL replacement
-          navigator.serviceWorker.register('%VITE_BASE_URL%sw.js').catch(err => console.log('SW config error', err));
+          var isEstetica = window.location.pathname.includes('/estetica');
+          var swPath = isEstetica ? '/estetica/app/sw.js' : '/pilates/app/sw.js';
+          
+          // Fallback if we are in local dev
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            swPath = '/sw.js';
+          }
+          
+          navigator.serviceWorker.register(swPath).catch(err => console.log('SW config error', err));
         });
       }
     </script>
