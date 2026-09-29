@@ -57,5 +57,8 @@ class AsignarPlanView(APIView):
             fecha_vencimiento=timezone.localdate() + datetime.timedelta(days=30),
             estado='ACTIVO'
         )
+        
+        from backend_core.hooks import registry
+        registry.execute('plan_asignado', data={'suscripcion': nueva_suscripcion, 'usuario': usuario, 'plan': plan})
 
         return Response({'detail': 'Plan asignado correctamente'})
