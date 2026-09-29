@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 
 export interface PlanFormData {
@@ -24,7 +24,16 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      let precioFormat = '';
+      if (initialData.precio) {
+        // Convert to number to strip decimals safely (e.g. "40000.00" -> 40000)
+        const numPrecio = Math.round(Number(initialData.precio));
+        precioFormat = numPrecio > 0 ? numPrecio.toLocaleString('es-AR') : '';
+      }
+      setFormData({
+        ...initialData,
+        precio: precioFormat
+      });
     } else {
       setFormData({ nombre: '', clases_por_mes: '', precio: '' });
     }
@@ -32,6 +41,16 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    if (name === 'precio') {
+        const rawValue = value.replace(/\./g, '');
+        if (/^\d*$/.test(rawValue)) {
+            const formatted = rawValue ? Number(rawValue).toLocaleString('es-AR') : '';
+            setFormData(prev => ({ ...prev, [name]: formatted }));
+        }
+        return;
+    }
+
     setFormData(prev => ({ 
       ...prev, 
       [name]: name === 'nombre' ? value : (value === '' ? '' : Number(value)) 
@@ -40,7 +59,12 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData as any);
+    const finalData = {
+        ...formData,
+        // Remove dots to send valid integer/float to the backend
+        precio: Number(String(formData.precio).replace(/\./g, ''))
+    };
+    onSubmit(finalData as any);
   };
 
   return (
@@ -61,7 +85,7 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
       </div>
       <div>
         <label className="block text-sm font-semibold mb-1 text-foreground">Precio ($)</label>
-        <input type="number" step="0.01" name="precio" required value={formData.precio} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+        <input type="text" name="precio" required value={formData.precio} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
       </div>
       <div className="col-span-1 md:col-span-4 flex justify-end gap-3 mt-2">
         {isEditing && (
