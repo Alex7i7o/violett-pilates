@@ -12,11 +12,16 @@ self.addEventListener("fetch", (e) => {
 
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
-  const title = data.title || "Notificación de Violett Pilates";
+  const title = data.title || "Aviso de Violett";
+  // Detect which app is running based on service worker scope
+  const scope = self.registration.scope;
+  const isEstetica = scope.includes('/estetica/');
+  const basePath = isEstetica ? '/estetica/app' : '/pilates/app';
+  
   const options = {
     body: data.body || "Tienes un nuevo aviso.",
-    icon: "/favicon-pilates.png",
-    badge: "/favicon-pilates.png",
+    icon: basePath + "/favicon-pilates.png",
+    badge: basePath + "/favicon-pilates.png",
     data: data.data || { url: "/" },
     vibrate: [100, 50, 100],
   };

@@ -10,7 +10,7 @@ import { useClientConfig } from '../../context/ClientConfigContext';
 export function PerfilView() {
   const { profile, refetch } = useClientProfile();
   const config = useClientConfig();
-  const { isSupported, isSubscribed, subscribe } = usePushNotifications();
+  const { isSupported, isSubscribed, subscribe, testPush } = usePushNotifications();
 
   const handleLogout = async () => {
     const baseUrl = import.meta.env.BASE_URL || '/';
