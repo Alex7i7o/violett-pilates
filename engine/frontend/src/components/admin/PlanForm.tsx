@@ -32,14 +32,6 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (name === 'precio') {
-        const rawValue = value.replace(/\./g, '');
-        if (/^\d*$/.test(rawValue)) {
-            const formatted = rawValue ? Number(rawValue).toLocaleString('es-AR') : '';
-            setFormData(prev => ({ ...prev, [name]: formatted }));
-        }
-        return;
-    }
     setFormData(prev => ({ 
       ...prev, 
       [name]: name === 'nombre' ? value : (value === '' ? '' : Number(value)) 
@@ -48,11 +40,7 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalData = {
-        ...formData,
-        precio: Number(String(formData.precio).replace(/\./g, ''))
-    };
-    onSubmit(finalData as any);
+    onSubmit(formData as any);
   };
 
   return (
@@ -73,7 +61,7 @@ export function PlanForm({ initialData, onSubmit, onCancel, isEditing }: PlanFor
       </div>
       <div>
         <label className="block text-sm font-semibold mb-1 text-foreground">Precio ($)</label>
-        <input type="text" name="precio" required value={formData.precio} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+        <input type="number" step="0.01" name="precio" required value={formData.precio} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
       </div>
       <div className="col-span-1 md:col-span-4 flex justify-end gap-3 mt-2">
         {isEditing && (
