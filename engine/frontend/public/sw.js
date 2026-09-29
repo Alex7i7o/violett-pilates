@@ -15,8 +15,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Notificación de Violett Pilates";
   const options = {
     body: data.body || "Tienes un nuevo aviso.",
-    icon: "/favicon.svg",
-    badge: "/favicon.svg",
+    icon: "/favicon-pilates.png",
+    badge: "/favicon-pilates.png",
     data: data.data || { url: "/" },
     vibrate: [100, 50, 100],
   };
