@@ -47,6 +47,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
 
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [clasesRestantes, setClasesRestantes] = useState<number>(0);
+  const [fechaVencimiento, setFechaVencimiento] = useState<string>('');
   
   // Recurrencias State
   const [recurrencias, setRecurrencias] = useState<any[]>([]);
@@ -73,8 +74,10 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       const planActivo = alumno.plan_activo;
       if (planActivo) {
         setClasesRestantes(planActivo.clases_restantes);
+        setFechaVencimiento(planActivo.fecha_vencimiento || '');
       } else {
         setClasesRestantes(0);
+        setFechaVencimiento('');
       }
 
       fetchPlanes();
