@@ -19,7 +19,7 @@ export function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
-            <p className="text-red-500 mb-4">El enlace es inválido o ha expirado.</p>
+            <p className="text-red-500 mb-4">El enlace es invalido o ha expirado.</p>
             <button onClick={() => navigate('/')} className="text-violett-600 underline">Volver al inicio</button>
           </CardContent>
         </Card>
@@ -47,7 +47,23 @@ export function ResetPassword() {
       setStatus('success');
     } catch (err: any) {
       setStatus('error');
-      setErrorMsg('El enlace ha expirado o es inválido. Por favor, solicitá uno nuevo.');
+      
+      const data = err.response?.data;
+      if (data) {
+        if (data.new_password1) {
+          setErrorMsg(data.new_password1[0] || 'La contraseña no cumple con los requisitos.');
+        } else if (data.token) {
+          setErrorMsg('El enlace ha expirado o ya fue utilizado. Por favor, solicita uno nuevo.');
+        } else if (data.uid) {
+          setErrorMsg('El enlace es invalido (usuario no encontrado).');
+        } else if (data.non_field_errors) {
+          setErrorMsg(data.non_field_errors[0]);
+        } else {
+          setErrorMsg('Ocurrio un error inesperado al restablecer la contraseña.');
+        }
+      } else {
+        setErrorMsg('Error de conexion o el enlace es invalido.');
+      }
     }
   };
 
@@ -60,9 +76,9 @@ export function ResetPassword() {
         <CardContent>
           {status === 'success' ? (
             <div className="text-center space-y-4">
-              <p className="text-green-600 font-medium">¡Tu contraseña ha sido actualizada con éxito!</p>
+              <p className="text-green-600 font-medium">Tu contraseña ha sido actualizada con exito!</p>
               <button onClick={() => navigate('/')} className="w-full bg-primary-main hover:bg-primary-hover text-white p-3 rounded-xl font-bold transition-all">
-                Ir a Iniciar Sesión
+                Ir a Iniciar Sesion
               </button>
             </div>
           ) : (
@@ -96,7 +112,7 @@ export function ResetPassword() {
                 />
               </div>
 
-              {errorMsg && <p className="text-red-500 text-sm text-center">{errorMsg}</p>}
+              {errorMsg && <p className="text-red-500 text-sm text-center font-medium">{errorMsg}</p>}
               
               <button type="submit" disabled={status === 'loading'} className="w-full bg-primary-main hover:bg-primary-hover text-white p-3 rounded-xl font-bold transition-all disabled:opacity-50">
                 {status === 'loading' ? 'Guardando...' : 'Guardar contraseña'}

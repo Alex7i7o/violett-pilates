@@ -57,7 +57,7 @@ class CustomRegisterSerializer(RegisterSerializer):
         user = super().save(request)
         return user
 from dj_rest_auth.serializers import PasswordResetSerializer
-from django.contrib.auth.tokens import default_token_generator
+from allauth.account.forms import default_token_generator
 from allauth.account.utils import user_pk_to_url_str
 
 class CustomPasswordResetSerializer(PasswordResetSerializer):
