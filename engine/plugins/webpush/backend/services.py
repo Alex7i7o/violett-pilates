@@ -6,7 +6,7 @@ from pywebpush import webpush, WebPushException
 
 logger = logging.getLogger(__name__)
 
-VAPID_PRIVATE_KEY = "I7b2-6rtWOErgpT6nz7WfwD1KCVVraIVPelGOL1Le4A"
+VAPID_PRIVATE_KEY = "olY9apgKiK8belWfWs4Bclc93R7dcXOTHzYadhywzHU"
 VAPID_CLAIMS = {
     "sub": "mailto:hola@violett.com.ar"
 }
