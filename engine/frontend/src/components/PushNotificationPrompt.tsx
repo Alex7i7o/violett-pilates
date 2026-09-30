@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useClientConfig } from '../context/ClientConfigContext';
@@ -26,6 +26,8 @@ export function PushNotificationPrompt() {
   };
 
   const handleSubscribe = async () => {
+    // Record that they interacted with the prompt so it never bothers them again
+    localStorage.setItem('push_prompt_dismissed', 'true');
     await subscribe();
     setIsVisible(false);
   };
