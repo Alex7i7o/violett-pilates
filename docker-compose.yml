@@ -1,4 +1,4 @@
-﻿services:
+services:
   # === APP 1: VIOLETT PILATES ===
   backend_pilates:
     image: violettpilates-backend-pilates
@@ -9,7 +9,7 @@
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - DATABASE_URL=postgres://violett_user:violett_password@db_pilates:5432/violett_pilates
-      - FRONTEND_URL=https://violett.com.ar/pilates/app/
+      - FRONTEND_URL=https://violett.com.ar/pilates/
     volumes:
       - ./config_pilates/client-config.json:/app/config/client-config.json
       - ./media:/app/media
@@ -24,7 +24,7 @@
       context: ./engine
       dockerfile: Dockerfile.frontend
       args:
-        VITE_BASE_URL: /pilates/app/
+        VITE_BASE_URL: /pilates/
         VITE_CLIENT_ID: pilates
     volumes:
       - ./config_pilates/client-config.json:/usr/share/nginx/html/client-config.json
