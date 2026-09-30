@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,6 +12,7 @@ import { api } from '../lib/api';
 import { Dashboard } from '../pages/Dashboard';
 import { ClientLayout } from './ClientLayout';
 import { InicioView } from '../pages/client/InicioView';
+import { LandingView } from '../pages/public/LandingView';
 import { ReservasView } from '../pages/client/ReservasView';
 import { PerfilView } from '../pages/client/PerfilView';
 
@@ -56,10 +57,11 @@ export function BookingRoutes() {
   if (error || !profile) {
     return (
       <Routes>
+        <Route path="/" element={<LandingView />} />
         {console.log('PUBLIC ROUTES:', getPluginPublicRoutes(config.active_plugins || []))} {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
           <Route key={i} path={route.path} element={route.path === '/login' || route.path === 'login' ? React.cloneElement(route.element as React.ReactElement, { onLoginSuccess: refetch }) : route.element} />
         ))}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
