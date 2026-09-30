@@ -40,7 +40,7 @@ class TurnosDisponiblesView(APIView):
         # Fetch upcoming turnos from today onwards, but filter out past times for today
         now = timezone.now()
         today = timezone.localdate(now)
-        current_time = now.time()
+        current_time = timezone.localtime(now).time()
         
         from django.db.models import Q
         turnos = Turno.objects.select_related('clase').prefetch_related('reservas').filter(
@@ -135,7 +135,7 @@ class ClientHistoryView(APIView):
 
         # Clases que el usuario ya tuvo este mes (o hasta la fecha límite)
         # Filtramos por reservas pasadas o de hoy pero con horario finalizado
-        current_time = now.time()
+        current_time = timezone.localtime(now).time()
         
         reservas = Reserva.objects.select_related('turno', 'turno__clase').filter(
             usuario=user,

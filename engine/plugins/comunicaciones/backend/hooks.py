@@ -35,7 +35,7 @@ def on_reserva_creada(data, **kwargs):
                 import logging
                 logging.getLogger(__name__).error(f"Error sending email: {e}")
                 
-        threading.Thread(target=send_email, daemon=True).start()
+        threading.Thread(target=send_notifications, daemon=True).start()
     return data
 
 def on_reserva_cancelada_a_tiempo(data, **kwargs):
