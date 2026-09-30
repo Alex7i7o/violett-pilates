@@ -18,10 +18,12 @@ self.addEventListener("push", (event) => {
   const isEstetica = scope.includes('/estetica/');
   const basePath = isEstetica ? '/estetica/app' : '/pilates/app';
   
+  const iconFile = isEstetica ? '/logo-estetica-icon.png' : '/logo-icon.png';
+
   const options = {
     body: data.body || "Tienes un nuevo aviso.",
-    icon: basePath + "/favicon-pilates.png",
-    badge: basePath + "/favicon-pilates.png",
+    icon: basePath + iconFile,
+    badge: basePath + iconFile,
     data: data.data || { url: "/" },
     vibrate: [100, 50, 100],
   };
