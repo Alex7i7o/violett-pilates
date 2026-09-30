@@ -37,26 +37,24 @@ export function CancelModal({ isOpen, onClose, turno, onConfirm }: CancelModalPr
       {displayTurno ? (
       <div className="space-y-6">
         <p className="text-muted text-sm">
-          Estás a punto de cancelar tu clase de <strong>{displayTurno.classType}</strong> del día {displayTurno.date} a las {displayTurno.time}.
+          Estas a punto de cancelar tu clase de <strong>{displayTurno.classType}</strong> del dia {displayTurno.date} a las {displayTurno.time}.
         </p>
 
         {isLateCancellation && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 text-red-800">
             <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
             <div>
-              <p className="font-semibold text-sm">Cancelación Tardía</p>
+              <p className="font-semibold text-sm">Cancelacion Tardia</p>
               <p className="text-sm mt-1">
-                Estás cancelando con menos de 24 horas de anticipación. Según nuestra política, perderás el crédito de esta clase y no será devuelto a tu plan.
+                Estas cancelando con menos de 24 horas de anticipacion. Segun nuestra politica, perderas el credito de esta clase y no sera devuelto a tu plan.
               </p>
             </div>
           </div>
         )}
 
         <div className="flex gap-3 justify-end mt-4">
-          <Button onClick={onClose} variant="outline" className="w-full">Atrás</Button>
-          <Button onClick={() => onConfirm(displayTurno.id)} variant="destructive" className="w-full">
-            Sí, cancelar clase
-          </Button>
+          <Button onClick={onClose} variant="outline" className="w-full">Atras</Button>
+          <FeedbackButton onClick={async () => await onConfirm(displayTurno.id)} variant="destructive" className="w-full" initialText="Si, cancelar clase" successText="Cancelada" />
         </div>
       </div>
       ) : null}

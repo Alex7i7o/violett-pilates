@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { Modal } from './Modal'
 import { Button } from './Button'
 import { FeedbackButton } from './FeedbackButton'
@@ -20,23 +20,12 @@ export function ConfirmModal({
   isOpen,
   onClose,
   onConfirm,
-  title = 'Confirmar acci\u00f3n',
+  title = 'Confirmar accion',
   message,
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
   isDestructive = false
 }: ConfirmModalProps) {
-  React.useEffect(() => {
-    if (isOpen) {
-      if (isDestructive) {
-        haptics.warning();
-      } else {
-        haptics.light();
-      }
-    }
-  }, [isOpen, isDestructive]);
-
-
   React.useEffect(() => {
     if (isOpen) {
       if (isDestructive) {
@@ -54,16 +43,15 @@ export function ConfirmModal({
         <Button variant="outline" className="w-full" onClick={onClose}>
           {cancelText}
         </Button>
-        <Button
+        <FeedbackButton
           variant={isDestructive ? 'destructive' : 'default'}
           className="w-full"
-          onClick={() => {
-            onConfirm()
+          onClick={async () => {
+            await onConfirm()
             onClose()
           }}
-        >
-          {confirmText}
-        </Button>
+          initialText={confirmText}
+        />
       </div>
     </Modal>
   )

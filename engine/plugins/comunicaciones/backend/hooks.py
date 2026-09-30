@@ -7,10 +7,15 @@ import threading
 def on_reserva_creada(data, **kwargs):
     reserva = data
     if reserva and reserva.turno:
-        notificar_reserva_creada(reserva.usuario, reserva.turno)
         
-        # Enviar email
-        def send_email():
+        # Enviar email y WhatsApp en background
+        def send_notifications():
+            try:
+                notificar_reserva_creada(reserva.usuario, reserva.turno)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error sending WhatsApp: {e}")
+            
             try:
                 context = {
                     'nombre': reserva.usuario.nombre,
@@ -36,10 +41,15 @@ def on_reserva_creada(data, **kwargs):
 def on_reserva_cancelada_a_tiempo(data, **kwargs):
     reserva = data
     if reserva and reserva.turno:
-        notificar_cancelacion_usuario(reserva.usuario, reserva.turno)
         
-        # Enviar email
-        def send_email():
+        # Enviar email y WhatsApp en background
+        def send_notifications():
+            try:
+                notificar_cancelacion_usuario(reserva.usuario, reserva.turno)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error sending WhatsApp: {e}")
+            
             try:
                 context = {
                     'nombre': reserva.usuario.nombre,
@@ -58,51 +68,70 @@ def on_reserva_cancelada_a_tiempo(data, **kwargs):
                 import logging
                 logging.getLogger(__name__).error(f"Error sending email: {e}")
                 
-        threading.Thread(target=send_email, daemon=True).start()
+        threading.Thread(target=send_notifications, daemon=True).start()
     return data
 
 def on_turno_cancelado_por_falta_cupo(data, **kwargs):
     turno = data
     if turno:
-        from core.models import Reserva
-        reservas = Reserva.objects.filter(turno=turno)
-        for r in reservas:
-            notificar_cancelacion_clase(r.usuario, turno)
+        def process_cancellations():
+            from core.models import Reserva
+            reservas = Reserva.objects.filter(turno=turno)
+            for r in reservas:
+                try:
+                    notificar_cancelacion_clase(r.usuario, turno)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error WhatsApp cancelacion clase: {e}")
+        import threading
+        threading.Thread(target=process_cancellations, daemon=True).start()
     return data
 
 def on_turno_alerta_cupo(data, **kwargs):
     turno = data
     if turno:
-        from core.models import Usuario
-        usuarios = Usuario.objects.filter(rol='CLIENTE')
-        client = WhatsAppClient()
-        for u in usuarios:
-            components = [{
-                "type": "body",
-                "parameters": [
-                    {"type": "text", "text": u.nombre},
-                    {"type": "text", "text": turno.clase.nombre},
-                    {"type": "text", "text": f"{turno.fecha.strftime('%d/%m')} a las {turno.hora_inicio.strftime('%H:%M')}"}
-                ]
-            }]
-            # Asumimos que vas a crear en Meta la plantilla "alerta_cupo_disponible"
-            client._send_template(u.telefono or "1164142172", "alerta_cupo_disponible", components)
+        def process_alert():
+            from core.models import Usuario
+            usuarios = Usuario.objects.filter(rol='CLIENTE')
+            client = WhatsAppClient()
+            for u in usuarios:
+                try:
+                    components = [{
+                        "type": "body",
+                        "parameters": [
+                            {"type": "text", "text": u.nombre},
+                            {"type": "text", "text": turno.clase.nombre},
+                            {"type": "text", "text": f"{turno.fecha.strftime('%d/%m')} a las {turno.hora_inicio.strftime('%H:%M')}"}
+                        ]
+                    }]
+                    client._send_template(u.telefono or "1164142172", "alerta_cupo_disponible", components)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error WhatsApp alerta cupo: {e}")
+        import threading
+        threading.Thread(target=process_alert, daemon=True).start()
     return data
 
 def on_reserva_recordatorio(data, **kwargs):
     reserva = data
     if reserva and reserva.turno:
-        client = WhatsAppClient()
-        components = [{
-            "type": "body",
-            "parameters": [
-                {"type": "text", "text": reserva.usuario.nombre},
-                {"type": "text", "text": reserva.turno.clase.nombre},
-                {"type": "text", "text": reserva.turno.hora_inicio.strftime('%H:%M')}
-            ]
-        }]
-        # Asumimos que vas a crear en Meta la plantilla "recordatorio_clase"
-        client._send_template(reserva.usuario.telefono or "1164142172", "recordatorio_clase", components)
+        def process_reminder():
+            try:
+                client = WhatsAppClient()
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": reserva.usuario.nombre},
+                        {"type": "text", "text": reserva.turno.clase.nombre},
+                        {"type": "text", "text": reserva.turno.hora_inicio.strftime('%H:%M')}
+                    ]
+                }]
+                client._send_template(reserva.usuario.telefono or "1164142172", "recordatorio_clase", components)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error WhatsApp recordatorio: {e}")
+        import threading
+        threading.Thread(target=process_reminder, daemon=True).start()
     return data
 
 def on_plan_asignado(data, **kwargs):
