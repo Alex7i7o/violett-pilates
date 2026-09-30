@@ -48,7 +48,8 @@ export function BookingGrid({
   // Group by date
   const groupedTurnos = useMemo(() => {
     const groups: Record<string, Turno[]> = {}
-    turnos.forEach(turno => {
+    const turnosArray = Array.isArray(turnos) ? turnos : [];
+    turnosArray.forEach(turno => {
       if (!groups[turno.date]) {
         groups[turno.date] = []
       }

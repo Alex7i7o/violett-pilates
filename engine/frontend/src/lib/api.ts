@@ -1,7 +1,12 @@
 import axios from 'axios';
 
 const baseUrl = import.meta.env.BASE_URL || '/';
-const apiBase = baseUrl.endsWith('/app/') ? baseUrl.replace('/app/', '/api/') : '/api';
+let apiBase = '/api';
+if (baseUrl.includes('/pilates')) {
+  apiBase = '/pilates/api/';
+} else if (baseUrl.includes('/estetica')) {
+  apiBase = '/estetica/api/';
+}
 
 export const api = axios.create({
   baseURL: apiBase,
