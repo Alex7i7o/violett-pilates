@@ -32,7 +32,15 @@ async function doSubscribe(): Promise<boolean> {
   }
 
   console.log('[Push] Step 2: Waiting for service worker...');
-  const registration = await navigator.serviceWorker.ready;
+  let registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) {
+    console.log('[Push] Registration not found immediately, waiting for .ready...');
+    // Race with a 5 second timeout to avoid hanging forever
+    registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Service Worker ready timeout. Verifica que sw.js est cargando correctamente.')), 5000))
+    ]) as ServiceWorkerRegistration;
+  }
   console.log('[Push] SW ready. Scope:', registration.scope);
 
   // Always unsubscribe first so we get a fresh, clean subscription
@@ -91,7 +99,15 @@ export function usePushNotifications() {
 
   const checkSubscription = async () => {
     try {
-      const registration = await navigator.serviceWorker.ready;
+      let registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) {
+    console.log('[Push] Registration not found immediately, waiting for .ready...');
+    // Race with a 5 second timeout to avoid hanging forever
+    registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Service Worker ready timeout. Verifica que sw.js est cargando correctamente.')), 5000))
+    ]) as ServiceWorkerRegistration;
+  }
       console.log('[Push] SW scope:', registration.scope);
       const sub = await registration.pushManager.getSubscription();
       if (sub) {
