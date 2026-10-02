@@ -28,7 +28,7 @@ export function ResenasView() {
     queryFn: async () => {
       try {
         const res = await api.get('/resenas/resenas/');
-        return res.data;
+        return res.data.results ? res.data.results : res.data;
       } catch (err) {
         console.error(err);
         return [];
@@ -81,7 +81,7 @@ export function ResenasView() {
                   <p className="italic text-base md:text-lg mb-6 leading-relaxed opacity-80 relative z-10">
                     {resena.mensaje}
                   </p>
-                  <footer className="font-bold text-violett-700 text-sm md:text-base">— {resena.usuario?.first_name || 'Alumna'} {resena.usuario?.last_name || ''}</footer>
+                  <footer className="font-bold text-violett-700 text-sm md:text-base">— {resena.autor || 'Alumna'}</footer>
                 </motion.blockquote>
               ))
             ) : (
@@ -104,3 +104,5 @@ export function ResenasView() {
     </div>
   );
 }
+
+

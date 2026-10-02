@@ -101,7 +101,7 @@ export function LandingView() {
     queryFn: async () => {
       try {
         const res = await api.get('/membresias/planes/');
-        return res.data;
+        return res.data.results ? res.data.results : res.data;
       } catch (err) {
         return [];
       }
@@ -113,7 +113,7 @@ export function LandingView() {
     queryFn: async () => {
       try {
         const res = await api.get('/resenas/resenas/');
-        return res.data.slice(0, 3);
+        const data = res.data.results ? res.data.results : res.data; return data.slice(0, 3);
       } catch (err) {
         return [];
       }
@@ -169,7 +169,7 @@ export function LandingView() {
             <motion.div variants={fadeUp}>
               <Link 
                 to="/login"
-                className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-sm md:text-base rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-primary-main/20"
+                className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-base md:text-lg rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-primary-main/20"
               >
                 ✦ Descubrir mi espacio
               </Link>
@@ -323,7 +323,7 @@ export function LandingView() {
                   <p className="italic text-sm md:text-base mb-6 leading-relaxed opacity-80 relative z-10 flex-grow">
                     {resena.mensaje}
                   </p>
-                  <footer className="font-bold text-violett-700 text-sm md:text-base">— {resena.usuario?.first_name || 'Alumna'} {resena.usuario?.last_name || ''}</footer>
+                  <footer className="font-bold text-violett-700 text-sm md:text-base">— {resena.autor || 'Alumna'}</footer>
                 </motion.blockquote>
               ))
             ) : (
@@ -375,7 +375,7 @@ export function LandingView() {
           <motion.div variants={fadeUp}>
             <Link 
               to="/login"
-              className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-sm md:text-base rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-primary-main/20"
+              className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-base md:text-lg rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-primary-main/20"
             >
               ✦ Asegurar mi lugar hoy
             </Link>
@@ -398,7 +398,7 @@ export function LandingView() {
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-2 leading-relaxed opacity-80 text-balance max-w-3xl mx-auto">
             El amor propio se construye con constancia. Elegí la frecuencia que mejor se adapte a tu estilo de vida y comenzá a esculpir tu figura en nuestro refugio.
           </motion.p>
-          <motion.p variants={fadeUp} className="font-sans text-center mb-10 md:mb-16 text-xs md:text-sm italic opacity-60">
+          <motion.p variants={fadeUp} className="font-sans text-center mb-10 md:mb-16 text-sm md:text-base italic opacity-60">
             (Los valores se actualizan en tiempo real)
           </motion.p>
 
@@ -406,16 +406,16 @@ export function LandingView() {
             {/* Plan 1 */}
             <motion.div variants={fadeUp} className="bg-white p-6 md:p-8 rounded-[2rem] border border-primary-main/10 shadow-sm hover:shadow-xl transition-shadow flex flex-col h-full relative overflow-hidden group">
               <h3 className="font-marcellus text-xl md:text-2xl mb-2 text-center text-primary-main">Pausa Delicada</h3>
-              <div className="text-xs md:text-sm font-sans opacity-70 text-center mb-6">(4 clases al mes)</div>
-              <p className="font-sans text-xs md:text-sm mb-8 flex-grow opacity-80 leading-relaxed text-center">
+              <div className="text-sm md:text-base font-sans opacity-70 text-center mb-6">(4 clases al mes)</div>
+              <p className="font-sans text-sm md:text-base mb-8 flex-grow opacity-80 leading-relaxed text-center">
                 Ideal para quienes buscan complementar su rutina y regalarse un momento sagrado a la semana para alinear su postura y desconectar del mundo.
               </p>
-              <ul className="text-xs md:text-sm font-sans space-y-3 mb-8 opacity-90">
+              <ul className="text-sm md:text-base font-sans space-y-3 mb-8 opacity-90">
                 <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-violett-400 shrink-0"></span> 1 clase semanal garantizada.</li>
                 <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-violett-400 shrink-0"></span> Acceso a plataforma de reservas.</li>
-                <li className="flex items-center gap-2 font-bold text-violett-700 mt-4"><span className="w-1 h-1 rounded-full bg-violett-700 shrink-0"></span> Valor: ${getPrecio(4)}</li>
+                <li className="flex items-center gap-2 font-bold text-violett-700 mt-4"><span className="w-1 h-1 rounded-full bg-violett-700 shrink-0"></span> Valor: {getPrecio(4) ? `$${getPrecio(4).toLocaleString()}` : "Cargando..."}</li>
               </ul>
-              <Link to="/login" className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-sm md:text-base rounded-full hover:bg-primary-main hover:text-white transition-colors w-full">
+              <Link to="/login" className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-base md:text-lg rounded-full hover:bg-primary-main hover:text-white transition-colors w-full">
                 Elegir este plan
               </Link>
             </motion.div>
@@ -424,16 +424,16 @@ export function LandingView() {
             <motion.div variants={fadeUp} className="bg-primary-main text-white p-8 md:p-10 rounded-[2.5rem] shadow-xl md:shadow-2xl flex flex-col h-full transform lg:scale-105 z-10 relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 bg-white/10 py-1.5 text-[10px] md:text-xs font-bold tracking-widest text-center">✦ EL MÁS ELEGIDO ✦</div>
               <h3 className="font-marcellus text-xl md:text-2xl mb-2 text-center mt-6">Equilibrio Radiante</h3>
-              <div className="text-xs md:text-sm font-sans opacity-80 text-center mb-6">(8 clases al mes)</div>
-              <p className="font-sans text-xs md:text-sm mb-8 flex-grow opacity-90 leading-relaxed text-center">
+              <div className="text-sm md:text-base font-sans opacity-80 text-center mb-6">(8 clases al mes)</div>
+              <p className="font-sans text-sm md:text-base mb-8 flex-grow opacity-90 leading-relaxed text-center">
                 La constancia perfecta, elegida por la mayoría de nuestras alumnas. Dos encuentros semanales para moldear tu silueta, corregir tu espalda desde la raíz y notar cambios reales.
               </p>
-              <ul className="text-xs md:text-sm font-sans space-y-3 mb-8">
+              <ul className="text-sm md:text-base font-sans space-y-3 mb-8">
                 <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span> 2 clases semanales para resultados.</li>
                 <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span> Acompañamiento personalizado.</li>
-                <li className="flex items-center gap-2 font-bold mt-4"><span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span> Valor: ${getPrecio(8)}</li>
+                <li className="flex items-center gap-2 font-bold mt-4"><span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span> Valor: {getPrecio(8) ? `$${getPrecio(8).toLocaleString()}` : "Cargando..."}</li>
               </ul>
-              <Link to="/login" className="block text-center bg-white text-primary-main font-bold py-3.5 text-sm md:text-base rounded-full hover:bg-opacity-90 hover:scale-[1.02] transition-all w-full shadow-lg">
+              <Link to="/login" className="block text-center bg-white text-primary-main font-bold py-3.5 text-base md:text-lg rounded-full hover:bg-opacity-90 hover:scale-[1.02] transition-all w-full shadow-lg">
                 Quiero mi transformación
               </Link>
             </motion.div>
@@ -441,16 +441,16 @@ export function LandingView() {
             {/* Plan 3 */}
             <motion.div variants={fadeUp} className="bg-white p-6 md:p-8 rounded-[2rem] border border-primary-main/10 shadow-sm hover:shadow-xl transition-shadow flex flex-col h-full relative overflow-hidden">
               <h3 className="font-marcellus text-xl md:text-2xl mb-2 text-center text-primary-main">Plenitud Total</h3>
-              <div className="text-xs md:text-sm font-sans opacity-70 text-center mb-6">(12 clases al mes)</div>
-              <p className="font-sans text-xs md:text-sm mb-8 flex-grow opacity-80 leading-relaxed text-center">
+              <div className="text-sm md:text-base font-sans opacity-70 text-center mb-6">(12 clases al mes)</div>
+              <p className="font-sans text-sm md:text-base mb-8 flex-grow opacity-80 leading-relaxed text-center">
                 Para quienes hacen de su bienestar su prioridad absoluta. Tres momentos a la semana de inmersión total en el Método Violett, logrando la máxima elasticidad y firmeza.
               </p>
-              <ul className="text-xs md:text-sm font-sans space-y-3 mb-8 opacity-90">
+              <ul className="text-sm md:text-base font-sans space-y-3 mb-8 opacity-90">
                 <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-violett-400 shrink-0"></span> 3 clases semanales de cuidado.</li>
                 <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-violett-400 shrink-0"></span> Máxima prioridad en nuestra agenda.</li>
-                <li className="flex items-center gap-2 font-bold text-violett-700 mt-4"><span className="w-1 h-1 rounded-full bg-violett-700 shrink-0"></span> Valor: ${getPrecio(12)}</li>
+                <li className="flex items-center gap-2 font-bold text-violett-700 mt-4"><span className="w-1 h-1 rounded-full bg-violett-700 shrink-0"></span> Valor: {getPrecio(12) ? `$${getPrecio(12).toLocaleString()}` : "Cargando..."}</li>
               </ul>
-              <Link to="/login" className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-sm md:text-base rounded-full hover:bg-primary-main hover:text-white transition-colors w-full">
+              <Link to="/login" className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-base md:text-lg rounded-full hover:bg-primary-main hover:text-white transition-colors w-full">
                 Elegir inmersión total
               </Link>
             </motion.div>
@@ -470,7 +470,7 @@ export function LandingView() {
           <motion.div variants={fadeUp} className="text-center">
             <Link 
               to="/login"
-              className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-sm md:text-base rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-lg shadow-primary-main/20"
+              className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-base md:text-lg rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-lg shadow-primary-main/20"
             >
               ✦ Acceder a mi agenda personal
             </Link>
@@ -489,10 +489,15 @@ export function LandingView() {
         >
           <img src="/logo-icon.png" alt="Violett" className="w-10 h-10 md:w-12 md:h-12 object-contain mx-auto mb-6 opacity-60" />
           <p className="font-laluxes mb-2 text-lg md:text-xl tracking-widest text-primary-main">Violett Pilates</p>
-          <p className="mb-6 text-xs md:text-sm text-primary-main/80">📍 Gral. Guido 1573, Ramos Mejía.</p>
+          <p className="mb-6 text-sm md:text-base text-primary-main/80">📍 Gral. Guido 1573, Ramos Mejía.</p>
           <p className="text-[10px] md:text-xs tracking-widest uppercase text-primary-main/60">© {new Date().getFullYear()} Violett.</p>
         </motion.div>
       </footer>
     </div>
   );
 }
+
+
+
+
+
