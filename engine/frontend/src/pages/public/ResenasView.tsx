@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../../lib/api';
+import { api } from '../../lib/api';
 
 const smoothEase = [0.16, 1, 0.3, 1];
 const fadeUp = {
