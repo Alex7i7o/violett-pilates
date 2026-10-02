@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 @source "../../plugins/**/*.tsx";
 
 @font-face {
@@ -57,6 +57,18 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-family: var(--font-laluxes);
+  font-weight: 400 !important; /* La Luxes regular, force override any tailwind font-bold */
+  letter-spacing: -0.01em;
+}
+
+h2, h3, h4, h5, h6 {
+  font-family: var(--font-marcellus);
+  font-weight: 400 !important; /* Marcellus regular */
+  letter-spacing: 0.01em; /* Light letter-spacing as requested */
 }
 
 @layer utilities {
