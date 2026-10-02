@@ -1,4 +1,4 @@
-﻿{% extends "emails/base.html" %}
+{% extends "emails/base.html" %}
 
 {% block content %}
     <h1>&iexcl;Nuevo Plan Activo!</h1>
@@ -7,7 +7,7 @@
     
     <p>Te confirmamos que ya ten&eacute;s tu nuevo plan activo en tu cuenta.</p>
     
-    <div style="background-color: #F8F9FA; border-radius: 12px; padding: 24px; margin: 24px 0; border-left: 4px solid #10B981;">
+    <div class="info-box" style="background-color: #F5F5F7; border-radius: 16px; padding: 24px; margin: 28px 0;">
         <p style="margin: 0 0 12px 0;"><strong>Plan:</strong> {{ plan_nombre }}</p>
         <p style="margin: 0 0 12px 0;"><strong>Clases Disponibles:</strong> {{ clases_restantes }}</p>
         <p style="margin: 0;"><strong>V&aacute;lido hasta:</strong> {{ fecha_vencimiento }}</p>
@@ -16,6 +16,7 @@
     <p>&iexcl;No cuelgues y empez&aacute; a reservar tus clases de la semana!</p>
 
     <div class="button-wrapper">
-        <a href="{{ app_url }}/" class="button">Agendar turnos</a>
+        <!-- Replaced app_url / appended part so it links properly -->
+        <a href="{{ app_url }}" class="button">Agendar turnos</a>
     </div>
 {% endblock %}

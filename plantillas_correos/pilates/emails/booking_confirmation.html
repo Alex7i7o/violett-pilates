@@ -5,22 +5,23 @@
     
     <p>Hola {{ nombre }},</p>
     
-    <p>Tu lugar ya está reservado. A continuación te dejamos los detalles de tu turno:</p>
+    <p>Tu lugar ya est&aacute; reservado. A continuaci&oacute;n te dejamos los detalles de tu turno:</p>
     
-    <div style="background-color: #F8F9FA; border-radius: 12px; padding: 24px; margin: 24px 0; border-left: 4px solid #34236F;">
+    <div class="info-box" style="background-color: #F5F5F7; border-radius: 16px; padding: 24px; margin: 28px 0;">
         <p style="margin: 0 0 12px 0;"><strong>Clase:</strong> {{ clase_nombre }}</p>
-        <p style="margin: 0 0 12px 0;"><strong>Día:</strong> {{ fecha }}</p>
+        <p style="margin: 0 0 12px 0;"><strong>D&iacute;a:</strong> {{ fecha }}</p>
         <p style="margin: 0 0 12px 0;"><strong>Horario:</strong> {{ hora }} hs</p>
         <p style="margin: 0;"><strong>Profesor/a:</strong> {{ profesor }}</p>
     </div>
     
-    <p>Recordá llegar 5 minutos antes para prepararte tranquilo/a.</p>
+    <p>Record&aacute; llegar 5 minutos antes para prepararte tranquila.</p>
 
     <div class="button-wrapper">
+        <!-- Replaced app_url / appended part so it links properly -->
         <a href="{{ app_url }}/mis-reservas" class="button">Ver mis turnos</a>
     </div>
     
-    <p style="font-size: 14px; color: #666; margin-top: 32px; border-top: 1px solid #eee; padding-top: 16px;">
-        <em>Política de cancelación: Podés cancelar o reprogramar tu turno desde la app hasta 24 horas antes del inicio de la clase sin perder tu crédito.</em>
+    <p style="font-size: 13px; color: #86868B; margin-top: 32px;">
+        <em>Pol&iacute;tica de cancelaci&oacute;n: Pod&eacute;s cancelar o reprogramar tu turno desde la app hasta unas horas antes del inicio de la clase sin perder tu cr&eacute;dito (revis&aacute; tu plan).</em>
     </p>
 {% endblock %}

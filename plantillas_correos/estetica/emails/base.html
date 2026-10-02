@@ -13,12 +13,12 @@
             padding: 0;
         }
         body {
-            background-color: #FFFFFF !important;
+            background-color: #FFFFFF !important; /* Solid white background as requested */
             color: #1D1D1F;
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            padding: 24px;
+            padding: 24px 0;
         }
         table {
             border-spacing: 0;
@@ -28,60 +28,73 @@
         .wrapper {
             width: 100%;
             background-color: #FFFFFF !important;
-            padding: 48px 0;
+            padding: 16px 0;
         }
         
-        /* Card Container - Apple Style */
+        /* Card Container - Clean and White */
         .container {
-            max-width: 520px;
+            max-width: 540px;
             margin: 0 auto;
             background-color: #FFFFFF;
-            border-radius: 24px;
-            overflow: hidden;
-            border: 1px solid rgba(0, 0, 0, 0.04);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
         }
 
-        /* Default Header: Small logo to the left */
+        /* Default Header: Good size logo */
         .header {
-            padding: 32px 40px 16px 40px;
+            padding: 32px 32px 24px 32px;
             text-align: left;
         }
         .header img {
-            height: 24px;
+            height: 40px; /* Increased size */
             width: auto;
             display: block;
         }
 
         /* Content */
         .content {
-            padding: 0 40px 40px 40px;
+            padding: 0 32px 40px 32px;
         }
         .content h1 {
             color: #1D1D1F;
-            font-size: 24px;
-            font-weight: 600;
-            margin-top: 16px;
-            margin-bottom: 20px;
+            font-size: 28px; /* Larger */
+            font-weight: 700;
+            margin-top: 8px;
+            margin-bottom: 24px;
             letter-spacing: -0.02em; /* Optical sizing */
+            line-height: 1.2;
         }
         .content p {
             color: #515154;
             font-size: 16px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             line-height: 1.6;
+        }
+
+        /* Gray box for info */
+        .info-box {
+            background-color: #F5F5F7;
+            border-radius: 16px;
+            padding: 24px;
+            margin: 28px 0;
+        }
+        .info-box p {
+            margin-bottom: 12px;
+            color: #1D1D1F;
+        }
+        .info-box p:last-child {
+            margin-bottom: 0;
         }
 
         /* Call to Action Button */
         .button-wrapper {
-            margin: 32px 0;
+            margin: 40px 0;
+            text-align: left;
         }
         .button {
             display: inline-block;
-            background-color: #34236F; /* Brand color */
+            background-color: #C19977; /* Estetica Brand color */
             color: #FFFFFF !important;
             text-decoration: none;
-            padding: 16px 32px;
+            padding: 16px 36px;
             border-radius: 999px;
             font-size: 16px;
             font-weight: 600;
@@ -91,49 +104,82 @@
 
         /* Footer */
         .footer {
-            padding: 32px 40px;
+            padding: 40px 32px;
             text-align: left;
             border-top: 1px solid rgba(0,0,0,0.06);
             background-color: #FFFFFF !important;
         }
         .footer p {
             color: #86868B;
-            font-size: 13px;
-            margin-bottom: 8px;
-            line-height: 1.4;
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.5;
         }
         .footer a {
-            color: #34236F;
+            color: #C19977;
             text-decoration: none;
+            font-weight: 500;
         }
 
-        /* Apple-style subtle animation for webmail clients that support it */
-        @media screen and (-webkit-min-device-pixel-ratio:0) {
+        /* MOBILE FIRST ADAPTATIONS */
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 0 !important;
+            }
+            .wrapper {
+                padding: 0 !important;
+            }
             .container {
-                animation: fade-in-up 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+                max-width: 100% !important;
+                width: 100% !important;
             }
-        }
-        @keyframes fade-in-up {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
+            .header {
+                padding: 24px 20px 16px 20px !important;
             }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            .header img {
+                height: 32px !important;
+            }
+            .content {
+                padding: 0 20px 40px 20px !important;
+            }
+            .content h1 {
+                font-size: 26px !important;
+                margin-bottom: 20px !important;
+            }
+            .content p {
+                font-size: 16px !important;
+                margin-bottom: 20px !important;
+            }
+            .info-box {
+                padding: 20px !important;
+                border-radius: 14px !important;
+            }
+            .button-wrapper {
+                margin: 32px 0 !important;
+            }
+            .button {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                padding: 18px 24px !important;
+                font-size: 16px !important;
+                text-align: center !important;
+            }
+            .footer {
+                padding: 32px 20px !important;
             }
         }
     </style>
 </head>
-<body>
-    <div class="wrapper">
-        <table class="container" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+<body style="background-color: #FFFFFF;">
+    <div class="wrapper" style="background-color: #FFFFFF;">
+        <table class="container" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto; background-color: #FFFFFF; max-width: 540px;">
             <!-- Header Block for Extensibility -->
             <tr>
                 <td class="header">
                     {% block header %}
                     <a href="{{ frontend_url|default:'https://violett.com.ar' }}">
-                        <img src="https://violett.com.ar/estetica/app/logo-estetica-full.png" alt="Violett" />
+                        <img src="https://violett.com.ar/estetica/logo-estetica-full.png" alt="Violett" style="display: block;" />
                     </a>
                     {% endblock %}
                 </td>
@@ -148,10 +194,10 @@
             
             <!-- Footer -->
             <tr>
-                <td class="footer">
-                    <p>
-                        Recibiste este correo porque estás registrado en Violett.<br>
-                        Si no solicitaste esto, podés ignorar el mensaje de forma segura.
+                <td class="footer" style="background-color: #FFFFFF; border-top: 1px solid rgba(0,0,0,0.06);">
+                    <p style="color: #86868B; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+                        Recibiste este correo porque est&aacute;s registrado en Violett Est&eacute;tica.<br>
+                        Si no solicitaste esto, pod&eacute;s ignorar el mensaje de forma segura.
                     </p>
                 </td>
             </tr>

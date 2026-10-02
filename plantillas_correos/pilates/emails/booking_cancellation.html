@@ -1,4 +1,4 @@
-﻿{% extends "emails/base.html" %}
+{% extends "emails/base.html" %}
 
 {% block content %}
     <h1>Turno Cancelado</h1>
@@ -7,7 +7,7 @@
     
     <p>Te confirmamos que tu turno ha sido cancelado exitosamente.</p>
     
-    <div style="background-color: #F8F9FA; border-radius: 12px; padding: 24px; margin: 24px 0; border-left: 4px solid #EF4444;">
+    <div class="info-box" style="background-color: #F5F5F7; border-radius: 16px; padding: 24px; margin: 28px 0;">
         <p style="margin: 0 0 12px 0;"><strong>Clase:</strong> {{ clase_nombre }}</p>
         <p style="margin: 0 0 12px 0;"><strong>D&iacute;a:</strong> {{ fecha }}</p>
         <p style="margin: 0;"><strong>Horario:</strong> {{ hora }} hs</p>
@@ -16,6 +16,7 @@
     <p>Si la cancelaci&oacute;n se realiz&oacute; con la anticipaci&oacute;n permitida, se te ha devuelto la clase a tu plan.</p>
 
     <div class="button-wrapper">
-        <a href="{{ app_url }}/" class="button">Agendar nuevo turno</a>
+        <!-- Replaced app_url / appended part so it links to agenda correctly -->
+        <a href="{{ app_url }}" class="button">Agendar nuevo turno</a>
     </div>
 {% endblock %}
