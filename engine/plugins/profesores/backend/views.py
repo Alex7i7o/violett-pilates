@@ -36,7 +36,8 @@ class ProfesorViewSet(viewsets.ModelViewSet):
                 profesor.usuario = u
                 profesor.save()
                 
-                enviar_email_bienvenida(u, raw_password)
+                from core.services import enviar_email_bienvenida_profesor
+                enviar_email_bienvenida_profesor(u)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error(f"Error creando usuario profesor: {e}")

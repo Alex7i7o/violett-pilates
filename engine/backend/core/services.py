@@ -1,4 +1,4 @@
-﻿# Developed by FireSeed - Fueling Innovation
+# Developed by FireSeed - Fueling Innovation
 from django.utils import timezone
 from django.db import transaction
 from .models import Turno, Reserva, Usuario
@@ -150,4 +150,40 @@ def enviar_email_bienvenida(usuario, raw_password):
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f'Error al enviar email de bienvenida: {e}')
+        return False
+
+def enviar_email_bienvenida_profesor(usuario):
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+    from django.conf import settings
+    from allauth.account.forms import default_token_generator
+    from allauth.account.utils import user_pk_to_url_str
+    
+    uid = user_pk_to_url_str(usuario)
+    temp_key = default_token_generator.make_token(usuario)
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://violett.com.ar/pilates').rstrip('/')
+    reset_url = f"{frontend_url}/reset-password/{uid}/{temp_key}"
+    login_url = f"{frontend_url}/login"
+
+    context = {
+        'nombre': usuario.nombre,
+        'email': usuario.email,
+        'reset_url': reset_url,
+        'login_url': login_url,
+        'frontend_url': frontend_url
+    }
+
+    try:
+        html_content = render_to_string('emails/welcome_profesor.html', context)
+        subject = '¡Bienvenido al equipo de Violett!'
+        from_email = settings.DEFAULT_FROM_EMAIL
+        to_email = [usuario.email]
+        
+        msg = EmailMultiAlternatives(subject, html_content, from_email, to_email)
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
+        return True
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'Error al enviar email de bienvenida profesor: {e}')
         return False

@@ -1,0 +1,31 @@
+{% extends "emails/base.html" %}
+
+{% block header %}
+<div style="text-align: center; padding: 48px 0 24px 0;">
+    <a href="{{ frontend_url|default:'https://violett.com.ar' }}">
+        <img src="https://violett.com.ar/pilates/logo-icon.png" alt="Violett" style="height: 96px; width: auto; margin: 0 auto; display: block;" />
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+    <h1 style="text-align: center;">&iexcl;Bienvenido al equipo!</h1>
+    
+    <p style="text-align: center;">Hola {{ nombre }}, nos alegra sumar tu talento y profesionalismo a nuestro estudio. Tu cuenta como Profesor/a ya ha sido creada.</p>
+    
+    <div class="info-box" style="background-color: #F5F5F7; border-radius: 16px; padding: 24px; margin: 32px 0; text-align: center;">
+        <p style="margin: 0 0 16px 0; font-size: 16px; color: #1D1D1F;">Para activar tu cuenta y acceder a tu panel de clases, necesit&aacute;s definir tu contrase&ntilde;a tocando el siguiente bot&oacute;n:</p>
+        <div class="button-wrapper" style="margin: 0;">
+            <a href="{{ reset_url }}" class="button" style="display: inline-block;">Crear mi contrase&ntilde;a</a>
+        </div>
+    </div>
+    
+    <p style="font-size: 16px; text-align: center; margin-top: 32px;">
+        Una vez que hayas creado tu contrase&ntilde;a, podr&aacute;s ingresar al sistema utilizando tu correo (<strong>{{ email }}</strong>) desde:<br><br>
+        <a href="{{ login_url }}" style="color: #34236F; font-weight: 600; text-decoration: none;">{{ login_url }}</a>
+    </p>
+    
+    <p style="font-size: 14px; text-align: center; margin-top: 32px; color: #86868B;">
+        Si ten&eacute;s alguna duda sobre el uso del sistema, estamos para ayudarte.
+    </p>
+{% endblock %}
