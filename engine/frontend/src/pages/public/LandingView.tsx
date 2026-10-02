@@ -156,7 +156,7 @@ export function LandingView() {
             </motion.h1>
             
             {/* Aligned right as requested when ✦ is present */}
-            <motion.h2 variants={fadeUp} className="font-marcellus text-xl md:text-3xl max-w-2xl mb-6 md:mb-8 leading-relaxed md:leading-snug text-balance text-primary-main/90 text-right w-full">
+            <motion.h2 variants={fadeUp} className="font-marcellus text-xl md:text-3xl max-w-2xl mb-6 md:mb-8 leading-relaxed md:leading-snug text-balance text-primary-main/90 text-left w-full">
               ✦ El arte de esculpir la silueta de tus sueños y habitar tu cuerpo con elegancia
             </motion.h2>
             
@@ -181,7 +181,7 @@ export function LandingView() {
       {/* Section 2 */}
       <div className="bg-white">
         <Section>
-          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
             ✦ Una vitalidad radiante para vivir al máximo
           </motion.h2>
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-4 md:mb-6 leading-relaxed opacity-80 text-balance">
@@ -196,7 +196,7 @@ export function LandingView() {
       {/* Section 3 */}
       <Section className="relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-violett-100/50 rounded-full blur-[80px] -z-10"></div>
-        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
           ✦ Te esperamos exactamente como sos
         </motion.h2>
         <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg leading-relaxed opacity-80 text-balance">
@@ -207,7 +207,7 @@ export function LandingView() {
       {/* Section 4 */}
       <div className="bg-primary-main/[0.03]">
         <Section id="experiencia" className="relative">
-          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
             ✦ La corona de tu día: Una hora diseñada para vos
           </motion.h2>
           <motion.p variants={fadeUp} className="font-sans text-base md:text-lg text-center mb-10 md:mb-12 leading-relaxed opacity-80 text-balance">
@@ -234,7 +234,7 @@ export function LandingView() {
 
       {/* Section 5 */}
       <Section>
-        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
           ✦ El Estilo de Vida Violett
         </motion.h2>
         <motion.p variants={fadeUp} className="font-sans text-base md:text-lg text-center mb-10 md:mb-12 leading-relaxed opacity-80 text-balance">
@@ -248,7 +248,7 @@ export function LandingView() {
             { t: "La Paz Mental", d: "El estrés se disuelve entre la luz natural y nuestro característico cierre: un delicado masaje final que corona tu esfuerzo, dejándote renovada y en perfecta armonía." }
           ].map((item, i) => (
             <motion.div key={i} variants={fadeUp} className="p-6 md:p-8 bg-violett-50/50 rounded-[2rem] border border-violett-100 hover:bg-violett-50 transition-colors">
-              <h3 className="font-marcellus text-lg md:text-xl mb-3 tracking-wide text-primary-main text-right w-full">✦ {item.t}</h3>
+              <h3 className="font-marcellus text-lg md:text-xl mb-3 tracking-wide text-primary-main text-left w-full">✦ {item.t}</h3>
               <p className="opacity-80 leading-relaxed text-sm md:text-base">{item.d}</p>
             </motion.div>
           ))}
@@ -258,7 +258,7 @@ export function LandingView() {
       {/* Section 6 */}
       <div className="bg-white">
         <Section id="metodo">
-          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
             ✦ 21 Años de Excelencia: El Método Débora Zárate
           </motion.h2>
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-4 md:mb-6 leading-relaxed opacity-80 text-balance">
@@ -273,7 +273,7 @@ export function LandingView() {
       {/* Section 7 */}
       <Section className="relative">
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-violett-100/50 rounded-full blur-[80px] -z-10"></div>
-        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
           ✦ Todo preparado para tu llegada
         </motion.h2>
         <motion.p variants={fadeUp} className="font-sans text-base md:text-lg text-center mb-10 md:mb-12 leading-relaxed opacity-80 text-balance">
@@ -286,8 +286,8 @@ export function LandingView() {
             { q: "¿Cómo organizo mis tiempos?", a: "A través de nuestro sistema digital exclusivo, podés gestionar tu agenda y reservar tus momentos en Violett con total independencia y fluidez, sin intermediarios." }
           ].map((item, i) => (
             <motion.div key={i} variants={fadeUp} className="border-b border-primary-main/10 pb-6">
-              <h3 className="font-marcellus text-lg md:text-xl mb-3 text-violett-700 text-right w-full">✦ {item.q}</h3>
-              <p className="opacity-80 leading-relaxed md:pl-6 text-sm md:text-base text-right">{item.a}</p>
+              <h3 className="font-marcellus text-lg md:text-xl mb-3 text-violett-700 text-left w-full">✦ {item.q}</h3>
+              <p className="opacity-80 leading-relaxed md:pl-6 text-sm md:text-base text-left">{item.a}</p>
             </motion.div>
           ))}
         </div>
@@ -304,7 +304,7 @@ export function LandingView() {
       {/* Section 8: Testimonials */}
       <div className="bg-primary-main/[0.03]">
         <Section>
-          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-4 md:mb-6 text-balance text-primary-main text-right w-full">
+          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-4 md:mb-6 text-balance text-primary-main text-left w-full">
             ✦ Ecos de nuestra comunidad
           </motion.h2>
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-10 md:mb-14 opacity-80 text-violett-800">
@@ -355,7 +355,7 @@ export function LandingView() {
 
       {/* Section 9 */}
       <Section>
-        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+        <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
           ✦ Tu momento de brillar te espera
         </motion.h2>
         <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-8 md:mb-10 leading-relaxed opacity-80 text-balance">
@@ -392,7 +392,7 @@ export function LandingView() {
           viewport={{ once: true, margin: "-80px" }}
           variants={staggerContainer}
         >
-          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-4 md:mb-6 text-balance text-primary-main text-right w-full">
+          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-4 md:mb-6 text-balance text-primary-main text-left w-full">
             ✦ Tu Compromiso con la Elegancia
           </motion.h2>
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-2 leading-relaxed opacity-80 text-balance max-w-3xl mx-auto">
@@ -461,7 +461,7 @@ export function LandingView() {
       {/* Section 11 */}
       <div className="bg-white">
         <Section>
-          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-right w-full">
+          <motion.h2 variants={fadeUp} className="font-marcellus text-2xl md:text-4xl mb-6 md:mb-8 text-balance text-primary-main text-left w-full">
             ✦ Un entorno diseñado para tu tranquilidad
           </motion.h2>
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-8 md:mb-10 leading-relaxed opacity-80 text-balance">
@@ -496,6 +496,7 @@ export function LandingView() {
     </div>
   );
 }
+
 
 
 
