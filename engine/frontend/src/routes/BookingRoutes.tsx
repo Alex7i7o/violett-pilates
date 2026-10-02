@@ -13,6 +13,7 @@ import { Dashboard } from '../pages/Dashboard';
 import { ClientLayout } from './ClientLayout';
 import { InicioView } from '../pages/client/InicioView';
 import { LandingView } from '../pages/public/LandingView';
+import { ResenasView } from '../pages/public/ResenasView';
 import { ReservasView } from '../pages/client/ReservasView';
 import { PerfilView } from '../pages/client/PerfilView';
 
@@ -58,6 +59,7 @@ export function BookingRoutes() {
     return (
       <Routes>
         <Route path="/" element={<LandingView />} />
+        <Route path="/resenas" element={<ResenasView />} />
         {console.log('PUBLIC ROUTES:', getPluginPublicRoutes(config.active_plugins || []))} {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
           <Route key={i} path={route.path} element={route.path === '/login' || route.path === 'login' ? React.cloneElement(route.element as React.ReactElement, { onLoginSuccess: refetch }) : route.element} />
         ))}

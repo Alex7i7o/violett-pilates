@@ -1,4 +1,4 @@
-﻿from rest_framework import viewsets, status
+from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -12,8 +12,9 @@ class PlanViewSet(viewsets.ModelViewSet):
     serializer_class = PlanSerializer
     
     def get_permissions(self):
+        from rest_framework.permissions import AllowAny
         if self.action in ['list', 'retrieve']:
-            return [IsAuthenticated()]
+            return [AllowAny()]
         return [IsAdminUser()]
 
     def perform_destroy(self, instance):
