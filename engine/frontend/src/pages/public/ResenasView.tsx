@@ -27,7 +27,7 @@ export function ResenasView() {
     queryKey: ['resenas_public_all'],
     queryFn: async () => {
       try {
-        const res = await api.get('/resenas/resenas/');
+        const res = await api.get('/resenas/');
         return res.data.results ? res.data.results : res.data;
       } catch (err) {
         console.error(err);
@@ -104,5 +104,6 @@ export function ResenasView() {
     </div>
   );
 }
+
 
 

@@ -100,7 +100,7 @@ export function LandingView() {
     queryKey: ['planes_public'],
     queryFn: async () => {
       try {
-        const res = await api.get('/membresias/planes/');
+        const res = await api.get('/planes/');
         return res.data.results ? res.data.results : res.data;
       } catch (err) {
         return [];
@@ -112,7 +112,7 @@ export function LandingView() {
     queryKey: ['resenas_public'],
     queryFn: async () => {
       try {
-        const res = await api.get('/resenas/resenas/');
+        const res = await api.get('/resenas/');
         const data = res.data.results ? res.data.results : res.data; return data.slice(0, 3);
       } catch (err) {
         return [];
@@ -496,6 +496,7 @@ export function LandingView() {
     </div>
   );
 }
+
 
 
 
