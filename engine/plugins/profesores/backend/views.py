@@ -68,11 +68,12 @@ class ProfesorDashboardView(APIView):
 
         if not hasattr(request.user, 'profesor_plugin_profile'): return Response({'detail': 'Perfil no encontrado.'}, status=404)
         profesor = request.user.profesor_plugin_profile
-        turnos = Turno.objects.filter(estado='PROGRAMADO', profesor_asignado__profesor=profesor).order_by('fecha', 'hora_inicio')
+        from django.db.models import Q
+        turnos = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), estado='PROGRAMADO').distinct().order_by('fecha', 'hora_inicio')
         turnos_hoy = [t for t in turnos if t.fecha == now.date()]
         turnos_semana = [t for t in turnos if t.fecha > now.date() and t.fecha <= now.date() + datetime.timedelta(days=7)]
         current_time = now.time()
-        turnos_historial = Turno.objects.filter(profesor_asignado__profesor=profesor, fecha__lte=now.date()).order_by('-fecha', '-hora_inicio')
+        turnos_historial = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), fecha__lte=now.date()).distinct().order_by('-fecha', '-hora_inicio')
         dictados_mes = []
         for t in turnos_historial:
             if t.fecha.month == month and t.fecha.year == year:
@@ -105,7 +106,7 @@ class ProfesorDashboardView(APIView):
         if hasattr(request.user, 'profesor_plugin_profile'):
             profesor_id = request.user.profesor_plugin_profile.id
             
-        unassigned_turnos = Turno.objects.filter(profesor_asignado__isnull=True, fecha__gte=now.date())
+        unassigned_turnos = Turno.objects.filter(profesor_asignado__isnull=True, plantilla__profesor_asignado__isnull=True, fecha__gte=now.date()).distinct()
         unassigned_plantillas = PlantillaTurno.objects.filter(profesor_asignado__isnull=True)
         
         turnos_libres = [serialize_turno(t) for t in unassigned_turnos]
@@ -157,4 +158,6 @@ class AssignTurnoView(APIView):
             return Response({"detail": "Turno asignado exitosamente"})
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
