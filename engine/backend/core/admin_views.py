@@ -66,6 +66,16 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             qs = qs.filter(Q(nombre__icontains=q) | Q(apellido__icontains=q) | Q(email__icontains=q))
         return qs
 
+    def perform_create(self, serializer):
+        user = serializer.save()
+        from backend_core.hooks import registry
+        registry.execute('post_admin_usuario_save', data=self.request.data, user=user)
+
+    def perform_update(self, serializer):
+        user = serializer.save()
+        from backend_core.hooks import registry
+        registry.execute('post_admin_usuario_save', data=self.request.data, user=user)
+
 
 
 from django.utils import timezone

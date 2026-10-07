@@ -30,3 +30,41 @@ def on_enrich_admin_usuario(data, instance=None, **kwargs):
     return data
 
 registry.register('enrich_admin_usuario', on_enrich_admin_usuario)
+
+from allauth.account.signals import user_signed_up
+from django.dispatch import receiver
+
+@receiver(user_signed_up)
+def save_ficha_medica_on_signup(request, user, **kwargs):
+    fecha_nacimiento = request.data.get('fecha_nacimiento')
+    sexo = request.data.get('sexo')
+    contacto_emergencia = request.data.get('contacto_emergencia')
+    notas_medicas = request.data.get('notas_medicas')
+    if fecha_nacimiento or sexo or contacto_emergencia or notas_medicas:
+        FichaMedica.objects.update_or_create(
+            usuario=user,
+            defaults={
+                'fecha_nacimiento': fecha_nacimiento or None,
+                'sexo': sexo,
+                'contacto_emergencia': contacto_emergencia,
+                'notas_medicas': notas_medicas
+            }
+        )
+
+
+def on_post_admin_usuario_save(data, user=None, **kwargs):
+    if user:
+        fecha_nacimiento = data.get('fecha_nacimiento')
+        sexo = data.get('sexo')
+        if fecha_nacimiento or sexo:
+            FichaMedica.objects.update_or_create(
+                usuario=user,
+                defaults={
+                    'fecha_nacimiento': fecha_nacimiento or None,
+                    'sexo': sexo
+                }
+            )
+    return data
+
+registry.register('post_admin_usuario_save', on_post_admin_usuario_save)
+
