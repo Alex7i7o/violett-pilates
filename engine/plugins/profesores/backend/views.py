@@ -66,12 +66,20 @@ class ProfesorDashboardView(APIView):
             month = int(month)
             year = int(year)
 
-        turnos = Turno.objects.filter(estado='PROGRAMADO').order_by('fecha', 'hora_inicio')
+        if not hasattr(request.user, 'profesor_plugin_profile'): return Response({'detail': 'Perfil no encontrado.'}, status=404)
+        profesor = request.user.profesor_plugin_profile
+        turnos = Turno.objects.filter(estado='PROGRAMADO', profesor_asignado__profesor=profesor).order_by('fecha', 'hora_inicio')
         turnos_hoy = [t for t in turnos if t.fecha == now.date()]
         turnos_semana = [t for t in turnos if t.fecha > now.date() and t.fecha <= now.date() + datetime.timedelta(days=7)]
-        turnos_mes = [t for t in turnos if t.fecha.month == month and t.fecha.year == year]
+        current_time = now.time()
+        turnos_historial = Turno.objects.filter(profesor_asignado__profesor=profesor, fecha__lte=now.date()).order_by('-fecha', '-hora_inicio')
+        dictados_mes = []
+        for t in turnos_historial:
+            if t.fecha.month == month and t.fecha.year == year:
+                if t.fecha < now.date() or (t.fecha == now.date() and t.hora_inicio <= current_time):
+                    dictados_mes.append(t)
 
-        plantillas = PlantillaTurno.objects.filter(is_active=True).order_by('dia_semana', 'hora_inicio')
+        plantillas = PlantillaTurno.objects.filter(is_active=True, profesor_asignado__profesor=profesor).order_by('dia_semana', 'hora_inicio')
 
         def serialize_turno(t):
             return {
@@ -105,8 +113,8 @@ class ProfesorDashboardView(APIView):
         
         return Response({
             "mis_plantillas": [serialize_plantilla(p) for p in plantillas],
-            "horas_mes": len(turnos_mes),
-            "turnos_mes_historial": [serialize_turno(t) for t in turnos_mes],
+            "horas_mes": len(dictados_mes),
+            "turnos_mes_historial": [serialize_turno(t) for t in dictados_mes],
             "turnos_hoy": [serialize_turno(t) for t in turnos_hoy],
             "turnos_semana": [serialize_turno(t) for t in turnos_semana],
             "turnos_libres": turnos_libres,
@@ -149,3 +157,4 @@ class AssignTurnoView(APIView):
             return Response({"detail": "Turno asignado exitosamente"})
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
