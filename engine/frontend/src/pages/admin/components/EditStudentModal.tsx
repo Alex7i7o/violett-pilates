@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { Button } from '../../../components/ui/Button';
@@ -52,9 +52,22 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
   // Recurrencias State
   const [recurrencias, setRecurrencias] = useState<any[]>([]);
   const [clases, setClases] = useState<any[]>([]);
+  const [plantillas, setPlantillas] = useState<any[]>([]);
   const [newRecClase, setNewRecClase] = useState('');
   const [newRecDia, setNewRecDia] = useState('1');
   const [newRecHora, setNewRecHora] = useState('09:00');
+  const availableHoras = useMemo(() => {
+    const horas = plantillas.filter(p => p.clase === newRecClase && p.dia_semana.toString() === newRecDia.toString()).map(p => p.hora_inicio.substring(0, 5)).sort();
+    return [...new Set(horas)];
+  }, [plantillas, newRecClase, newRecDia]);
+
+  useEffect(() => {
+    if (availableHoras.length > 0 && !availableHoras.includes(newRecHora)) {
+      setNewRecHora(availableHoras[0]);
+    } else if (availableHoras.length === 0) {
+      setNewRecHora('');
+    }
+  }, [availableHoras, newRecHora]);
   const [recurrenciaToDelete, setRecurrenciaToDelete] = useState<number | null>(null);
 
   useEffect(() => {
@@ -82,6 +95,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
 
       fetchPlanes();
       fetchRecurrencias();
+      fetchPlantillas();
       fetchClases();
       setActiveTab('perfil');
     }
@@ -94,6 +108,13 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const fetchPlantillas = async () => {
+    try {
+      const res = await api.get('/admin/plantillas/');
+      setPlantillas(res.data);
+    } catch(e) { console.error(e); }
   };
 
   const fetchClases = async () => {
@@ -192,6 +213,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       });
       toast.success('Horario fijo asignado');
       fetchRecurrencias();
+      fetchPlantillas();
     } catch (e: any) {
       toast.error(e.response?.data?.detail || 'Error al asignar');
     } finally {
@@ -205,6 +227,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       await api.delete(`/admin/alumnos/${alumno.id}/recurrencias/${id}/`);
       toast.success('Horario eliminado');
       fetchRecurrencias();
+      fetchPlantillas();
     } catch (e) {
       toast.error('Error al eliminar');
     }
@@ -366,9 +389,9 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                   <option value="6">Sábado</option>
                   <option value="7">Domingo</option>
                 </select>
-                <input type="time" className="w-1/2 p-2 border rounded-lg text-sm" value={newRecHora} onChange={e => setNewRecHora(e.target.value)} />
+                <select className="w-1/2 p-2 border rounded-lg text-sm" value={newRecHora} onChange={e => setNewRecHora(e.target.value)} disabled={availableHoras.length === 0}>`n                    {availableHoras.length === 0 && <option value="">Sin horarios disponibles</option>}`n                    {availableHoras.map(h => <option key={h} value={h}>{h} hs</option>)}`n                  </select>
               </div>
-              <Button onClick={handleAddRecurrencia} disabled={loading || !newRecClase} className="w-full">Agregar</Button>
+              <Button onClick={handleAddRecurrencia} disabled={loading || !newRecClase || !newRecHora} className="w-full">Agregar</Button>
             </div>
           </div>
         )}
@@ -401,3 +424,6 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     </Modal>
   );
 }
+
+
+

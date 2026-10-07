@@ -111,6 +111,36 @@ class AdminRecurrenciaView(APIView):
             hora_inicio=hora_inicio,
             is_active=True
         )
+
+        try:
+            from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+            suscripcion = Suscripcion.objects.filter(usuario=usuario, estado='ACTIVO', clases_restantes__gt=0).first()
+            if suscripcion:
+                from core.models import Turno, Reserva
+                from django.utils import timezone
+                future_turnos = Turno.objects.filter(clase_id=clase_id, hora_inicio=hora_inicio, fecha__gte=timezone.localdate(), fecha__lte=suscripcion.fecha_vencimiento, estado='PROGRAMADO', cupo_actual__gt=0).order_by('fecha')
+                for ft in future_turnos:
+                    if ft.fecha.isoweekday() == int(dia_semana):
+                        if suscripcion.clases_restantes <= 0: break
+                        existing_reserva = Reserva.objects.filter(turno=ft, usuario=usuario).first()
+                        if existing_reserva:
+                            if existing_reserva.estado == 'CONFIRMADA': continue
+                            existing_reserva.es_recurrente = True
+                            existing_reserva.estado = 'CONFIRMADA'
+                            existing_reserva.save()
+                            ReservaMembresia.objects.get_or_create(reserva=existing_reserva, defaults={'suscripcion': suscripcion})
+                        else:
+                            res = Reserva.objects.create(turno=ft, usuario=usuario, es_recurrente=True, estado='CONFIRMADA')
+                            ReservaMembresia.objects.create(reserva=res, suscripcion=suscripcion)
+                        ft.cupo_actual -= 1
+                        ft.save()
+                        suscripcion.clases_restantes -= 1
+                if suscripcion.clases_restantes <= 0:
+                    suscripcion.estado = 'AGOTADO'
+                suscripcion.save()
+        except Exception as e:
+            print('Error generating turnos recurrentes admin:', e)
+            
         return Response({'id': str(r.id)}, status=201)
 
     @transaction.atomic
@@ -155,3 +185,4 @@ class AdminRecurrenciaView(APIView):
                 suscripcion.save()
                 
         return Response({"detail": "Horario fijo eliminado exitosamente"})
+

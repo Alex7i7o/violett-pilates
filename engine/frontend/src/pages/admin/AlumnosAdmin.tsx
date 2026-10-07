@@ -98,8 +98,9 @@ export function AlumnosAdmin() {
     if (estadoFilter !== 'Todos') {
       const estado = a.plan_activo?.estado || 'Sin plan';
       let estadoCalculado = 'Sin plan';
-      if (estado === 'ACTIVO') estadoCalculado = 'Activo';
-      else if (estado === 'AGOTADO') estadoCalculado = 'Pendiente';
+      if (estado === 'ACTIVO' && a.plan_activo?.clases_restantes > 0) estadoCalculado = 'Activo';
+      else if (estado === 'AGOTADO' || (estado === 'ACTIVO' && a.plan_activo?.clases_restantes === 0)) estadoCalculado = 'Pendiente';
+      
       if (estadoFilter !== estadoCalculado) return false;
     }
     return true;
@@ -192,7 +193,7 @@ export function AlumnosAdmin() {
                           const plan = alumno.plan_activo;
                           const estado = plan?.estado || 'Sin plan';
                           
-                          if (estado === 'ACTIVO') {
+                          if (estado === 'ACTIVO' && plan.clases_restantes > 0) {
                             return (
                               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
                                 <p className="text-sm font-bold text-emerald-800">{plan.plan_nombre}</p>
@@ -202,7 +203,7 @@ export function AlumnosAdmin() {
                             );
                           }
                           
-                          if (estado === 'AGOTADO') {
+                          if (estado === 'AGOTADO' || (estado === 'ACTIVO' && plan.clases_restantes === 0)) {
                             return (
                               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                                 <p className="text-sm font-bold text-amber-800">{plan.plan_nombre}</p>
@@ -268,3 +269,5 @@ export function AlumnosAdmin() {
     </motion.div>
   );
 }
+
+
