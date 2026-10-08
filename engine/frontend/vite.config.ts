@@ -34,7 +34,8 @@ export default defineConfig({
       'react-router-dom': path.resolve(__dirname, 'node_modules/react-router-dom'),
       'sonner': path.resolve(__dirname, 'node_modules/sonner'),
       '@tanstack/react-query': path.resolve(__dirname, 'node_modules/@tanstack/react-query'),
-      'axios': path.resolve(__dirname, 'node_modules/axios')
+      'axios': path.resolve(__dirname, 'node_modules/axios'),
+      'recharts': path.resolve(__dirname, 'node_modules/recharts')
     }
   },
   test: {
