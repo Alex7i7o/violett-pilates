@@ -44,8 +44,8 @@ class AnaliticaDashboardView(APIView):
         suma_edades = 0
         count_edades = 0
 
-        for cliente in clientes.select_related('ficha_medica'):
-            if hasattr(cliente, 'ficha_medica'):
+        for cliente in clientes:
+            try:
                 ficha = cliente.ficha_medica
                 if ficha.sexo in generos:
                     generos[ficha.sexo] += 1
@@ -58,6 +58,8 @@ class AnaliticaDashboardView(APIView):
                     elif 31 <= edad <= 40: edades['31-40'] += 1
                     elif 41 <= edad <= 50: edades['41-50'] += 1
                     else: edades['>50'] += 1
+            except Exception:
+                pass
 
         promedio_edad = round(suma_edades / count_edades) if count_edades > 0 else 0
 
