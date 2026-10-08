@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import os
 import requests
 
@@ -16,6 +16,8 @@ class WhatsAppClient:
         if not self.is_configured:
             logger.info(f"[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name} | Variables: {components}")
             print(f"\n[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name}\nVariables: {components}\n")
+            from backend_core.hooks import registry
+            registry.execute('wpp_enviado_tracker', {})
             return True
 
         if not to_number:
@@ -44,7 +46,9 @@ class WhatsAppClient:
         try:
             response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
             if response.status_code in [200, 201]:
-                return True
+                from backend_core.hooks import registry
+            registry.execute('wpp_enviado_tracker', {})
+            return True
             else:
                 logger.error(f"[WHATSAPP ERROR] {response.status_code} - {response.text}")
                 return False
@@ -56,6 +60,8 @@ class WhatsAppClient:
         '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
         if not self.is_configured:
             print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message}\n")
+            from backend_core.hooks import registry
+            registry.execute('wpp_enviado_tracker', {})
             return True
 
         if not to_number:
@@ -82,7 +88,9 @@ class WhatsAppClient:
         try:
             response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
             if response.status_code in [200, 201]:
-                return True
+                from backend_core.hooks import registry
+            registry.execute('wpp_enviado_tracker', {})
+            return True
             else:
                 logger.error(f"[WHATSAPP TEXT ERROR] {response.status_code} - {response.text}")
                 return False
@@ -97,7 +105,7 @@ def notificar_cancelacion_clase(usuario, turno):
         "parameters": [
             {"type": "text", "text": usuario.nombre},
             {"type": "text", "text": f"{turno.clase.nombre} ({turno.fecha})"},
-            {"type": "text", "text": "El crédito ha sido devuelto a tu plan."}
+            {"type": "text", "text": "El cr�dito ha sido devuelto a tu plan."}
         ]
     }]
     client._send_template(usuario.telefono or "1164142172", "clase_cancelada_admin", components)
@@ -124,3 +132,4 @@ def notificar_cancelacion_usuario(usuario, turno):
         ]
     }]
     client._send_template(usuario.telefono or "1164142172", "reserva_cancelada_usuario", components)
+
