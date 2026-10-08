@@ -161,8 +161,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       await api.patch(`/admin/alumnos/${alumno.id}/`, {
         nombre,
         apellido,
-        telefono,
-        email
+        telefono, email, fecha_nacimiento: fechaNacimiento || null, sexo: sexo || ''
       });
       toast.success('Perfil actualizado');
       onUpdate();
