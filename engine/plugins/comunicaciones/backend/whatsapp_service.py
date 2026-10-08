@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import requests
 
@@ -47,8 +47,8 @@ class WhatsAppClient:
             response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
             if response.status_code in [200, 201]:
                 from backend_core.hooks import registry
-            registry.execute('wpp_enviado_tracker', {})
-            return True
+                registry.execute('wpp_enviado_tracker', {})
+                return True
             else:
                 logger.error(f"[WHATSAPP ERROR] {response.status_code} - {response.text}")
                 return False
@@ -89,8 +89,8 @@ class WhatsAppClient:
             response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
             if response.status_code in [200, 201]:
                 from backend_core.hooks import registry
-            registry.execute('wpp_enviado_tracker', {})
-            return True
+                registry.execute('wpp_enviado_tracker', {})
+                return True
             else:
                 logger.error(f"[WHATSAPP TEXT ERROR] {response.status_code} - {response.text}")
                 return False
@@ -105,7 +105,7 @@ def notificar_cancelacion_clase(usuario, turno):
         "parameters": [
             {"type": "text", "text": usuario.nombre},
             {"type": "text", "text": f"{turno.clase.nombre} ({turno.fecha})"},
-            {"type": "text", "text": "El cr�dito ha sido devuelto a tu plan."}
+            {"type": "text", "text": "El crédito ha sido devuelto a tu plan."}
         ]
     }]
     client._send_template(usuario.telefono or "1164142172", "clase_cancelada_admin", components)
@@ -132,4 +132,3 @@ def notificar_cancelacion_usuario(usuario, turno):
         ]
     }]
     client._send_template(usuario.telefono or "1164142172", "reserva_cancelada_usuario", components)
-
