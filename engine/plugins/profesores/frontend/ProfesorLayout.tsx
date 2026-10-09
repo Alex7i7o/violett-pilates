@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
-import { Calendar, Briefcase, User, Menu, X, LogOut, CheckCircle2 } from 'lucide-react';
+import { Calendar, Briefcase, User, Menu, X, LogOut, CheckCircle2, LayoutList } from 'lucide-react';
 
 export function ProfesorLayout() {
   const navigate = useNavigate();
@@ -57,6 +57,7 @@ export function ProfesorLayout() {
   const mobileTabs = [
     { id: '#hoy', name: 'Hoy', icon: CheckCircle2 },
     { id: '#agenda', name: 'Agenda', icon: Calendar },
+    { id: '#esquema', name: 'Esquema', icon: LayoutList },
     { id: '#bolsa', name: 'Bolsa', icon: Briefcase },
   ];
 
