@@ -1,4 +1,5 @@
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { MultiSelectAlumnos } from '../../components/admin/MultiSelectAlumnos';
 import React, { useState, useEffect } from 'react';
 import { Skeleton } from "../../components/ui/Skeleton";
 import { toast } from "sonner";
@@ -27,7 +28,7 @@ export function AgendaAdmin() {
     const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
   const [turnoToDelete, setTurnoToDelete] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" });
+  const [formData, setFormData] = useState<{clase: string, profesor: string, fecha: string, hora_inicio: string, hora_fin: string, alumnos: string[]}>({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00", alumnos: [] });
 
   useEffect(() => {
     if (formData.hora_inicio) {
@@ -132,7 +133,8 @@ export function AgendaAdmin() {
       profesor: turno.profesor || "",
       fecha: turno.fecha,
       hora_inicio: turno.hora_inicio,
-      hora_fin: turno.hora_fin
+      hora_fin: turno.hora_fin,
+      alumnos: turno.reservas_list?.map((r: any) => r.alumno_id) || []
     });
     setIsModalOpen(true);
   };
@@ -154,7 +156,7 @@ export function AgendaAdmin() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-3xl font-bold text-primary-main">Agenda</h2>
-        <Button onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00" }); setIsModalOpen(true); }}>+ Agregar Clase</Button>
+        <Button onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00", alumnos: [] }); setIsModalOpen(true); }}>+ Agregar Clase</Button>
       </div>
       
       <Card>

@@ -104,3 +104,64 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
 
 registry.register('profile_data', on_profile_data)
 registry.register('book_turno_recurrente', on_book_turno_recurrente)
+
+
+def handle_plantilla_alumnos(data, instance=None, **kwargs):
+    if not instance:
+        return data
+        
+    alumnos = data.get('alumnos', None)
+    if alumnos is not None:
+        from core.models import Usuario
+        from .models import Recurrencia
+        
+        # current recurrencias for this slot
+        current_recs = Recurrencia.objects.filter(
+            clase=instance.clase,
+            dia_semana=instance.dia_semana,
+            hora_inicio=instance.hora_inicio
+        )
+        
+        new_alumnos_ids = set(str(a) for a in alumnos)
+        current_alumnos_ids = set(str(r.usuario_id) for r in current_recs if r.is_active)
+        
+        # To add
+        for alumno_id in new_alumnos_ids - current_alumnos_ids:
+            usuario = Usuario.objects.filter(id=alumno_id).first()
+            if usuario:
+                rec, created = Recurrencia.objects.get_or_create(
+                    usuario=usuario,
+                    clase=instance.clase,
+                    dia_semana=instance.dia_semana,
+                    hora_inicio=instance.hora_inicio,
+                    defaults={'is_active': True}
+                )
+                if not created and not rec.is_active:
+                    rec.is_active = True
+                    rec.save()
+                    
+        # To remove
+        for rec in current_recs:
+            if str(rec.usuario_id) not in new_alumnos_ids and rec.is_active:
+                rec.is_active = False
+                rec.save()
+                
+    return data
+
+registry.register('after_plantilla_created', handle_plantilla_alumnos)
+registry.register('after_plantilla_updated', handle_plantilla_alumnos)
+
+
+def enrich_plantilla_with_alumnos(data, instance=None, **kwargs):
+    if instance:
+        from .models import Recurrencia
+        recs = Recurrencia.objects.filter(
+            clase=instance.clase,
+            dia_semana=instance.dia_semana,
+            hora_inicio=instance.hora_inicio,
+            is_active=True
+        )
+        data['alumnos'] = [str(r.usuario_id) for r in recs]
+    return data
+
+registry.register('plantilla_serializer', enrich_plantilla_with_alumnos)

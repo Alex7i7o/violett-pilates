@@ -126,7 +126,7 @@ class AdminTurnoSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Turno
-        fields = ['id', 'fecha', 'hora_inicio', 'hora_fin', 'cupo_actual', 'estado', 'clase', 'clase_nombre', 'reservas_list']
+        fields = ['id', 'fecha', 'hora_inicio', 'hora_fin', 'cupo_actual', 'estado', 'clase', 'clase_nombre', 'plantilla', 'reservas_list']
 
     def get_reservas_list(self, obj):
         reservas = Reserva.objects.filter(turno=obj).exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])

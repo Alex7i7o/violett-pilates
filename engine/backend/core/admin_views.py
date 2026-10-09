@@ -16,11 +16,35 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
+        alumnos = self.request.data.get('alumnos', [])
+        for alumno_id in alumnos:
+            usuario = Usuario.objects.filter(id=alumno_id).first()
+            if usuario:
+                Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
+        
         from backend_core.hooks import registry
         registry.execute("after_turno_created_manual", self.request.data, instance=instance)
 
     def perform_update(self, serializer):
         instance = serializer.save()
+        alumnos = self.request.data.get('alumnos', None)
+        if alumnos is not None:
+            current_reservas = Reserva.objects.filter(turno=instance).exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])
+            current_alumnos_ids = set(str(u_id) for u_id in current_reservas.values_list('usuario_id', flat=True))
+            new_alumnos_ids = set(str(a) for a in alumnos)
+            
+            # To add
+            for alumno_id in new_alumnos_ids - current_alumnos_ids:
+                usuario = Usuario.objects.filter(id=alumno_id).first()
+                if usuario:
+                    Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
+            
+            # To remove
+            for reserva in current_reservas:
+                if str(reserva.usuario_id) not in new_alumnos_ids:
+                    reserva.estado = 'CANCELADA_TIEMPO'
+                    reserva.save()
+                    
         from backend_core.hooks import registry
         registry.execute("after_turno_updated_manual", self.request.data, instance=instance)
 

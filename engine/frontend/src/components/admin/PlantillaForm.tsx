@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
+import { MultiSelectAlumnos } from './MultiSelectAlumnos';
 
 export interface PlantillaFormData {
   dia_semana: string;
@@ -8,6 +9,7 @@ export interface PlantillaFormData {
   hora_fin: string;
   clase: string;
   profesor: string;
+  alumnos: string[];
 }
 
 interface PlantillaFormProps {
@@ -35,7 +37,8 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
     hora_inicio: '09:00',
     hora_fin: '10:00',
     clase: '',
-    profesor: ''
+    profesor: '',
+    alumnos: []
   });
 
   useEffect(() => {
@@ -114,6 +117,14 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
             <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold mb-1 text-foreground">Alumnos Asignados (Recurrentes)</label>
+        <MultiSelectAlumnos 
+          selectedIds={formData.alumnos} 
+          onChange={(ids) => setFormData(prev => ({...prev, alumnos: ids}))} 
+        />
       </div>
 
       <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-primary-light">
