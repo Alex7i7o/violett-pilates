@@ -69,7 +69,7 @@ export const deleteAdminProfesor = (id: string) => api.delete(`/admin/profesores
 export const getAdminAgenda = (fecha: string) => api.get<TurnoAdmin[]>(`/admin/agenda/?fecha=${fecha}`);
 export const createAdminTurno = (data: any) => api.post('/admin/turnos/', data);
 export const updateAdminTurno = (id: string, data: any) => api.patch(`/admin/turnos/${id}/`, data);
-export const deleteAdminTurno = (id: string) => api.delete(`/admin/turnos/${id}/`);
+export const deleteAdminTurno = (id: string, future?: boolean) => api.delete(`/admin/turnos/${id}/${future ? '?future=true' : ''}`);
 
 export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => api.patch(`/admin/reservas/${id}/asistencia/`, { estado });
 

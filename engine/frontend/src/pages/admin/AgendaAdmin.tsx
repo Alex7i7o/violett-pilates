@@ -28,6 +28,7 @@ export function AgendaAdmin() {
     const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTurnoId, setEditingTurnoId] = useState<string | null>(null);
   const [turnoToDelete, setTurnoToDelete] = useState<string | null>(null);
+  const [deleteFuture, setDeleteFuture] = useState(false);
   const [formData, setFormData] = useState<{clase: string, profesor: string, fecha: string, hora_inicio: string, hora_fin: string, alumnos: string[]}>({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00", alumnos: [] });
 
   useEffect(() => {
@@ -142,7 +143,7 @@ export function AgendaAdmin() {
   const handleDeleteTurno = async () => {
     if (!turnoToDelete) return;
     try {
-      await deleteAdminTurno(turnoToDelete);
+      await deleteAdminTurno(turnoToDelete, deleteFuture);
       toast.success("Turno cancelado correctamente");
       fetchAgenda();
     } catch (e) {

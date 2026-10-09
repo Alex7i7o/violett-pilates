@@ -14,6 +14,7 @@ interface ConfirmModalProps {
   confirmText?: string
   cancelText?: string
   isDestructive?: boolean
+  children?: React.ReactNode
 }
 
 export function ConfirmModal({
@@ -24,7 +25,8 @@ export function ConfirmModal({
   message,
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
-  isDestructive = false
+  isDestructive = false,
+  children
 }: ConfirmModalProps) {
   React.useEffect(() => {
     if (isOpen) {
@@ -39,6 +41,7 @@ export function ConfirmModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <p className="text-muted mb-6 whitespace-pre-wrap">{message}</p>
+      {children}
       <div className="flex gap-4">
         <Button variant="outline" className="w-full" onClick={onClose}>
           {cancelText}
