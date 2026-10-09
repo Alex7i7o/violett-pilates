@@ -169,7 +169,9 @@ export function PlantillasAdmin() {
               hora_fin: plantillas.find(p => p.id === editId)?.hora_fin || '10:00', 
               clase: plantillas.find(p => p.id === editId)?.clase || '', 
               profesor: plantillas.find(p => p.id === editId)?.profesor || '' 
-            }}
+            ,
+                alumnos: plantillas.find(p => p.id === editId)?.alumnos || []
+              }}
             profesores={profesores}
             clases={clases}
             onSubmit={handleCreate} 

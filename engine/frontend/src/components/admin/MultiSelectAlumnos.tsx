@@ -13,7 +13,7 @@ interface MultiSelectAlumnosProps {
   onChange: (ids: string[]) => void;
 }
 
-export function MultiSelectAlumnos({ selectedIds, onChange }: MultiSelectAlumnosProps) {
+export function MultiSelectAlumnos({ selectedIds = [], onChange }: MultiSelectAlumnosProps) {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
