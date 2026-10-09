@@ -69,11 +69,11 @@ class ProfesorDashboardView(APIView):
         if not hasattr(request.user, 'profesor_plugin_profile'): return Response({'detail': 'Perfil no encontrado.'}, status=404)
         profesor = request.user.profesor_plugin_profile
         from django.db.models import Q
-        turnos = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), estado='PROGRAMADO').distinct().order_by('fecha', 'hora_inicio')
+        turnos = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), estado='PROGRAMADO').prefetch_related('reservas__usuario').distinct().order_by('fecha', 'hora_inicio')
         turnos_hoy = [t for t in turnos if t.fecha == now.date()]
         turnos_semana = [t for t in turnos if t.fecha > now.date() and t.fecha <= now.date() + datetime.timedelta(days=7)]
         current_time = now.time()
-        turnos_historial = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), fecha__lte=now.date()).distinct().order_by('-fecha', '-hora_inicio')
+        turnos_historial = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), fecha__lte=now.date()).prefetch_related('reservas__usuario').distinct().order_by('-fecha', '-hora_inicio')
         dictados_mes = []
         for t in turnos_historial:
             if t.fecha.month == month and t.fecha.year == year:
@@ -83,13 +83,22 @@ class ProfesorDashboardView(APIView):
         plantillas = PlantillaTurno.objects.filter(is_active=True, profesor_asignado__profesor=profesor).order_by('dia_semana', 'hora_inicio')
 
         def serialize_turno(t):
+            reservas = t.reservas.exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])
             return {
                 "id": str(t.id),
                 "fecha": t.fecha.isoformat(),
                 "hora_inicio": t.hora_inicio.strftime('%H:%M'),
                 "hora_fin": t.hora_fin.strftime('%H:%M'),
                 "clase_nombre": t.clase.nombre,
-                "estado": t.estado
+                "estado": t.estado,
+                "reservas_list": [{
+                    "id": r.id,
+                    "alumno_id": str(r.usuario.id),
+                    "alumno_nombre": r.usuario.nombre,
+                    "alumno_apellido": r.usuario.apellido,
+                    "estado": r.estado,
+                    "es_recurrente": r.es_recurrente
+                } for r in reservas]
             }
 
         def serialize_plantilla(p):
@@ -106,7 +115,7 @@ class ProfesorDashboardView(APIView):
         if hasattr(request.user, 'profesor_plugin_profile'):
             profesor_id = request.user.profesor_plugin_profile.id
             
-        unassigned_turnos = Turno.objects.filter(profesor_asignado__isnull=True, plantilla__profesor_asignado__isnull=True, fecha__gte=now.date()).distinct()
+        unassigned_turnos = Turno.objects.filter(profesor_asignado__isnull=True, plantilla__profesor_asignado__isnull=True, fecha__gte=now.date()).prefetch_related('reservas__usuario').distinct()
         unassigned_plantillas = PlantillaTurno.objects.filter(profesor_asignado__isnull=True)
         
         turnos_libres = [serialize_turno(t) for t in unassigned_turnos]
