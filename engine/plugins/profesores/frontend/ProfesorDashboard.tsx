@@ -14,6 +14,7 @@ import { ProfesorTabHoy } from './ProfesorTabHoy';
 import { ProfesorTabMes } from './ProfesorTabMes';
 import { ProfesorTabProximos } from './ProfesorTabProximos';
 import { ProfesorTabRecurrentes } from './ProfesorTabRecurrentes';
+import { ProfesorEsquema } from './ProfesorEsquema';
 import { ProfesorBolsaTrabajo } from './ProfesorBolsaTrabajo';
 import { type ProfesorDashboardData } from '@/types/profesor';
 
@@ -45,6 +46,7 @@ export function ProfesorDashboard() {
   const isMobileHoy = hash === '#hoy';
   const isMobileAgenda = hash === '#agenda';
   const isMobileBolsa = hash === '#bolsa';
+  const isMobileEsquema = hash === '#esquema';
   const isMobilePerfil = hash === '#perfil';
 
   // Si estamos en mobile y en agenda, nos aseguramos de no estar en 'hoy'
@@ -181,7 +183,7 @@ export function ProfesorDashboard() {
         <div>
           {/* Apple-style Segmented Control for Tabs */}
           <div className="bg-primary-light/50 p-1 rounded-2xl w-fit relative z-10 overflow-x-auto max-w-full flex">
-            {['hoy', 'mes', 'proximos', 'recurrentes'].map((tab) => (
+            {['hoy', 'mes', 'proximos', 'recurrentes', 'esquema'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -199,6 +201,7 @@ export function ProfesorDashboard() {
                   {tab === 'mes' && 'Dictadas en el Mes'}
                   {tab === 'proximos' && 'Próximos Días'}
                   {tab === 'recurrentes' && 'Mis Clases Recurrentes'}
+                  {tab === 'esquema' && 'Esquema General'}
                 </span>
               </button>
             ))}
@@ -237,12 +240,14 @@ export function ProfesorDashboard() {
               />
             )}
             {activeTab === 'recurrentes' && <ProfesorTabRecurrentes data={data} />}
+            {activeTab === 'esquema' && <ProfesorEsquema data={data} setPlantillaToAssign={setPlantillaToAssign} />}
           </AnimatePresence>
         </div>
 
         {/* Mobile View: Hash dictates what is shown */}
         <div className="block lg:hidden space-y-6 w-full">
            {isMobileHoy && <ProfesorTabHoy data={data} formatFecha={formatFecha} />}
+           {isMobileEsquema && <ProfesorEsquema data={data} setPlantillaToAssign={setPlantillaToAssign} />}
            {isMobileAgenda && (
              <div className="space-y-8">
                <ProfesorTabProximos 

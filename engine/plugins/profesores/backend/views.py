@@ -102,12 +102,17 @@ class ProfesorDashboardView(APIView):
             }
 
         def serialize_plantilla(p):
+            prof_id = None
+            if hasattr(p, 'profesor_asignado') and p.profesor_asignado and p.profesor_asignado.profesor:
+                prof_id = str(p.profesor_asignado.profesor.id)
+                
             return {
                 "id": str(p.id),
                 "dia_semana": p.dia_semana,
                 "hora_inicio": p.hora_inicio.strftime('%H:%M'),
                 "hora_fin": p.hora_fin.strftime('%H:%M'),
-                "clase_nombre": p.clase.nombre
+                "clase_nombre": p.clase.nombre,
+                "profesor_id": prof_id
             }
 
         # Real Bolsa logic
@@ -121,8 +126,12 @@ class ProfesorDashboardView(APIView):
         turnos_libres = [serialize_turno(t) for t in unassigned_turnos]
         plantillas_libres = [serialize_plantilla(p) for p in unassigned_plantillas]
         
+        todas_plantillas = PlantillaTurno.objects.filter(is_active=True).order_by('dia_semana', 'hora_inicio')
+        
         return Response({
+            "profesor_id": str(profesor_id) if profesor_id else None,
             "mis_plantillas": [serialize_plantilla(p) for p in plantillas],
+            "todas_plantillas": [serialize_plantilla(p) for p in todas_plantillas],
             "horas_mes": len(dictados_mes),
             "turnos_mes_historial": [serialize_turno(t) for t in dictados_mes],
             "turnos_hoy": [serialize_turno(t) for t in turnos_hoy],
