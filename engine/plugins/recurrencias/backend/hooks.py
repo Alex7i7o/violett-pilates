@@ -106,9 +106,22 @@ registry.register('profile_data', on_profile_data)
 registry.register('book_turno_recurrente', on_book_turno_recurrente)
 
 
-def handle_plantilla_alumnos(data, instance=None, **kwargs):
+def handle_plantilla_alumnos(data, instance=None, old_dia=None, old_hora=None, old_clase_id=None, **kwargs):
     if not instance:
         return data
+        
+    from core.models import Usuario
+    from .models import Recurrencia
+    
+    # First migrate existing recurrencias if time changed
+    if old_dia and old_hora and old_clase_id:
+        if old_dia != instance.dia_semana or old_hora != instance.hora_inicio or old_clase_id != instance.clase_id:
+            recs = Recurrencia.objects.filter(clase_id=old_clase_id, dia_semana=old_dia, hora_inicio=old_hora)
+            for rec in recs:
+                rec.clase = instance.clase
+                rec.dia_semana = instance.dia_semana
+                rec.hora_inicio = instance.hora_inicio
+                rec.save()
         
     alumnos = data.get('alumnos', None)
     if alumnos is not None:

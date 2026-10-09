@@ -71,9 +71,30 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
         generar_turnos_desde_plantillas()
 
     def perform_update(self, serializer):
+        old_instance = PlantillaTurno.objects.get(pk=serializer.instance.pk)
+        old_dia = old_instance.dia_semana
+        old_hora = old_instance.hora_inicio
+        old_clase_id = old_instance.clase_id
+        
         instance = serializer.save()
+        
+        import datetime
+        from django.utils import timezone
+        now = timezone.localdate()
+        future_turnos = Turno.objects.filter(plantilla=instance, fecha__gte=now)
+        for t in future_turnos:
+            t.clase = instance.clase
+            t.hora_inicio = instance.hora_inicio
+            t.hora_fin = instance.hora_fin
+            
+            if old_dia != instance.dia_semana:
+                diff = instance.dia_semana - t.fecha.isoweekday()
+                t.fecha = t.fecha + datetime.timedelta(days=diff)
+            
+            t.save()
+            
         from backend_core.hooks import registry
-        registry.execute("after_plantilla_updated", self.request.data, instance=instance)
+        registry.execute("after_plantilla_updated", self.request.data, instance=instance, old_dia=old_dia, old_hora=old_hora, old_clase_id=old_clase_id)
         from .services import generar_turnos_desde_plantillas
         generar_turnos_desde_plantillas()
 
