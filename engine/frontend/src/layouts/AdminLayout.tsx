@@ -34,7 +34,7 @@ export function AdminLayout() {
 
   let baseNavItems = [
     { name: 'Agenda', path: '/admin/agenda', icon: Calendar },
-    { name: 'Clases', path: '/admin/clases', icon: LayoutList },
+    { name: 'Disciplinas', path: '/admin/clases', icon: LayoutList },
     { name: isEstetica ? 'Pacientes' : 'Alumnos', path: '/admin/alumnos', icon: Users },
     { name: 'Profesores', path: '/admin/profesores', icon: UserSquare },
     { name: 'Planes', path: '/admin/planes', icon: CreditCard },
@@ -43,7 +43,7 @@ export function AdminLayout() {
   ];
 
   if (isEstetica) {
-    baseNavItems = baseNavItems.filter(item => !['Clases', 'Profesores', 'Planes', 'Esquema'].includes(item.name));
+    baseNavItems = baseNavItems.filter(item => !['Disciplinas', 'Profesores', 'Planes', 'Esquema'].includes(item.name));
   } else {
     baseNavItems = baseNavItems.filter(item => !['Reglas de Negocio'].includes(item.name));
   }
