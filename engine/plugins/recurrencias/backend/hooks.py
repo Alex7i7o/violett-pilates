@@ -178,3 +178,16 @@ def enrich_plantilla_with_alumnos(data, instance=None, **kwargs):
     return data
 
 registry.register('plantilla_serializer', enrich_plantilla_with_alumnos)
+
+def on_slot_destroyed(data, clase_id=None, dia_semana=None, hora_inicio=None, **kwargs):
+    if not clase_id or not dia_semana or not hora_inicio:
+        return data
+    from .models import Recurrencia
+    Recurrencia.objects.filter(
+        clase_id=clase_id,
+        dia_semana=dia_semana,
+        hora_inicio=hora_inicio
+    ).update(is_active=False)
+    return data
+
+registry.register('after_slot_destroyed', on_slot_destroyed)
