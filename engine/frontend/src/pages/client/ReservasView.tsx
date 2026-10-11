@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useClientProfile } from '../../hooks/useClientProfile';
 import { useBookings, type Turno } from '../../hooks/useBookings';
+import { useClientConfig } from '../../context/ClientConfigContext';
 import { ClientUpcomingClasses } from '../../components/dashboard/ClientUpcomingClasses';
 import { ClientRecurringClasses } from '../../components/dashboard/ClientRecurringClasses';
 import { CancelModal } from '../../components/booking/CancelModal';
@@ -15,6 +16,7 @@ import { toast } from 'sonner';
 export function ReservasView() {
   const { profile, refetch: refetchProfile } = useClientProfile();
   const { turnos, cancelTurno, refetch: refetchTurnos } = useBookings();
+  const config = useClientConfig();
 
   const [selectedTurnoToCancel, setSelectedTurnoToCancel] = useState<Turno | null>(null);
   const [recurrenciaToCancel, setRecurrenciaToCancel] = useState<string | null>(null);
@@ -69,6 +71,8 @@ export function ReservasView() {
       <ClientUpcomingClasses 
         turnos={upcomingBookings}
         onCancelClick={setSelectedTurnoToCancel}
+        hasRecurring={Boolean(profile?.recurrencias && profile.recurrencias.length > 0)}
+        contactPhone={config.contact_phone}
       />
       
       <ClientRecurringClasses 

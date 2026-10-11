@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -60,6 +60,13 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
           );
         })}
         </AnimatePresence>
+      </div>
+
+      <div className="p-3.5 bg-primary-light/40 border border-primary-light rounded-2xl text-xs text-primary-main/90 flex items-start gap-2.5">
+        <span className="font-bold text-sm shrink-0">✦</span>
+        <p className="leading-relaxed">
+          <strong>Renovación mensual:</strong> Tus clases fijas se agendan de forma automática cada período siempre que tu cuota/plan esté al día. Si se terminan tus clases del mes, recordá abonar para que tus cupos sigan reservados automáticamente.
+        </p>
       </div>
       )}
     </div>
