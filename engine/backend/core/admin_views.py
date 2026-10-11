@@ -1,4 +1,5 @@
 from rest_framework import viewsets, views
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from .models import Clase, PlantillaTurno, Turno, Reserva, Usuario
@@ -244,6 +245,33 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         user = serializer.save()
         from backend_core.hooks import registry
         registry.execute('post_admin_usuario_save', data=self.request.data, user=user)
+
+    @action(detail=True, methods=['get'])
+    def clases(self, request, pk=None):
+        usuario = self.get_object()
+        from core.models import Reserva
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        
+        reservas = Reserva.objects.filter(usuario=usuario).select_related('turno__clase').order_by('-turno__fecha', '-turno__hora_inicio')
+        
+        if month and year:
+            reservas = reservas.filter(turno__fecha__month=int(month), turno__fecha__year=int(year))
+            
+        data = []
+        for r in reservas:
+            t = r.turno
+            data.append({
+                'id': str(r.id),
+                'turno_id': str(t.id),
+                'fecha': t.fecha.isoformat(),
+                'hora_inicio': t.hora_inicio.strftime('%H:%M'),
+                'hora_fin': t.hora_fin.strftime('%H:%M'),
+                'clase_nombre': t.clase.nombre,
+                'estado': r.estado,
+                'es_recurrente': r.es_recurrente
+            })
+        return Response(data)
 
 
 

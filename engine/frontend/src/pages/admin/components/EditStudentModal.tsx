@@ -17,7 +17,11 @@ interface EditStudentModalProps {
 }
 
 export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate }: EditStudentModalProps) {
-  const [activeTab, setActiveTab] = useState<'perfil' | 'plan' | 'fijos'>('perfil');
+  const [activeTab, setActiveTab] = useState<'perfil' | 'plan' | 'fijos' | 'asistencia'>('perfil');
+  const [reservas, setReservas] = useState<any[]>([]);
+  const [loadingReservas, setLoadingReservas] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const prevAlumnoRef = React.useRef<any>(null);
   React.useEffect(() => {
     if (rawAlumno) {
@@ -140,6 +144,36 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     }
   };
 
+  const fetchAlumnoReservas = async () => {
+    if (!alumno?.id) return;
+    try {
+      setLoadingReservas(true);
+      const res = await api.get(`/admin/alumnos/${alumno.id}/clases/?month=${selectedMonth}&year=${selectedYear}`);
+      setReservas(res.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingReservas(false);
+    }
+  };
+
+  useEffect(() => {
+    if (alumno?.id && isOpen) {
+      fetchAlumnoReservas();
+    }
+  }, [alumno?.id, isOpen, selectedMonth, selectedYear]);
+
+  const handleUpdateReservaStatus = async (reservaId: string, nuevoEstado: string) => {
+    try {
+      await api.patch(`/admin/reservas/${reservaId}/`, { estado: nuevoEstado });
+      toast.success('Asistencia actualizada');
+      fetchAlumnoReservas();
+      onUpdate();
+    } catch (e) {
+      toast.error('Error al actualizar asistencia');
+    }
+  };
+
   const handleDeleteAlumno = async () => {
     try {
       setLoading(true);
@@ -247,17 +281,21 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     <Modal isOpen={isOpen} onClose={onClose} title="Editar Alumno">
       <div className="flex border-b mb-4">
         <button 
-          className={`flex-1 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'perfil' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'perfil' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
           onClick={() => setActiveTab('perfil')}
         >Perfil</button>
         <button 
-          className={`flex-1 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'plan' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'plan' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
           onClick={() => setActiveTab('plan')}
         >{isEstetica ? 'Billeteras' : 'Plan'}</button>
         <button 
-          className={`flex-1 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'fijos' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'fijos' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
           onClick={() => setActiveTab('fijos')}
         >Horarios Fijos</button>
+        <button 
+          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'asistencia' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+          onClick={() => setActiveTab('asistencia')}
+        >Clases / Asistencia</button>
       </div>
 
       <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
@@ -396,6 +434,136 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
               </div>
               <Button onClick={handleAddRecurrencia} disabled={loading || !newRecClase || !newRecHora} className="w-full">Agregar</Button>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'asistencia' && (
+          <div className="space-y-4">
+            {/* Selector de Mes / Año */}
+            <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Mes a consultar:</span>
+              <div className="flex gap-2">
+                <select 
+                  value={selectedMonth} 
+                  onChange={e => setSelectedMonth(Number(e.target.value))}
+                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                >
+                  {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, idx) => (
+                    <option key={idx + 1} value={idx + 1}>{m}</option>
+                  ))}
+                </select>
+                <select 
+                  value={selectedYear} 
+                  onChange={e => setSelectedYear(Number(e.target.value))}
+                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                >
+                  {[2025, 2026, 2027].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Tarjetas Resumen */}
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+                <div className="text-lg font-bold text-emerald-700">
+                  {reservas.filter(r => r.estado === 'TOMADA').length}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-emerald-600">Asistió</div>
+              </div>
+              <div className="bg-rose-50 border border-rose-200 p-2 rounded-xl">
+                <div className="text-lg font-bold text-rose-700">
+                  {reservas.filter(r => r.estado === 'AUSENTE').length}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-rose-600">Ausente</div>
+              </div>
+              <div className="bg-sky-50 border border-sky-200 p-2 rounded-xl">
+                <div className="text-lg font-bold text-sky-700">
+                  {reservas.filter(r => r.estado === 'CONFIRMADA').length}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-sky-600">Pendiente</div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-2 rounded-xl">
+                <div className="text-lg font-bold text-slate-700">
+                  {reservas.filter(r => r.estado.startsWith('CANCELADA')).length}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-slate-500">Cancelada</div>
+              </div>
+            </div>
+
+            {/* Listado de Clases */}
+            {loadingReservas ? (
+              <p className="text-center py-6 text-xs text-muted">Cargando clases...</p>
+            ) : reservas.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                <p className="text-xs text-muted">No tiene clases ni reservas en este mes.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {reservas.map(r => {
+                  const formatFecha = (d: string) => {
+                    try {
+                      const [y, m, day] = d.split('-');
+                      const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(day));
+                      return new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }).format(date);
+                    } catch (e) {
+                      return d;
+                    }
+                  };
+
+                  const getEstadoBadge = (estado: string) => {
+                    switch (estado) {
+                      case 'TOMADA':
+                        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Asistió</span>;
+                      case 'AUSENTE':
+                        return <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Ausente</span>;
+                      case 'CONFIRMADA':
+                        return <span className="bg-sky-100 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Pendiente</span>;
+                      default:
+                        return <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Cancelada</span>;
+                    }
+                  };
+
+                  return (
+                    <div key={r.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-foreground capitalize">{formatFecha(r.fecha)} {r.hora_inicio} hs</p>
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">
+                            {r.es_recurrente ? 'Fija' : 'Puntual'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-primary-main font-medium mt-0.5">{r.clase_nombre}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getEstadoBadge(r.estado)}
+                        <div className="flex gap-1 ml-1">
+                          {r.estado !== 'TOMADA' && (
+                            <button 
+                              onClick={() => handleUpdateReservaStatus(r.id, 'TOMADA')} 
+                              title="Marcar Asistió"
+                              className="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-lg font-bold transition-all"
+                            >
+                              ✓
+                            </button>
+                          )}
+                          {r.estado !== 'AUSENTE' && (
+                            <button 
+                              onClick={() => handleUpdateReservaStatus(r.id, 'AUSENTE')} 
+                              title="Marcar Ausente"
+                              className="text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded-lg font-bold transition-all"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
