@@ -97,13 +97,17 @@ def generar_turnos_desde_plantillas():
         current_date = now
         while current_date <= end_date:
             if current_date.isoweekday() == plantilla.dia_semana:
-                turno_exists = Turno.objects.filter(
-                    plantilla=plantilla,
+                turno_existente = Turno.objects.filter(
+                    clase=plantilla.clase,
                     fecha=current_date,
                     hora_inicio=plantilla.hora_inicio
-                ).exists()
+                ).first()
                 
-                if not turno_exists:
+                if turno_existente:
+                    if not turno_existente.plantilla:
+                        turno_existente.plantilla = plantilla
+                        turno_existente.save(update_fields=['plantilla'])
+                else:
                     nuevo_turno = Turno.objects.create(
                         plantilla=plantilla,
                         clase=plantilla.clase,

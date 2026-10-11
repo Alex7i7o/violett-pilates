@@ -38,12 +38,17 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                     hora_inicio=instance.hora_inicio
                 ).delete()
             
-            Turno.objects.filter(
+            future_turnos = Turno.objects.filter(
                 clase_id=instance.clase_id,
                 fecha__gte=instance.fecha,
-                fecha__iso_week_day=instance.fecha.isoweekday(),
                 hora_inicio=instance.hora_inicio
-            ).delete()
+            )
+            target_weekday = instance.fecha.isoweekday()
+            ids_to_delete = [t.id for t in future_turnos if t.fecha.isoweekday() == target_weekday]
+            if ids_to_delete:
+                Turno.objects.filter(id__in=ids_to_delete).delete()
+            else:
+                instance.delete()
             
             return Response(status=204)
             
@@ -105,6 +110,33 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
         from .services import generar_turnos_desde_plantillas
         generar_turnos_desde_plantillas()
 
+    def _deduplicate_turnos(self, instance, now):
+        from collections import defaultdict
+        turnos = Turno.objects.filter(
+            clase=instance.clase,
+            fecha__gte=now,
+            hora_inicio=instance.hora_inicio
+        ).prefetch_related('reservas')
+        
+        by_date = defaultdict(list)
+        for t in turnos:
+            if t.fecha.isoweekday() == instance.dia_semana:
+                by_date[t.fecha].append(t)
+                
+        for d, t_list in by_date.items():
+            if len(t_list) > 1:
+                t_list.sort(key=lambda x: x.reservas.exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA']).count(), reverse=True)
+                primary = t_list[0]
+                primary.plantilla = instance
+                primary.save()
+                
+                for duplicate in t_list[1:]:
+                    for r in duplicate.reservas.all():
+                        if not primary.reservas.filter(usuario=r.usuario).exists():
+                            r.turno = primary
+                            r.save()
+                    duplicate.delete()
+
     def perform_update(self, serializer):
         old_instance = PlantillaTurno.objects.get(pk=serializer.instance.pk)
         old_dia = old_instance.dia_semana
@@ -116,6 +148,8 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
         import datetime
         from django.utils import timezone
         now = timezone.localdate()
+        
+        # 1. Update future turnos attached to this plantilla
         future_turnos = Turno.objects.filter(plantilla=instance, fecha__gte=now)
         for t in future_turnos:
             t.clase = instance.clase
@@ -128,10 +162,65 @@ class PlantillaTurnoViewSet(viewsets.ModelViewSet):
             
             t.save()
             
+        # 2. Also shift any orphaned turnos from old slot to new slot
+        if old_dia != instance.dia_semana or old_hora != instance.hora_inicio or old_clase_id != instance.clase_id:
+            old_orphans = Turno.objects.filter(
+                plantilla__isnull=True,
+                clase_id=old_clase_id,
+                fecha__gte=now,
+                hora_inicio=old_hora
+            )
+            for t in old_orphans:
+                if t.fecha.isoweekday() == old_dia:
+                    t.plantilla = instance
+                    t.clase = instance.clase
+                    t.hora_inicio = instance.hora_inicio
+                    t.hora_fin = instance.hora_fin
+                    if old_dia != instance.dia_semana:
+                        diff = instance.dia_semana - t.fecha.isoweekday()
+                        t.fecha = t.fecha + datetime.timedelta(days=diff)
+                    t.save()
+        
+        # 3. Deduplicate
+        self._deduplicate_turnos(instance, now)
+            
         from backend_core.hooks import registry
         registry.execute("after_plantilla_updated", self.request.data, instance=instance, old_dia=old_dia, old_hora=old_hora, old_clase_id=old_clase_id)
         from .services import generar_turnos_desde_plantillas
         generar_turnos_desde_plantillas()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        from django.utils import timezone
+        now = timezone.localdate()
+        
+        # 1. Fire hook to deactivate recurrencias
+        from backend_core.hooks import registry
+        registry.execute(
+            "after_slot_destroyed", 
+            {}, 
+            clase_id=instance.clase_id, 
+            dia_semana=instance.dia_semana, 
+            hora_inicio=instance.hora_inicio
+        )
+        
+        # 2. Delete all future turnos linked to this plantilla
+        Turno.objects.filter(
+            plantilla=instance,
+            fecha__gte=now
+        ).delete()
+        
+        # 3. Also delete any orphaned turnos matching this slot
+        target_turnos = Turno.objects.filter(
+            clase_id=instance.clase_id,
+            fecha__gte=now,
+            hora_inicio=instance.hora_inicio
+        )
+        ids_to_delete = [t.id for t in target_turnos if t.fecha.isoweekday() == instance.dia_semana]
+        if ids_to_delete:
+            Turno.objects.filter(id__in=ids_to_delete).delete()
+            
+        return super().destroy(request, *args, **kwargs)
 
 
 class AdminUsuarioViewSet(viewsets.ModelViewSet):

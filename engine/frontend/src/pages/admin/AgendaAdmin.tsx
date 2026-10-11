@@ -150,6 +150,7 @@ export function AgendaAdmin() {
       toast.error("Error al cancelar el turno");
     } finally {
       setTurnoToDelete(null);
+      setDeleteFuture(false);
     }
   };
 
@@ -326,14 +327,28 @@ export function AgendaAdmin() {
 
       <ConfirmModal
         isOpen={!!turnoToDelete}
-        onClose={() => setTurnoToDelete(null)}
+        onClose={() => { setTurnoToDelete(null); setDeleteFuture(false); }}
         onConfirm={handleDeleteTurno}
         title="Cancelar Turno"
         message="¿Estás seguro de cancelar este turno? Las alumnas inscriptas recuperarán su clase."
         confirmText="Sí, Cancelar"
         cancelText="No, Volver"
         isDestructive={true}
-      />
+      >
+        <div className="mb-6 flex items-start gap-2.5 bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-left">
+          <input 
+            type="checkbox" 
+            id="deleteFuture" 
+            checked={deleteFuture} 
+            onChange={e => setDeleteFuture(e.target.checked)}
+            className="mt-0.5 w-4 h-4 text-rose-600 rounded border-rose-300 focus:ring-rose-500 cursor-pointer shrink-0"
+          />
+          <label htmlFor="deleteFuture" className="text-xs text-rose-900 leading-snug cursor-pointer select-none">
+            <strong>Eliminar en serie (todas las futuras):</strong><br />
+            Borrar también este mismo horario en todas las semanas futuras. Ideal para eliminar clases fijas canceladas o duplicadas.
+          </label>
+        </div>
+      </ConfirmModal>
     </motion.div>
 
   );
