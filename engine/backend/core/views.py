@@ -19,6 +19,7 @@ class ClientProfileView(APIView):
         
         base_data = {
             "name": f"{user.nombre} {user.apellido}",
+            "nombre": user.nombre,
             "rol": user.rol,
             "activePlan": "Sin plan activo",
             "remainingClasses": 0,
