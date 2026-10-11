@@ -382,8 +382,13 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
             {alumno.plan_activo && (
               <div className="p-4 bg-emerald-50 rounded-xl space-y-3 border border-emerald-100">
                 <h4 className="font-semibold text-emerald-800">Plan Actual: {alumno.plan_activo.plan_nombre}</h4>
+                <div className="text-xs text-emerald-800 space-y-1 bg-emerald-100/40 p-2.5 rounded-lg border border-emerald-200/60">
+                  <p><strong>Créditos disponibles para reservar:</strong> {alumno.plan_activo.clases_restantes}</p>
+                  <p><strong>Clases agendadas por tomar:</strong> {alumno.plan_activo.clases_pendientes ?? 0}</p>
+                  <p><strong>Vencimiento:</strong> {alumno.plan_activo.fecha_vencimiento}</p>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-emerald-900">Modificar Clases Restantes</label>
+                  <label className="block text-sm font-medium mb-1 text-emerald-900">Modificar Créditos Restantes</label>
                   <div className="flex gap-2">
                     <input type="number" value={clasesRestantes} onChange={e => setClasesRestantes(parseInt(e.target.value))} className="w-full p-2 border rounded-lg" />
                     <Button onClick={handleUpdateClases} disabled={loading}>Actualizar</Button>

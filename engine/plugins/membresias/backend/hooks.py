@@ -1,4 +1,4 @@
-﻿from backend_core.hooks import registry
+from backend_core.hooks import registry
 from .models import Suscripcion
 from django.utils import timezone
 import datetime
@@ -12,9 +12,16 @@ def on_profile_data(data, request=None, user=None):
         expiration_date = suscripcion.fecha_vencimiento
         days_until_expiration = (expiration_date - timezone.localdate()).days
         
+        from core.models import Reserva
+        clases_pendientes = Reserva.objects.filter(
+            usuario=user,
+            estado='CONFIRMADA'
+        ).count()
+
         data.update({
             "activePlan": suscripcion.plan.nombre,
             "remainingClasses": suscripcion.clases_restantes,
+            "pendingClasses": clases_pendientes,
             "totalClasses": suscripcion.plan.cantidad_clases,
             "expirationDate": expiration_date.strftime("%d/%m/%Y"),
             "daysUntilExpiration": max(0, days_until_expiration)
@@ -28,10 +35,18 @@ def on_enrich_admin_usuario(data, instance=None, **kwargs):
     if instance:
         suscripcion = Suscripcion.objects.filter(usuario=instance).order_by('-fecha_inicio').first()
         if suscripcion:
+            from core.models import Reserva
+            clases_pendientes = Reserva.objects.filter(
+                usuario=instance,
+                estado='CONFIRMADA'
+            ).count()
+
             data['plan_activo'] = {
                 'id': str(suscripcion.id),
                 'plan_nombre': suscripcion.plan.nombre,
+                'clases_totales': suscripcion.plan.cantidad_clases,
                 'clases_restantes': suscripcion.clases_restantes,
+                'clases_pendientes': clases_pendientes,
                 'fecha_vencimiento': suscripcion.fecha_vencimiento.strftime("%Y-%m-%d"),
                 'estado': suscripcion.estado
             }
