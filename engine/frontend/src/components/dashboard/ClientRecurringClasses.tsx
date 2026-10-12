@@ -24,7 +24,8 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
           </CardContent>
         </Card>
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative min-h-[140px]">
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative min-h-[140px]">
         <AnimatePresence mode="wait">
           {recurrencias.map(rec => {
           const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados', 'Domingos'];
@@ -62,12 +63,13 @@ export function ClientRecurringClasses({ recurrencias, onCancelClick }: ClientRe
         </AnimatePresence>
       </div>
 
-      <div className="p-3.5 bg-primary-light/40 border border-primary-light rounded-2xl text-xs text-primary-main/90 flex items-start gap-2.5">
-        <span className="font-bold text-sm shrink-0">✦</span>
-        <p className="leading-relaxed">
-          <strong>Renovación mensual:</strong> Tus clases fijas se agendan de forma automática cada período siempre que tu cuota/plan esté al día. Si se terminan tus clases del mes, recordá abonar para que tus cupos sigan reservados automáticamente.
-        </p>
-      </div>
+          <div className="p-3.5 bg-primary-light/40 border border-primary-light rounded-2xl text-xs text-primary-main/90 flex items-start gap-2.5">
+            <span className="font-bold text-sm shrink-0">✦</span>
+            <p className="leading-relaxed">
+              <strong>Renovación mensual:</strong> Tus clases fijas se agendan de forma automática cada período siempre que tu cuota/plan esté al día. Si se terminan tus clases del mes, recordá abonar para que tus cupos sigan reservados automáticamente.
+            </p>
+          </div>
+        </>
       )}
     </div>
   );
