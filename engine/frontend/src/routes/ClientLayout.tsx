@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { InstallAppModal } from '../components/ui/InstallAppModal';
 import { PushNotificationPrompt } from '../components/PushNotificationPrompt';
 import { useClientConfig } from '../context/ClientConfigContext';
+import { useClientProfile } from '../hooks/useClientProfile';
 
 export function ClientLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const config = useClientConfig();
+  const { profile } = useClientProfile();
   const isEstetica = config.client_id === 'violett_estetica';
 
   const tabs = [
@@ -39,7 +41,12 @@ export function ClientLayout() {
                   onClick={() => navigate(tab.path)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-white shadow-sm text-primary-main' : 'text-muted hover:text-foreground'}`}
                 >
-                  {tab.label}
+                  <span className="flex items-center gap-1.5">
+                    {tab.label}
+                    {tab.path === '/perfil' && profile?.perfil_incompleto && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Datos pendientes por completar" />
+                    )}
+                  </span>
                 </button>
               )
             })}
@@ -70,7 +77,12 @@ export function ClientLayout() {
                 onClick={() => navigate(tab.path)}
                 className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${active ? 'text-primary-main' : 'text-muted active:scale-95 transition-transform'}`}
               >
-                <Icon className="w-6 h-6" strokeWidth={active ? 2.5 : 2} />
+                <div className="relative">
+                  <Icon className="w-6 h-6" strokeWidth={active ? 2.5 : 2} />
+                  {tab.path === '/perfil' && profile?.perfil_incompleto && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white animate-pulse" />
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{tab.label}</span>
               </button>
             )

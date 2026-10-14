@@ -109,3 +109,42 @@ def save_ficha_medica_on_signup(request, user, **kwargs):
     req_data = getattr(request, 'data', None)
     if req_data:
         save_or_update_ficha(user, req_data)
+
+
+def on_profile_data(data, request=None, user=None, **kwargs):
+    if user:
+        try:
+            ficha = user.ficha_medica
+            data['contacto_emergencia'] = ficha.contacto_emergencia or ''
+            data['notas_medicas'] = ficha.notas_medicas or ''
+            data['fecha_nacimiento'] = ficha.fecha_nacimiento.strftime("%Y-%m-%d") if ficha.fecha_nacimiento else None
+            data['sexo'] = ficha.sexo or ''
+            if ficha.fecha_nacimiento:
+                today = timezone.localdate()
+                edad = today.year - ficha.fecha_nacimiento.year - ((today.month, today.day) < (ficha.fecha_nacimiento.month, ficha.fecha_nacimiento.day))
+                data['edad'] = edad
+            else:
+                data['edad'] = None
+        except FichaMedica.DoesNotExist:
+            data['contacto_emergencia'] = ''
+            data['notas_medicas'] = ''
+            data['fecha_nacimiento'] = None
+            data['sexo'] = ''
+            data['edad'] = None
+
+        # Detectar si el perfil está incompleto (faltan datos personales/médicos clave)
+        campos_faltantes = []
+        if not data.get('fecha_nacimiento'):
+            campos_faltantes.append('fecha_nacimiento')
+        if not data.get('sexo'):
+            campos_faltantes.append('sexo')
+        if not data.get('contacto_emergencia'):
+            campos_faltantes.append('contacto_emergencia')
+        if not getattr(user, 'telefono', None):
+            campos_faltantes.append('telefono')
+
+        data['perfil_incompleto'] = len(campos_faltantes) > 0
+        data['campos_pendientes'] = campos_faltantes
+    return data
+
+registry.register('profile_data', on_profile_data)

@@ -1,4 +1,4 @@
-﻿/* Developed by FireSeed - Fueling Innovation */
+/* Developed by FireSeed - Fueling Innovation */
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
@@ -12,6 +12,10 @@ export interface Recurrencia {
 
 export interface ClientProfile {
   name: string
+  nombre?: string
+  apellido?: string
+  email?: string
+  telefono?: string
   rol: string
   activePlan: string
   remainingClasses: number
@@ -19,6 +23,13 @@ export interface ClientProfile {
   expirationDate: string
   daysUntilExpiration: number
   recurrencias: Recurrencia[]
+  fecha_nacimiento?: string | null
+  sexo?: string | null
+  contacto_emergencia?: string | null
+  notas_medicas?: string | null
+  edad?: number | null
+  perfil_incompleto?: boolean
+  campos_pendientes?: string[]
 }
 
 export function useClientProfile() {

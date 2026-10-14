@@ -11,10 +11,66 @@ logger = logging.getLogger(__name__)
 Usuario = get_user_model()
 
 class CustomUserDetailsSerializer(UserDetailsSerializer):
+    fecha_nacimiento = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    sexo = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=10)
+    contacto_emergencia = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=255)
+    notas_medicas = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    edad = serializers.SerializerMethodField(read_only=True)
+
     class Meta(UserDetailsSerializer.Meta):
         model = Usuario
-        fields = ('id', 'email', 'nombre', 'apellido', 'telefono', 'rol')
-        read_only_fields = ('email', 'rol')
+        fields = ('id', 'email', 'nombre', 'apellido', 'telefono', 'rol', 'fecha_nacimiento', 'sexo', 'contacto_emergencia', 'notas_medicas', 'edad')
+        read_only_fields = ('email', 'rol', 'edad')
+
+    def get_edad(self, obj):
+        try:
+            fn = obj.ficha_medica.fecha_nacimiento
+            if fn:
+                from django.utils import timezone
+                today = timezone.localdate()
+                return today.year - fn.year - ((today.month, today.day) < (fn.month, fn.day))
+        except Exception:
+            pass
+        return None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        try:
+            ficha = instance.ficha_medica
+            data['fecha_nacimiento'] = ficha.fecha_nacimiento.strftime("%Y-%m-%d") if ficha.fecha_nacimiento else None
+            data['sexo'] = ficha.sexo or ''
+            data['contacto_emergencia'] = ficha.contacto_emergencia or ''
+            data['notas_medicas'] = ficha.notas_medicas or ''
+        except Exception:
+            data['fecha_nacimiento'] = None
+            data['sexo'] = ''
+            data['contacto_emergencia'] = ''
+            data['notas_medicas'] = ''
+        return data
+
+    def update(self, instance, validated_data):
+        fn = validated_data.pop('fecha_nacimiento', None)
+        sx = validated_data.pop('sexo', None)
+        ce = validated_data.pop('contacto_emergencia', None)
+        nm = validated_data.pop('notas_medicas', None)
+
+        user = super().update(instance, validated_data)
+
+        from backend_core.hooks import registry
+        ficha_data = {}
+        if fn is not None:
+            ficha_data['fecha_nacimiento'] = fn
+        if sx is not None:
+            ficha_data['sexo'] = sx
+        if ce is not None:
+            ficha_data['contacto_emergencia'] = ce
+        if nm is not None:
+            ficha_data['notas_medicas'] = nm
+
+        if ficha_data:
+            registry.execute('post_admin_usuario_save', data=ficha_data, user=user)
+
+        return user
 
 class CustomRegisterSerializer(RegisterSerializer):
     nombre = serializers.CharField(required=True, max_length=100)

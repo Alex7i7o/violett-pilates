@@ -1,5 +1,6 @@
 import React from 'react';
-
+import { Link } from 'react-router-dom';
+import { AlertCircle, ArrowRight } from 'lucide-react';
 import { BookingGrid } from '../../components/booking/BookingGrid';
 import { useClientProfile } from '../../hooks/useClientProfile';
 import { useBookings } from '../../hooks/useBookings';
@@ -39,6 +40,29 @@ export function InicioView() {
           </div>
         )}
       </div>
+
+      {profile?.perfil_incompleto && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-950">¡Completá tus datos de alumna!</p>
+              <p className="text-xs text-amber-900/80 mt-0.5">
+                Para tu ficha médica y seguridad, por favor completá tus datos personales pendientes.
+              </p>
+            </div>
+          </div>
+          <Link 
+            to="/perfil"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-colors whitespace-nowrap self-end sm:self-center"
+          >
+            Actualizar datos
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
       
       
 

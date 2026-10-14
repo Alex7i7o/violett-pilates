@@ -18,8 +18,11 @@ class ClientProfileView(APIView):
         user = request.user
         
         base_data = {
-            "name": f"{user.nombre} {user.apellido}",
-            "nombre": user.nombre,
+            "name": f"{user.nombre} {user.apellido}".strip(),
+            "nombre": user.nombre or "",
+            "apellido": user.apellido or "",
+            "email": user.email or "",
+            "telefono": user.telefono or "",
             "rol": user.rol,
             "activePlan": "Sin plan activo",
             "remainingClasses": 0,
@@ -29,10 +32,32 @@ class ClientProfileView(APIView):
             "recurrencias": []
         }
         
-                # Permitimos que los plugins decoren esta data
+        # Permitimos que los plugins decoren esta data
         base_data = registry.execute('profile_data', base_data, request=request, user=user)
         
         return Response(base_data)
+
+    def patch(self, request):
+        user = request.user
+        data = request.data
+        
+        changed = False
+        if 'nombre' in data and data['nombre'] is not None:
+            user.nombre = str(data['nombre']).strip()
+            changed = True
+        if 'apellido' in data and data['apellido'] is not None:
+            user.apellido = str(data['apellido']).strip()
+            changed = True
+        if 'telefono' in data and data['telefono'] is not None:
+            user.telefono = str(data['telefono']).strip()
+            changed = True
+        if changed:
+            user.save()
+            
+        # Ejecutar hooks de guardado de plugins (fichas médicas, etc.)
+        registry.execute('post_admin_usuario_save', data=data, user=user)
+        
+        return self.get(request)
 
 class TurnosDisponiblesView(APIView):
     permission_classes = [IsAuthenticated]
