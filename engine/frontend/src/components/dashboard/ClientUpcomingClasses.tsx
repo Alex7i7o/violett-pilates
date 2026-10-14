@@ -20,11 +20,9 @@ export function ClientUpcomingClasses({ turnos, onCancelClick, hasRecurring, con
       const [year, month, day] = datePart.split('-').map(Number);
       const date = new Date(year, month - 1, day);
       if (isNaN(date.getTime())) return 'Fecha inválida';
-      const weekdayFormatter = new Intl.DateTimeFormat('es-AR', { weekday: 'long' });
-      const weekday = weekdayFormatter.format(date);
-      const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-      const dayAndMonth = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(date);
-      return `${capitalizedWeekday} ${dayAndMonth}`;
+      const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return `${DIAS[date.getDay()]} ${day} ${MESES[date.getMonth()]}`;
     } catch(e) {
       return 'Fecha inválida';
     }

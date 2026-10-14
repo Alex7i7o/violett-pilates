@@ -8,27 +8,29 @@ import { Button } from '../ui/Button'
 import { BookingModal } from './BookingModal'
 import { CancelModal } from './CancelModal'
 
-// Helper for friendly date
-const formatDate = (dateString: string) => {
-  const [year, month, day] = dateString.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  
-  return new Intl.DateTimeFormat('es-AR', { 
-    weekday: 'long', 
-    day: 'numeric',
-    month: 'long'
-  }).format(date).replace(/^\w/, (c) => c.toUpperCase())
-}
+const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DIAS_COMPLETOS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
 
+// Helper for friendly date (ej: "Lunes, 19 de Octubre")
+const formatDate = (dateString: string) => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const diaNombre = DIAS_COMPLETOS[date.getDay()];
+  const mesNombre = MESES[date.getMonth()];
+  return `${diaNombre}, ${day} de ${mesNombre}`;
+};
+
+// Helper for tab date (ej: "Lun 19", "Mar 20")
 const formatTabDate = (dateString: string) => {
-  const [year, month, day] = dateString.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  
-  return new Intl.DateTimeFormat('es-AR', { 
-    weekday: 'short', 
-    day: 'numeric'
-  }).format(date).replace(/^\w/, (c) => c.toUpperCase())
-}
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const diaNombre = DIAS_SEMANA[date.getDay()];
+  return `${diaNombre} ${day}`;
+};
 
 export function BookingGrid({
   turnos,
@@ -111,7 +113,8 @@ export function BookingGrid({
               <button
                 key={date}
                 onClick={() => setActiveDate(date)}
-                className={`snap-start relative flex flex-col items-center justify-center min-w-[100px] px-4 py-3 rounded-2xl transition-colors duration-200 z-10 ${
+                translate="no"
+                className={`snap-start notranslate relative flex flex-col items-center justify-center min-w-[100px] px-4 py-3 rounded-2xl transition-colors duration-200 z-10 ${
                   isActive 
                     ? 'text-white' 
                     : 'bg-white text-muted hover:bg-primary-light/50'
@@ -126,10 +129,13 @@ export function BookingGrid({
                   />
                 )}
                 
-                <span className="font-semibold">{formatTabDate(date)}</span>
-                <span className={`text-xs mt-1 px-2 py-0.5 rounded-full transition-colors duration-200 ${
-                  isActive ? 'bg-white/20 text-white' : availableSpots > 0 ? 'bg-primary-light text-primary-main' : 'bg-red-100 text-red-900'
-                }`}>
+                <span className="font-semibold notranslate" translate="no">{formatTabDate(date)}</span>
+                <span 
+                  translate="no"
+                  className={`text-xs mt-1 px-2 py-0.5 rounded-full transition-colors duration-200 notranslate ${
+                    isActive ? 'bg-white/20 text-white' : availableSpots > 0 ? 'bg-primary-light text-primary-main' : 'bg-red-100 text-red-900'
+                  }`}
+                >
                   {availableSpots > 0 ? `${availableSpots} cupos` : 'Agotado'}
                 </span>
               </button>
