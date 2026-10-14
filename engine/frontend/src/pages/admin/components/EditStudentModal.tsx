@@ -40,6 +40,8 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
   const [telefono, setTelefono] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [sexo, setSexo] = useState('');
+  const [contactoEmergencia, setContactoEmergencia] = useState('');
+  const [notasMedicas, setNotasMedicas] = useState('');
 
   // Plan State
   const [planes, setPlanes] = useState<any[]>([]);
@@ -84,6 +86,8 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       setTelefono(alumno.telefono || '');
       setFechaNacimiento(alumno.fecha_nacimiento || '');
       setSexo(alumno.sexo || '');
+      setContactoEmergencia(alumno.contacto_emergencia || '');
+      setNotasMedicas(alumno.notas_medicas || '');
       if (isEstetica && alumno.id) {
         api.get('/billeteras/').then(res => {
           setBilleteras(res.data.filter((b: any) => b.usuario === alumno.id));
@@ -195,7 +199,12 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       await api.patch(`/admin/alumnos/${alumno.id}/`, {
         nombre,
         apellido,
-        telefono, email, fecha_nacimiento: fechaNacimiento || null, sexo: sexo || ''
+        telefono,
+        email,
+        fecha_nacimiento: fechaNacimiento || null,
+        sexo: sexo || '',
+        contacto_emergencia: contactoEmergencia,
+        notas_medicas: notasMedicas
       });
       toast.success('Perfil actualizado');
       onUpdate();
@@ -313,10 +322,61 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
               <label className="block text-sm font-medium mb-1">Teléfono</label>
               <input type="text" value={telefono} onChange={e => setTelefono(e.target.value)} className="w-full p-2 border rounded-lg" />
             </div>
-                          <div>
-                <div><label className="block text-sm font-medium mb-1">Fecha Nacimiento</label><input type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} className="w-full p-2 border rounded-lg" /></div><div><label className="block text-sm font-medium mb-1">Sexo</label><select value={sexo} onChange={e => setSexo(e.target.value)} className="w-full p-2 border rounded-lg"><option value="">Seleccionar...</option><option value="F">Femenino</option><option value="M">Masculino</option><option value="O">Otro</option><option value="N">Prefiero no decirlo</option></select></div><label className="block text-sm font-medium mb-1">Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value.toLowerCase())} className="w-full p-2 border rounded-lg" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Fecha Nacimiento</label>
+                <input 
+                  type="date" 
+                  value={fechaNacimiento} 
+                  onChange={e => setFechaNacimiento(e.target.value)} 
+                  className="w-full p-2 border rounded-lg bg-white" 
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Sexo</label>
+                <select 
+                  value={sexo} 
+                  onChange={e => setSexo(e.target.value)} 
+                  className="w-full p-2 border rounded-lg bg-white"
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="F">Femenino</option>
+                  <option value="M">Masculino</option>
+                  <option value="O">Otro</option>
+                  <option value="N">Prefiero no decirlo</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value.toLowerCase())} 
+                className="w-full p-2 border rounded-lg" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Contacto de Emergencia</label>
+              <input 
+                type="text" 
+                maxLength={100}
+                value={contactoEmergencia} 
+                onChange={e => setContactoEmergencia(e.target.value)} 
+                placeholder="Ej: Mamá (1145...)"
+                className="w-full p-2 border rounded-lg" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Notas Médicas / Lesiones</label>
+              <textarea 
+                rows={2}
+                value={notasMedicas} 
+                onChange={e => setNotasMedicas(e.target.value)} 
+                placeholder="Lesiones, afecciones o detalles de salud..."
+                className="w-full p-2 border rounded-lg" 
+              />
+            </div>
               <div className="flex gap-2">
                 <Button onClick={handleUpdatePerfil} disabled={loading} className="flex-1">Guardar Perfil</Button>
                 <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 px-3 transition-colors" title={isEstetica ? "Eliminar Paciente" : "Eliminar Alumno"}>

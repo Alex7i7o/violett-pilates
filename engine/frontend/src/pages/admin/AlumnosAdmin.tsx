@@ -185,7 +185,7 @@ export function AlumnosAdmin() {
                       <p className="text-sm text-muted mt-1">
                         Email: {alumno.email || 'Sin email'}<br />
                         Teléfono: {alumno.telefono || 'Sin teléfono'}<br />
-                        Edad: {(alumno.edad !== null && alumno.edad !== undefined) ? `${alumno.edad} años` : '-'}
+                        Edad: {(alumno.edad !== null && alumno.edad !== undefined) ? `${alumno.edad} años` : '-'} {alumno.sexo ? `• ${alumno.sexo === 'F' ? 'Femenino' : alumno.sexo === 'M' ? 'Masculino' : alumno.sexo === 'O' ? 'Otro' : 'Prefiero no decirlo'}` : ''}
                       </p>
                       
                       <div className="mt-5">

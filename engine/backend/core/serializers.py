@@ -1,4 +1,4 @@
-﻿from .models import Usuario, Clase, Turno, Reserva, PlantillaTurno
+from .models import Usuario, Clase, Turno, Reserva, PlantillaTurno
 from rest_framework import serializers
 from backend_core.hooks import registry
 
@@ -52,6 +52,10 @@ class CustomRegisterSerializer(RegisterSerializer):
     nombre = serializers.CharField(max_length=100)
     apellido = serializers.CharField(max_length=100)
     telefono = serializers.CharField(max_length=30, required=False, allow_blank=True)
+    fecha_nacimiento = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    sexo = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=10)
+    contacto_emergencia = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=255)
+    notas_medicas = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def get_cleaned_data(self):
         data_dict = super().get_cleaned_data()
@@ -59,6 +63,10 @@ class CustomRegisterSerializer(RegisterSerializer):
         data_dict['nombre'] = self.validated_data.get('nombre', '')
         data_dict['apellido'] = self.validated_data.get('apellido', '')
         data_dict['telefono'] = self.validated_data.get('telefono', '')
+        data_dict['fecha_nacimiento'] = self.validated_data.get('fecha_nacimiento', None)
+        data_dict['sexo'] = self.validated_data.get('sexo', None)
+        data_dict['contacto_emergencia'] = self.validated_data.get('contacto_emergencia', None)
+        data_dict['notas_medicas'] = self.validated_data.get('notas_medicas', None)
         return data_dict
 
     def custom_signup(self, request, user):
@@ -67,6 +75,58 @@ class CustomRegisterSerializer(RegisterSerializer):
         user.telefono = self.cleaned_data.get('telefono', '')
         user.rol = 'CLIENTE'
         user.save()
+
+        # Execute hook after_usuario_created
+        signup_data = {
+            'fecha_nacimiento': self.cleaned_data.get('fecha_nacimiento') or (getattr(request, 'data', {}) or {}).get('fecha_nacimiento'),
+            'sexo': self.cleaned_data.get('sexo') or (getattr(request, 'data', {}) or {}).get('sexo'),
+            'contacto_emergencia': self.cleaned_data.get('contacto_emergencia') or (getattr(request, 'data', {}) or {}).get('contacto_emergencia'),
+            'notas_medicas': self.cleaned_data.get('notas_medicas') or (getattr(request, 'data', {}) or {}).get('notas_medicas'),
+        }
+        try:
+            from backend_core.hooks import registry
+            registry.execute('after_usuario_created', signup_data, instance=user)
+        except Exception as e:
+            logger.error(f"Failed to execute after_usuario_created hook: {e}")
+
+        # Direct fallback for FichaMedica
+        try:
+            from plugins.fichas_medicas.backend.models import FichaMedica
+            import datetime
+            
+            raw_fn = signup_data.get('fecha_nacimiento')
+            parsed_fn = None
+            if raw_fn and str(raw_fn).strip():
+                try:
+                    parsed_fn = datetime.datetime.strptime(str(raw_fn).strip()[:10], "%Y-%m-%d").date()
+                except Exception:
+                    try:
+                        parsed_fn = datetime.datetime.strptime(str(raw_fn).strip()[:10], "%d/%m/%Y").date()
+                    except Exception:
+                        parsed_fn = None
+
+            raw_sexo = signup_data.get('sexo')
+            parsed_sexo = None
+            if raw_sexo and str(raw_sexo).strip():
+                sx = str(raw_sexo).strip().upper()
+                if sx in ['F', 'M', 'O', 'N']:
+                    parsed_sexo = sx
+
+            raw_ce = signup_data.get('contacto_emergencia')
+            raw_nm = signup_data.get('notas_medicas')
+
+            if parsed_fn or parsed_sexo or raw_ce or raw_nm:
+                FichaMedica.objects.update_or_create(
+                    usuario=user,
+                    defaults={
+                        'fecha_nacimiento': parsed_fn,
+                        'sexo': parsed_sexo,
+                        'contacto_emergencia': (raw_ce or '').strip(),
+                        'notas_medicas': (raw_nm or '').strip(),
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to save FichaMedica fallback on signup: {e}")
 
         # Send welcome email in a background thread to avoid blocking the response
         def send_welcome():

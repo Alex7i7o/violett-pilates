@@ -9,6 +9,8 @@ export interface AlumnoFormData {
   plan_activo: string;
   clases_extra: number;
   fecha_vencimiento_plan: string;
+  fecha_nacimiento?: string;
+  sexo?: string;
   notas: string;
 }
 
@@ -29,6 +31,8 @@ export function AlumnoForm({ initialData, planes, onSubmit, onCancel, isSubmitti
     plan_activo: '',
     clases_extra: 0,
     fecha_vencimiento_plan: '',
+    fecha_nacimiento: '',
+    sexo: '',
     notas: ''
   });
 
@@ -79,6 +83,20 @@ export function AlumnoForm({ initialData, planes, onSubmit, onCancel, isSubmitti
         <div>
           <label className="block text-sm font-semibold mb-1 text-foreground">Vencimiento Plan</label>
           <input type="date" name="fecha_vencimiento_plan" value={formData.fecha_vencimiento_plan} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1 text-foreground">Fecha Nacimiento</label>
+          <input type="date" name="fecha_nacimiento" value={formData.fecha_nacimiento || ''} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light bg-white focus:outline-none focus:ring-2 focus:ring-primary-main" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold mb-1 text-foreground">Sexo</label>
+          <select name="sexo" value={formData.sexo || ''} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light bg-white focus:outline-none focus:ring-2 focus:ring-primary-main">
+            <option value="">Seleccionar...</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+            <option value="O">Otro</option>
+            <option value="N">Prefiero no decirlo</option>
+          </select>
         </div>
       </div>
       <div>
