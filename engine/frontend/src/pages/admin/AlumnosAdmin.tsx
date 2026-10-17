@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { InputField } from '../../components/ui/InputField';
 import { SelectField } from '../../components/ui/SelectField';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Users } from 'lucide-react';
 import { EditStudentModal } from './components/EditStudentModal';
 
 export function AlumnosAdmin() {
@@ -57,7 +58,7 @@ export function AlumnosAdmin() {
       const res = await getAdminAlumnos();
       setAlumnos(res.data);
     } catch (error) {
-      toast.error(`Error al cargar `);
+      toast.error(`Error al cargar ${labelPlural}`);
     } finally {
       setLoading(false);
     }
@@ -66,11 +67,11 @@ export function AlumnosAdmin() {
   const handleDeleteAlumno = async (id: string) => {
     try {
       await api.delete(`/admin/alumnos/${id}/`);
-      toast.success(` eliminada eééxitosamente`);
+      toast.success(`${labelSingular.charAt(0).toUpperCase() + labelSingular.slice(1)} eliminada exitosamente`);
       setAlumnos(alumnos.filter(a => a.id !== id));
       if (selectedAlumno?.id === id) setSelectedAlumno(null);
     } catch (error) {
-      toast.error(`Error al eliminar `);
+      toast.error(`Error al eliminar ${labelSingular}`);
     }
   };
 
@@ -78,12 +79,12 @@ export function AlumnosAdmin() {
     setCreating(true);
     try {
       await api.post('/admin/alumnos/', data);
-      toast.success(` creada eééxitosamente`);
+      toast.success(`${labelSingular.charAt(0).toUpperCase() + labelSingular.slice(1)} creada exitosamente`);
       fetchAlumnos();
       setShowNewModal(false);
     } catch (e: any) {
       console.error(e);
-      toast.error('`Error al crear . ` ' + (e.response?.data?.detail || ''));
+      toast.error(`Error al crear ${labelSingular}: ` + (e.response?.data?.detail || ''));
     } finally {
       setCreating(false);
     }
@@ -109,8 +110,21 @@ export function AlumnosAdmin() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-primary-main">Directorio de {LabelPluralTitle}</h2>
-        <Button onClick={() => setShowNewModal(true)}>{`+ Nuevo ${labelSingular}`}</Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-3xl font-bold text-primary-main">Directorio de {LabelPluralTitle}</h2>
+          {!loading && (
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary-light text-primary-main font-semibold text-sm rounded-full border border-primary-main/20 shadow-xs">
+              <Users className="w-4 h-4 text-primary-main" />
+              <span>{alumnos.length} {alumnos.length === 1 ? labelSingular : labelPlural} en total</span>
+              {filteredAlumnos.length !== alumnos.length && (
+                <span className="text-xs text-primary-main/80 font-medium bg-white/70 px-2 py-0.5 rounded-full ml-1">
+                  Mostrando {filteredAlumnos.length}
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+        <Button onClick={() => setShowNewModal(true)}>{`+ ${isEstetica ? 'Nuevo paciente' : 'Nueva alumna'}`}</Button>
       </div>
 
       {loading ? (
@@ -277,7 +291,7 @@ export function AlumnosAdmin() {
         onClose={() => setAlumnoToDelete(null)}
         onConfirm={() => { if (alumnoToDelete) handleDeleteAlumno(alumnoToDelete); }}
         title={`Eliminar ${labelSingular}`}
-        message={`Â¿Seguro que deseas eliminar a est@ ${labelSingular}? Esta accií³n no se puede deshacer.`}
+        message={`¿Seguro que deseas eliminar a esta ${labelSingular}? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         isDestructive={true}
       />
