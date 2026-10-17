@@ -1,4 +1,4 @@
-﻿from backend_core.hooks import registry
+from backend_core.hooks import registry
 from .models import Recurrencia
 from .serializers import RecurrenciaSerializer
 
@@ -78,6 +78,7 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
             existing_reserva.estado = 'CONFIRMADA'
             existing_reserva.save()
             ReservaMembresia.objects.get_or_create(reserva=existing_reserva, defaults={'suscripcion': suscripcion})
+            registry.execute('reserva_creada', existing_reserva)
         else:
             r = Reserva.objects.create(
                 turno=ft,
@@ -86,6 +87,7 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
                 estado='CONFIRMADA'
             )
             ReservaMembresia.objects.create(reserva=r, suscripcion=suscripcion)
+            registry.execute('reserva_creada', r)
         
         ft.cupo_actual -= 1
         ft.save()

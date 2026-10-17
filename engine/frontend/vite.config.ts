@@ -3,6 +3,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+import fs from 'fs'
+
+const resolvePkg = (pkg: string) => {
+  const localPath = path.resolve(__dirname, 'node_modules', pkg);
+  if (fs.existsSync(localPath)) return localPath;
+  const parentPath = path.resolve(__dirname, '../node_modules', pkg);
+  if (fs.existsSync(parentPath)) return parentPath;
+  return localPath;
+};
+
 // Selects the correct plugin loader based on which client is being built.
 // VITE_CLIENT_ID is injected as a Docker build arg in docker-compose.yml.
 // For local dev, defaults to 'pilates'.
@@ -27,15 +37,15 @@ export default defineConfig({
       '@/core/pluginLoader': pluginLoaderPath,
       '@': path.resolve(__dirname, './src'),
       '@plugins': path.resolve(__dirname, '../plugins'),
-      'react': path.resolve(__dirname, 'node_modules/react'),
-      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
-      'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion'),
-      'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
-      'react-router-dom': path.resolve(__dirname, 'node_modules/react-router-dom'),
-      'sonner': path.resolve(__dirname, 'node_modules/sonner'),
-      '@tanstack/react-query': path.resolve(__dirname, 'node_modules/@tanstack/react-query'),
-      'axios': path.resolve(__dirname, 'node_modules/axios'),
-      'recharts': path.resolve(__dirname, 'node_modules/recharts')
+      'react': resolvePkg('react'),
+      'react-dom': resolvePkg('react-dom'),
+      'framer-motion': resolvePkg('framer-motion'),
+      'lucide-react': resolvePkg('lucide-react'),
+      'react-router-dom': resolvePkg('react-router-dom'),
+      'sonner': resolvePkg('sonner'),
+      '@tanstack/react-query': resolvePkg('@tanstack/react-query'),
+      'axios': resolvePkg('axios'),
+      'recharts': resolvePkg('recharts')
     }
   },
   test: {

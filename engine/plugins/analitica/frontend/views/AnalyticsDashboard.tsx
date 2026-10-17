@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, DollarSign, TrendingUp, Users, Clock, Mail, MessageCircle, AlertCircle } from 'lucide-react';
+import { Calendar, DollarSign, TrendingUp, Users, Clock, Mail, MessageCircle, AlertCircle, Send, CheckCircle2, XCircle } from 'lucide-react';
 
 const COLORS = ['#34236F', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -10,6 +10,8 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ success: boolean; detail: string } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -20,6 +22,21 @@ export default function AnalyticsDashboard() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true);
+    setEmailStatus(null);
+    try {
+      const res = await api.post('/analitica/test-email/');
+      setEmailStatus({ success: true, detail: res.data.detail });
+      fetchData();
+    } catch (e: any) {
+      const detail = e.response?.data?.detail || e.message || 'Error al enviar correo de prueba.';
+      setEmailStatus({ success: false, detail });
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -57,6 +74,17 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
+      {emailStatus && (
+        <div className={`p-4 rounded-2xl flex items-start gap-3 text-sm animate-fade-in ${emailStatus.success ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-red-50 text-red-900 border border-red-200'}`}>
+          {emailStatus.success ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" /> : <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />}
+          <div className="flex-1">
+            <div className="font-semibold">{emailStatus.success ? 'Diagnóstico de Correo Exitoso' : 'Fallo en la Configuración de Correo'}</div>
+            <div className="text-xs mt-1 leading-relaxed">{emailStatus.detail}</div>
+          </div>
+          <button onClick={() => setEmailStatus(null)} className="text-xs font-semibold px-2 py-1 rounded hover:bg-black/5">Cerrar</button>
+        </div>
+      )}
+
       {/* MOTOR DE VALOR */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-primary-main to-primary-hover p-6 rounded-3xl text-white shadow-lg col-span-1 md:col-span-2">
@@ -74,18 +102,29 @@ export default function AnalyticsDashboard() {
           <p className="text-xs text-neutral-400 mt-1">Alumnos gestionaron sus reservas sin intervención humana</p>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm">
-          <h3 className="text-sm text-neutral-500 mb-4">Automatizaciones</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2 text-sm font-medium"><Mail size={16} className="text-primary-main"/> Emails</span>
-              <span className="font-bold">{valor.emails_enviados}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2 text-sm font-medium"><MessageCircle size={16} className="text-emerald-500"/> WhatsApps</span>
-              <span className="font-bold">{valor.wpps_enviados}</span>
+        <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm text-neutral-500 mb-4">Automatizaciones</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-sm font-medium"><Mail size={16} className="text-primary-main"/> Emails</span>
+                <span className="font-bold text-neutral-800">{valor.emails_enviados}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-sm font-medium"><MessageCircle size={16} className="text-emerald-500"/> WhatsApps</span>
+                <span className="font-bold text-neutral-800">{valor.wpps_enviados}</span>
+              </div>
             </div>
           </div>
+          <button
+            onClick={handleTestEmail}
+            disabled={testingEmail}
+            className="mt-4 w-full text-xs font-semibold py-2 px-3 rounded-xl border border-primary-main/20 text-primary-main hover:bg-primary-light/50 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+            title="Envía un correo de prueba a tu email para diagnosticar la conexión con Resend"
+          >
+            <Send size={13} />
+            {testingEmail ? 'Comprobando...' : 'Probar Envío de Correo'}
+          </button>
         </div>
       </div>
 

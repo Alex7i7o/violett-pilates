@@ -44,6 +44,8 @@ class CancelRecurrenciaView(APIView):
             turno.cupo_actual += 1
             turno.save()
             
+            from backend_core.hooks import registry
+            registry.execute('reserva_cancelada_a_tiempo', reserva)
 
             try:
                 rm = reserva.consumo_suscripcion
@@ -129,9 +131,13 @@ class AdminRecurrenciaView(APIView):
                             existing_reserva.estado = 'CONFIRMADA'
                             existing_reserva.save()
                             ReservaMembresia.objects.get_or_create(reserva=existing_reserva, defaults={'suscripcion': suscripcion})
+                            from backend_core.hooks import registry
+                            registry.execute('reserva_creada', existing_reserva)
                         else:
                             res = Reserva.objects.create(turno=ft, usuario=usuario, es_recurrente=True, estado='CONFIRMADA')
                             ReservaMembresia.objects.create(reserva=res, suscripcion=suscripcion)
+                            from backend_core.hooks import registry
+                            registry.execute('reserva_creada', res)
                         ft.cupo_actual -= 1
                         ft.save()
                         suscripcion.clases_restantes -= 1
@@ -171,6 +177,8 @@ class AdminRecurrenciaView(APIView):
             turno.cupo_actual += 1
             turno.save()
             
+            from backend_core.hooks import registry
+            registry.execute('reserva_cancelada_a_tiempo', reserva)
 
             try:
                 rm = reserva.consumo_suscripcion

@@ -1,4 +1,4 @@
-﻿# Developed by FireSeed - Fueling Innovation
+# Developed by FireSeed - Fueling Innovation
 """
 Django settings for backend_core project.
 
@@ -83,7 +83,12 @@ client_dir = 'estetica' if 'estetica' in client_id else 'pilates'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR.parent.parent / 'plantillas_correos' / client_dir],
+        'DIRS': [
+            Path('/plantillas_correos') / client_dir,
+            BASE_DIR.parent.parent / 'plantillas_correos' / client_dir,
+            BASE_DIR.parent / 'plantillas_correos' / client_dir,
+            BASE_DIR / 'plantillas_correos' / client_dir,
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -238,8 +243,14 @@ CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost:
 # Email Configuration (Resend)
 _email_pw = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
-if DEBUG and not _email_pw:
+if not _email_pw:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Violett <hola@violett.com.ar>')
+    import logging
+    logging.getLogger('backend_core.settings').warning(
+        "[EMAIL CONFIG] ADVERTENCIA: EMAIL_HOST_PASSWORD no está configurado en las variables de entorno (.env). "
+        "Los correos saldrán por consola (console.EmailBackend) hasta que se configure la API Key de Resend."
+    )
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.resend.com')
