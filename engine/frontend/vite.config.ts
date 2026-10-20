@@ -45,7 +45,8 @@ export default defineConfig({
       'sonner': resolvePkg('sonner'),
       '@tanstack/react-query': resolvePkg('@tanstack/react-query'),
       'axios': resolvePkg('axios'),
-      'recharts': resolvePkg('recharts')
+      'recharts': resolvePkg('recharts'),
+      'react-is': resolvePkg('react-is')
     }
   },
   test: {
