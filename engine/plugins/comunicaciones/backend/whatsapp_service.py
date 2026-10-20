@@ -59,6 +59,28 @@ class WhatsAppClient:
             logger.error(f"[WHATSAPP EXCEPTION] {e}")
             return False
 
+    def download_media_bytes(self, media_id: str):
+        """Descarga el binario de una imagen o documento desde Meta WhatsApp Cloud API"""
+        if not self.is_configured or not media_id:
+            return None
+        headers = {"Authorization": f"Bearer {self.token}"}
+        try:
+            res = requests.get(f"https://graph.facebook.com/v19.0/{media_id}", headers=headers, timeout=10)
+            if res.status_code != 200:
+                logger.error(f"[WHATSAPP MEDIA URL ERROR] {res.status_code} - {res.text}")
+                return None
+            media_url = res.json().get('url')
+            if not media_url:
+                return None
+            file_res = requests.get(media_url, headers=headers, timeout=15)
+            if file_res.status_code == 200:
+                return file_res.content
+            logger.error(f"[WHATSAPP MEDIA DOWNLOAD ERROR] {file_res.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"[WHATSAPP MEDIA EXCEPTION] {e}")
+            return None
+
     def send_text_message(self, to_number, text_message):
         '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
         if not self.is_configured:

@@ -51,20 +51,18 @@ class WhatsAppWebhookView(APIView):
                         client = WhatsAppClient()
                         
                         if msg_type == 'image':
-                            # Usuario envió un comprobante de transferencia
                             image_id = msg.get('image', {}).get('id')
-                            logger.info(f"[WHATSAPP] Comprobante de pago recibido de {phone_number}. Image ID: {image_id}")
-                            
-                            # Auto-respuesta
-                            components = [{
-                                "type": "body",
-                                "parameters": [
-                                    {"type": "text", "text": "¡Gracias! Hemos recibido tu comprobante de pago."}
-                                ]
-                            }]
-                            # Usaremos una plantilla generica o enviamos un texto directo.
-                            # Para texto directo, Meta API usa un formato diferente, pero vamos a usar un metodo nuevo de texto directo.
-                            client.send_text_message(phone_number, "¡Hola! Recibimos tu comprobante de pago. Nuestro equipo lo verificará a la brevedad y te confirmaremos la acreditación en tu perfil.")
+                            caption = msg.get('image', {}).get('caption', '')
+                            logger.info(f"[WHATSAPP] Imagen recibida de {phone_number}. Image ID: {image_id}")
+                            from backend_core.hooks import registry
+                            registry.execute('whatsapp_imagen_recibida', {
+                                'phone': phone_number,
+                                'image_id': image_id,
+                                'caption': caption,
+                                'raw_msg': msg
+                            })
+                            if not registry.listeners.get('whatsapp_imagen_recibida'):
+                                client.send_text_message(phone_number, "¡Hola! ✦ Recibimos tu comprobante de pago. Nuestro equipo lo verificará a la brevedad.")
                             
                         elif msg_type == 'text':
                             text_body = msg.get('text', {}).get('body', '')

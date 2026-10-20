@@ -1,7 +1,15 @@
 from django.apps import AppConfig
+import sys
 import logging
 
 logger = logging.getLogger(__name__)
+
+def run_yield_optimizer_job():
+    from django.core.management import call_command
+    try:
+        call_command("optimizar_ocupacion_proactivo")
+    except Exception as e:
+        logger.error(f"[ASISTENTE YIELD JOB ERROR] {e}")
 
 class AsistenteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -19,5 +27,40 @@ class AsistenteConfig(AppConfig):
                 logger.error(f"[ASISTENTE ERROR] Error despachando mensaje entrante: {e}")
             return data
 
+        def on_whatsapp_imagen(data, **kwargs):
+            try:
+                import threading
+                from .services.vision_service import procesar_comprobante_imagen
+                phone = data.get('phone')
+                image_id = data.get('image_id')
+                caption = data.get('caption', '')
+                if phone and image_id:
+                    threading.Thread(target=procesar_comprobante_imagen, args=(phone, image_id, caption), daemon=True).start()
+            except Exception as e:
+                logger.error(f"[ASISTENTE ERROR] Error despachando imagen entrante: {e}")
+            return data
+
         registry.register('whatsapp_mensaje_recibido', on_whatsapp_mensaje)
-        logger.info("[ASISTENTE IA] Hook 'whatsapp_mensaje_recibido' registrado exitosamente.")
+        registry.register('whatsapp_imagen_recibida', on_whatsapp_imagen)
+        logger.info("[ASISTENTE IA] Hooks 'whatsapp_mensaje_recibido' e 'whatsapp_imagen_recibida' registrados exitosamente.")
+
+        # Iniciar Scheduler proactivo en background si no es un comando de migración/shell
+        if not any(cmd in arg for arg in sys.argv for cmd in ['makemigrations', 'migrate', 'collectstatic', 'shell', 'test']):
+            try:
+                from apscheduler.schedulers.background import BackgroundScheduler
+                from django_apscheduler.jobstores import DjangoJobStore
+
+                scheduler = BackgroundScheduler()
+                scheduler.add_jobstore(DjangoJobStore(), "default")
+
+                scheduler.add_job(
+                    run_yield_optimizer_job,
+                    trigger="interval",
+                    minutes=30,
+                    id="asistente_yield_optimizer_job",
+                    replace_existing=True
+                )
+                scheduler.start()
+                logger.info("[ASISTENTE IA] Scheduler proactivo de ocupación iniciado (cada 30 min).")
+            except Exception as e:
+                logger.warning(f"[ASISTENTE IA] Scheduler proactivo no iniciado: {e}")

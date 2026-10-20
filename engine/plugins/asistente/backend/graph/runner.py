@@ -11,6 +11,8 @@ from .state import AgentState
 from ..config_loader import get_brand_persona, get_asistente_config
 from ..tools.turnos_tools import consultar_turnos_disponibles, reservar_camilla_turno, consultar_mis_reservas_alumna
 from ..tools.finanzas_tools import consultar_estado_plan_alumna, obtener_planes_y_precios, obtener_datos_transferencia_estudio
+from ..tools.profesores_tools import consultar_mis_clases_profesor, gestionar_ausencia_y_buscar_reemplazo
+from ..tools.reportes_tools import obtener_reporte_facturacion_semanal, obtener_reporte_ocupacion_hoy, contactar_prospectos_desde_lista
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,12 @@ ALL_TOOLS = [
     consultar_mis_reservas_alumna,
     consultar_estado_plan_alumna,
     obtener_planes_y_precios,
-    obtener_datos_transferencia_estudio
+    obtener_datos_transferencia_estudio,
+    consultar_mis_clases_profesor,
+    gestionar_ausencia_y_buscar_reemplazo,
+    obtener_reporte_facturacion_semanal,
+    obtener_reporte_ocupacion_hoy,
+    contactar_prospectos_desde_lista
 ]
 
 def build_system_prompt(rol: str, nombre_usuario: str, usuario_id: str) -> str:
