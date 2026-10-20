@@ -1,4 +1,4 @@
-﻿# Build stage
+# Build stage
 FROM node:20-alpine AS build-stage
 
 WORKDIR /app
@@ -8,7 +8,7 @@ COPY frontend/package*.json ./frontend/
 
 # Install dependencies in frontend
 WORKDIR /app/frontend
-RUN npm install
+RUN npm install -g npm@latest && npm install --legacy-peer-deps
 
 # Copy all source code
 WORKDIR /app
