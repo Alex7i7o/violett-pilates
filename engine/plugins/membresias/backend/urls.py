@@ -1,6 +1,6 @@
-﻿from django.urls import path, include
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PlanViewSet, SuscripcionViewSet, AsignarPlanView
+from .views import PlanViewSet, SuscripcionViewSet, AsignarPlanView, ReactivarPlanView
 
 router = DefaultRouter()
 router.register(r'admin/planes', PlanViewSet, basename='admin-planes')
@@ -9,5 +9,6 @@ router.register(r'admin/suscripciones', SuscripcionViewSet, basename='admin-susc
 
 urlpatterns = [
     path('admin/alumnos/<str:usuario_id>/asignar-plan/', AsignarPlanView.as_view(), name='asignar-plan'),
+    path('admin/alumnos/<str:usuario_id>/reactivar-plan/', ReactivarPlanView.as_view(), name='reactivar-plan'),
     path('', include(router.urls)),
 ]

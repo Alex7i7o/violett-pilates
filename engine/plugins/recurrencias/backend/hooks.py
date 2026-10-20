@@ -193,3 +193,18 @@ def on_slot_destroyed(data, clase_id=None, dia_semana=None, hora_inicio=None, **
     return data
 
 registry.register('after_slot_destroyed', on_slot_destroyed)
+
+def on_plan_asignado_auto_agendar(data, **kwargs):
+    suscripcion = data.get('suscripcion')
+    usuario = data.get('usuario')
+    if suscripcion and usuario:
+        try:
+            from .services import auto_agendar_recurrencias_usuario
+            auto_agendar_recurrencias_usuario(usuario, suscripcion)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Error auto-agendando recurrencias en hook plan_asignado: {e}")
+    return data
+
+registry.register('plan_asignado', on_plan_asignado_auto_agendar)
+

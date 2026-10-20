@@ -43,6 +43,7 @@ def on_enrich_admin_usuario(data, instance=None, **kwargs):
 
             data['plan_activo'] = {
                 'id': str(suscripcion.id),
+                'plan_id': str(suscripcion.plan.id),
                 'plan_nombre': suscripcion.plan.nombre,
                 'clases_totales': suscripcion.plan.cantidad_clases,
                 'clases_restantes': suscripcion.clases_restantes,
@@ -62,7 +63,7 @@ def on_after_usuario_created(data, instance=None, **kwargs):
         try:
             from .models import Plan
             plan = Plan.objects.get(id=plan_id, is_active=True)
-            Suscripcion.objects.create(
+            nueva_sub = Suscripcion.objects.create(
                 usuario=instance,
                 plan=plan,
                 clases_restantes=plan.cantidad_clases,
@@ -70,6 +71,7 @@ def on_after_usuario_created(data, instance=None, **kwargs):
                 fecha_vencimiento=timezone.localdate() + datetime.timedelta(days=30),
                 estado='ACTIVO'
             )
+            registry.execute('plan_asignado', data={'suscripcion': nueva_sub, 'usuario': instance, 'plan': plan})
         except Exception as e:
             pass
     return data
@@ -119,7 +121,7 @@ def on_pago_confirmado(data, usuario=None, plan=None, payment_id=None, **kwargs)
         Suscripcion.objects.filter(usuario=usuario, estado='ACTIVO').update(estado='AGOTADO')
         
         # Crear la nueva suscripcion
-        Suscripcion.objects.create(
+        nueva_sub = Suscripcion.objects.create(
             usuario=usuario,
             plan=plan,
             clases_restantes=plan.cantidad_clases,
@@ -127,6 +129,7 @@ def on_pago_confirmado(data, usuario=None, plan=None, payment_id=None, **kwargs)
             fecha_vencimiento=timezone.localdate() + datetime.timedelta(days=30),
             estado='ACTIVO'
         )
+        registry.execute('plan_asignado', data={'suscripcion': nueva_sub, 'usuario': usuario, 'plan': plan})
         print(f"[MEMBRESIA] Suscripción activada para {usuario.nombre} tras pago {payment_id}")
     return data
 

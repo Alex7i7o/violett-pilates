@@ -6,7 +6,7 @@ import { api } from '../../../lib/api';
 import { deleteAdminAlumno } from '../../../lib/adminApi';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus } from 'lucide-react';
+import { Trash2, Plus, Minus, RotateCcw } from 'lucide-react';
 import { useClientConfig } from '../../../context/ClientConfigContext';
 
 interface EditStudentModalProps {
@@ -56,6 +56,14 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [clasesRestantes, setClasesRestantes] = useState<number>(0);
   const [fechaVencimiento, setFechaVencimiento] = useState<string>('');
+
+  // Reactivar Plan State
+  const [showReactivarModal, setShowReactivarModal] = useState(false);
+  const [reactivarPlanId, setReactivarPlanId] = useState('');
+  const [reactivarClases, setReactivarClases] = useState<number>(8);
+  const [reactivarVencimiento, setReactivarVencimiento] = useState<string>('');
+  const [reactivarAutoAgendar, setReactivarAutoAgendar] = useState<boolean>(true);
+  const [loadingReactivar, setLoadingReactivar] = useState(false);
   
   // Recurrencias State
   const [recurrencias, setRecurrencias] = useState<any[]>([]);
@@ -212,6 +220,29 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       toast.error('Error al actualizar perfil');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReactivarPlanSubmit = async () => {
+    if (!alumno?.id) return;
+    setLoadingReactivar(true);
+    try {
+      const res = await api.post(`/admin/alumnos/${alumno.id}/reactivar-plan/`, {
+        plan_id: reactivarPlanId || undefined,
+        clases: reactivarClases,
+        fecha_vencimiento: reactivarVencimiento || undefined,
+        auto_agendar: reactivarAutoAgendar
+      });
+      const { clases_cargadas, clases_agendadas, plan_nombre } = res.data;
+      toast.success(`¡Plan "${plan_nombre}" reactivado! Se cargaron ${clases_cargadas} créditos y se agendaron automáticamente ${clases_agendadas} clases fijas.`);
+      setShowReactivarModal(false);
+      onUpdate();
+      onClose();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.detail || 'Error al reactivar el plan');
+    } finally {
+      setLoadingReactivar(false);
     }
   };
 
