@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from typing import Tuple, List
 from django.utils import timezone
@@ -10,22 +11,56 @@ from langgraph.prebuilt import ToolNode
 from .state import AgentState
 from ..config_loader import get_brand_persona, get_asistente_config
 from ..tools.turnos_tools import consultar_turnos_disponibles, reservar_camilla_turno, consultar_mis_reservas_alumna
-from ..tools.finanzas_tools import consultar_estado_plan_alumna, obtener_planes_y_precios, obtener_datos_transferencia_estudio
-from ..tools.profesores_tools import consultar_mis_clases_profesor, gestionar_ausencia_y_buscar_reemplazo
-from ..tools.reportes_tools import obtener_reporte_facturacion_semanal, obtener_reporte_ocupacion_hoy, contactar_prospectos_desde_lista
-
-logger = logging.getLogger(__name__)
-
-# Lista consolidada de tools operativas
-ALL_TOOLS = [
-    consultar_turnos_disponibles,
-    reservar_camilla_turno,
-    consultar_mis_reservas_alumna,
+from ..tools.finanzas_tools import (
     consultar_estado_plan_alumna,
     obtener_planes_y_precios,
     obtener_datos_transferencia_estudio,
+    aprobar_comprobante_pago,
+    rechazar_comprobante_pago
+)
+from ..tools.profesores_tools import (
     consultar_mis_clases_profesor,
     gestionar_ausencia_y_buscar_reemplazo,
+    reasignar_profesora_directo,
+    buscar_reemplazo_orden_duena
+)
+from ..tools.optimizacion_tools import (
+    analizar_optimizacion_turnos_proximos,
+    vincular_alumnas_inseparables,
+    guardar_preferencia_alumna,
+    consultar_preferencias_o_vinculos
+)
+from ..tools.reportes_tools import (
+    obtener_reporte_facturacion_semanal,
+    obtener_reporte_ocupacion_hoy,
+    contactar_prospectos_desde_lista
+)
+
+logger = logging.getLogger(__name__)
+
+# Lista consolidada de tools operativas para el agente
+ALL_TOOLS = [
+    # Turnos & Reservas
+    consultar_turnos_disponibles,
+    reservar_camilla_turno,
+    consultar_mis_reservas_alumna,
+    # Finanzas & Pagos
+    consultar_estado_plan_alumna,
+    obtener_planes_y_precios,
+    obtener_datos_transferencia_estudio,
+    aprobar_comprobante_pago,
+    rechazar_comprobante_pago,
+    # Profesores & Coberturas
+    consultar_mis_clases_profesor,
+    gestionar_ausencia_y_buscar_reemplazo,
+    reasignar_profesora_directo,
+    buscar_reemplazo_orden_duena,
+    # Optimizador de Ocupación & Preferencias
+    analizar_optimizacion_turnos_proximos,
+    vincular_alumnas_inseparables,
+    guardar_preferencia_alumna,
+    consultar_preferencias_o_vinculos,
+    # Reportes Ejecutivos & Prospección
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
     contactar_prospectos_desde_lista
@@ -42,21 +77,41 @@ def build_system_prompt(rol: str, nombre_usuario: str, usuario_id: str) -> str:
     if usuario_id:
         contexto_usuario += f" [ID Sistema: {usuario_id}]"
 
+    instrucciones_rol = ""
+    if rol == 'DUENA':
+        instrucciones_rol = """
+COMANDOS EXCLUSIVOS DE LA DUEÑA / DIRECTORA:
+- Si la dueña aprueba un pago diciendo "Aprobar {código}", "Acreditar a {nombre}", o simplemente "Aprobar", invocá inmediatamente 'aprobar_comprobante_pago'.
+- Si la dueña indica un cambio directo de profesora (ej: "El jueves a las 18 sacá a Cande y poné a Julieta" o "Reemplazá a Mariana por Sofía"), invocá 'reasignar_profesora_directo'.
+- Si la dueña pide buscar quién puede cubrir una clase (ej: "Fijate quién puede cubrir a Cande este martes a las 18"), invocá 'buscar_reemplazo_orden_duena'.
+- Si la dueña consulta la ocupación o pide ver si hay clases para consolidar o juntar (ej: "¿Cómo viene la ocupación de mañana?", "¿Hay clases con 1 sola alumna?"), invocá 'analizar_optimizacion_turnos_proximos'.
+- Si la dueña indica que dos alumnas vienen juntas o son inseparables (ej: "Anotá que Marcela y Valentina son madre e hija y vienen siempre juntas"), invocá 'vincular_alumnas_inseparables'.
+- Si pide métricas o facturación, usá 'obtener_reporte_facturacion_semanal' u 'obtener_reporte_ocupacion_hoy'.
+- Respondé a la dueña con tono ejecutivo, preciso, respetuoso y resolutivo.
+"""
+    elif rol == 'PROFESOR':
+        instrucciones_rol = """
+COMUNICACIÓN CON PROFESORAS:
+- Si consulta sus clases, usá 'consultar_mis_clases_profesor'.
+- Si avisa que no puede asistir un día u horario, usá 'gestionar_ausencia_y_buscar_reemplazo'.
+"""
+
     return f"""{brand_persona}
 
 ---
 REGLAS OPERATIVAS Y DE NEGOCIO:
 - Fecha actual de referencia: {hoy_str}.
-- Capacidad máxima estricta por turno: {reglas.get('max_cupo_por_turno', 3)} camillas de reformer (nunca sobrevender).
+- Capacidad máxima estricta por turno: {reglas.get('max_cupo_por_turno', 3)} camillas de reformer (NUNCA sobrevender más de 3).
 - Estructura de la sesión: {reglas.get('estructura_sesion', '55 minutos de clase + 5 minutos de ritual de descompresión')}.
 - Dirección del estudio: {reglas.get('direccion', 'Gral. Guido 1573, Ramos Mejía')}.
 - {contexto_usuario}
+{instrucciones_rol}
 
 INSTRUCCIONES DE ATENCIÓN:
 1. Usá siempre voseo argentino cordial, cálido y elegante ('vos', 'querés', 'fijate', 'sentite').
 2. Colocá el destello ✦ con sutileza en saludos o despedidas.
-3. Si el usuario te consulta por turnos, disponibilidad o reservas, utilizá las herramientas (tools) correspondientes antes de responder con datos inventados.
-4. Si el usuario pide reservar, utilizá 'reservar_camilla_turno' pasando su usuario_id y el turno_id.
+3. Si el usuario te consulta por turnos, disponibilidad o reservas, utilizá las herramientas (tools) correspondientes antes de responder.
+4. Si una alumna pide reservar, utilizá 'reservar_camilla_turno' pasando su usuario_id y el turno_id.
 5. Si no tiene créditos para reservar, explicale amablemente el estado de su abono y ofrecé los planes disponibles o los datos de transferencia.
 6. Mantené tus respuestas concisas, bien formateadas para leerse cómodamente en WhatsApp.
 """
@@ -167,11 +222,118 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: str, nombre_user: str) -> Tuple[str, str, List[str]]:
     """
     Modo fallback / simulador inteligente cuando no hay API Key o falla el proveedor LLM.
-    Ejecuta las tools reales de Django según palabras clave.
+    Ejecuta las tools reales de Django según palabras clave y rol detectado.
     """
     msg_low = mensaje_usuario.lower()
     tools_usadas = []
+    rol = conversacion.rol_detectado
 
+    # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA ---
+    if rol == 'DUENA' or any(k in msg_low for k in ['aprobar', 'acreditar', 'rechazar']):
+        # 1. Aprobación de comprobantes
+        if any(k in msg_low for k in ['aprobar', 'acreditar']):
+            # Extraer posible identificador (palabra luego de aprobar/acreditar)
+            partes = mensaje_usuario.split()
+            identificador = ""
+            for idx, p in enumerate(partes):
+                if p.lower() in ['aprobar', 'acreditar', 'acredita', 'aprueba'] and idx + 1 < len(partes):
+                    siguiente = partes[idx + 1].strip()
+                    if siguiente.lower() not in ['el', 'la', 'un', 'una', 'a', 'comprobante', 'pago', 'plan']:
+                        identificador = siguiente
+                    elif idx + 2 < len(partes):
+                        identificador = partes[idx + 2].strip()
+                    break
+            res = aprobar_comprobante_pago.invoke({"identificador": identificador})
+            tools_usadas.append('aprobar_comprobante_pago')
+            return res, "agente_finanzas_aprobacion", tools_usadas
+
+        # 2. Rechazo de comprobantes
+        if 'rechazar' in msg_low:
+            res = rechazar_comprobante_pago.invoke({"identificador": ""})
+            tools_usadas.append('rechazar_comprobante_pago')
+            return res, "agente_finanzas_rechazo", tools_usadas
+
+        # 3. Reasignación directa de profesoras (ej: "sacá a X y poné a Y", "reemplazá a X por Y")
+        if any(k in msg_low for k in ['sacá a', 'saca a', 'poné a', 'pone a', 'reemplazá a', 'reemplaza a', 'en vez de']):
+            # Extraer nombres mediante patrones comunes
+            match_saca_pone = re.search(r'(?:sac[aá]|reemplaz[aá])\s+(?:a\s+)?(\w+)\s+(?:y\s+)?(?:pon[eé]|por)\s+(?:a\s+)?(\w+)', msg_low)
+            profe_ant = match_saca_pone.group(1) if match_saca_pone else ""
+            nueva_profe = match_saca_pone.group(2) if match_saca_pone else ""
+            
+            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_str = hora_match.group(1) if hora_match else "18:00"
+            
+            fecha_str = "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'mañana', 'hoy']:
+                if d in msg_low:
+                    fecha_str = d
+                    break
+
+            res = reasignar_profesora_directo.invoke({
+                "fecha_o_dia": fecha_str,
+                "hora_str": hora_str,
+                "profe_titular_nombre": profe_ant,
+                "nueva_profe_nombre": nueva_profe
+            })
+            tools_usadas.append('reasignar_profesora_directo')
+            return res, "agente_profesores_reasignacion", tools_usadas
+
+        # 4. Búsqueda de quién puede cubrir
+        if any(k in msg_low for k in ['quién puede', 'quien puede', 'fijate quién', 'fijate quien', 'cubrir a', 'reemplazo']):
+            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_str = hora_match.group(1) if hora_match else "18:00"
+            fecha_str = "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'mañana', 'hoy']:
+                if d in msg_low:
+                    fecha_str = d
+                    break
+            
+            profe_match = re.search(r'(?:cubrir|reemplazar)\s+(?:a\s+)?(\w+)', msg_low)
+            profe_nom = profe_match.group(1) if profe_match else ""
+
+            res = buscar_reemplazo_orden_duena.invoke({
+                "fecha_o_dia": fecha_str,
+                "hora_str": hora_str,
+                "profe_titular_nombre": profe_nom
+            })
+            tools_usadas.append('buscar_reemplazo_orden_duena')
+            return res, "agente_profesores_cobertura", tools_usadas
+
+        # 5. Análisis de ocupación y consolidación de horarios
+        if any(k in msg_low for k in ['ocupacion', 'ocupación', 'consolidar', 'optimizar', 'clases solas', 'poca gente']):
+            fecha_str = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
+            res = analizar_optimizacion_turnos_proximos.invoke({"fecha_str": fecha_str})
+            tools_usadas.append('analizar_optimizacion_turnos_proximos')
+            return res, "optimizador_ocupacion", tools_usadas
+
+        # 6. Registro de vínculos inseparables (ej: "Marcela y Valentina son madre e hija")
+        if any(k in msg_low for k in ['madre e hija', 'inseparables', 'vienen juntas', 'amigas', 'juntas']):
+            # Intentar extraer dos nombres
+            nombres_match = re.search(r'(\w+)\s+y\s+(\w+)', mensaje_usuario)
+            if nombres_match:
+                n1, n2 = nombres_match.group(1), nombres_match.group(2)
+                res = vincular_alumnas_inseparables.invoke({
+                    "alumna1_nombre_o_tel": n1,
+                    "alumna2_nombre_o_tel": n2,
+                    "observaciones": "Vienen juntas siempre (Registrado por indicación de la dueña)"
+                })
+                tools_usadas.append('vincular_alumnas_inseparables')
+                return res, "asistente_preferencias", tools_usadas
+
+        # 7. Reportes de facturación / métricas
+        if any(k in msg_low for k in ['factur', 'ingreso', 'reporte', 'dinero', 'plata']):
+            res = obtener_reporte_facturacion_semanal.invoke({})
+            tools_usadas.append('obtener_reporte_facturacion_semanal')
+            return res, "agente_reportes", tools_usadas
+
+    # --- CONSULTAS DE PROFESORAS ---
+    if rol == 'PROFESOR':
+        if any(k in msg_low for k in ['mis clases', 'que clases tengo', 'horario']):
+            res = consultar_mis_clases_profesor.invoke({"profesor_usuario_id": usuario_id})
+            tools_usadas.append('consultar_mis_clases_profesor')
+            return res, "agente_profesores", tools_usadas
+
+    # --- CONSULTAS GENERALES / ALUMNAS ---
     # 1. Consulta de turnos / horarios / disponibilidad
     if any(k in msg_low for k in ['turno', 'horario', 'disponib', 'clase', 'hoy', 'mañana', 'lugar', 'camilla']):
         fecha = 'hoy' if 'hoy' in msg_low else ('mañana' if 'mañana' in msg_low or 'manana' in msg_low else 'hoy')

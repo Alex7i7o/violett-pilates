@@ -69,6 +69,7 @@ class RegistroAccionIA(models.Model):
         ('ALUMNO_REGISTRADO', 'Alta de Alumno Guiada'),
         ('REPORTE_DUENA', 'Reporte Solicitado por Dueña'),
         ('OFERTA_PROACTIVA', 'Oferta Proactiva de Camilla Libre'),
+        ('PROPUESTA_CONSOLIDACION', 'Sugerencia de Fusión de Clases Incompletas'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -85,3 +86,81 @@ class RegistroAccionIA(models.Model):
 
     def __str__(self):
         return f"{self.tipo_accion} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+class ComprobantePendiente(models.Model):
+    ESTADOS = [
+        ('PENDIENTE', 'Pendiente de Aprobación'),
+        ('APROBADO', 'Aprobado y Acreditado'),
+        ('RECHAZADO', 'Rechazado'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversacion = models.ForeignKey(ConversacionWhatsApp, on_delete=models.CASCADE, related_name='comprobantes')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='comprobantes_subidos')
+    monto = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    plan_nombre = models.CharField(max_length=100, blank=True)
+    plan_id = models.CharField(max_length=50, blank=True)
+    datos_extraidos = models.JSONField(default=dict, blank=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
+    aprobado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='comprobantes_aprobados')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Comprobante de Pago'
+        verbose_name_plural = 'Comprobantes de Pago'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        tel = self.conversacion.telefono
+        user = f" ({self.usuario.nombre})" if self.usuario else ""
+        return f"Comprobante ${self.monto} - {tel}{user} [{self.estado}]"
+
+
+class VinculoAlumnos(models.Model):
+    TIPOS = [
+        ('INSEPARABLES', 'Inseparables (Madre/Hija, Amigas, Pareja)'),
+        ('FAMILIAR', 'Familiar'),
+        ('AMIGAS', 'Amigas habituales'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    alumna_1 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vinculos_primarios')
+    alumna_2 = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vinculos_secundarios')
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='INSEPARABLES')
+    observaciones = models.CharField(max_length=255, default='Vienen juntas siempre, no separar en horarios distintos.')
+    activo = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Vínculo de Alumnos'
+        verbose_name_plural = 'Vínculos de Alumnos'
+        unique_together = ('alumna_1', 'alumna_2')
+
+    def __str__(self):
+        return f"{self.alumna_1.nombre} + {self.alumna_2.nombre} ({self.tipo})"
+
+
+class PreferenciaAlumno(models.Model):
+    FRANJAS = [
+        ('MANANA', 'Mañana (8 a 13 hs)'),
+        ('TARDE', 'Tarde (14 a 18 hs)'),
+        ('NOCHE', 'Noche (18 a 21 hs)'),
+        ('INDIFERENTE', 'Indiferente / Flexible'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='preferencias_ia')
+    franja_preferida = models.CharField(max_length=20, choices=FRANJAS, default='INDIFERENTE')
+    dias_preferidos = models.JSONField(default=list, blank=True, help_text="Lista de dias ISO (1=Lunes, 7=Domingo)")
+    notas_asistente = models.TextField(blank=True, help_text="Preferencias de trato o detalles fisicos recordados por la IA")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Preferencia de Alumno'
+        verbose_name_plural = 'Preferencias de Alumnos'
+
+    def __str__(self):
+        return f"Preferencias de {self.usuario.nombre} - {self.franja_preferida}"

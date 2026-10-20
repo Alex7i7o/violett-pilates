@@ -24,8 +24,8 @@ def _ejecutar_ciclo_agente(data: dict):
         return
 
     config = get_asistente_config()
-    telefono_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '')
-    clean_phone = phone.replace('+', '').replace(' ', '')
+    telefono_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '').replace('-', '')
+    clean_phone = phone.replace('+', '').replace(' ', '').replace('-', '')
 
     # 1. Obtener o crear Conversacion
     conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
@@ -38,11 +38,12 @@ def _ejecutar_ciclo_agente(data: dict):
         if usuario:
             conversacion.usuario = usuario
 
-    # 3. Detectar rol
-    if clean_phone and clean_phone == telefono_duena:
+    # 3. Detectar rol (con coincidencia robusta para celular argentino de la dueña)
+    ultimos_duena = telefono_duena[-8:] if len(telefono_duena) >= 8 else telefono_duena
+    if clean_phone and ultimos_duena and clean_phone.endswith(ultimos_duena):
         conversacion.rol_detectado = 'DUENA'
     elif conversacion.usuario:
-        is_profesor = getattr(conversacion.usuario, 'is_profesor', False) or getattr(conversacion.usuario, 'rol', '') == 'profesor'
+        is_profesor = getattr(conversacion.usuario, 'is_profesor', False) or str(getattr(conversacion.usuario, 'rol', '')).upper() == 'PROFESOR'
         if is_profesor:
             conversacion.rol_detectado = 'PROFESOR'
         else:
@@ -65,7 +66,7 @@ def _ejecutar_ciclo_agente(data: dict):
         logger.info(f"[ASISTENTE] Conversación con {clean_phone} en ESPERANDO_HUMANO. No se genera respuesta automática.")
         return
 
-    # 6. Ejecutar Orquestador LangGraph
+    # 6. Ejecutar Orquestador LangGraph (o simulador de tools)
     try:
         from ..graph.runner import ejecutar_grafo_asistente
         respuesta_texto, agente_responsable, tools_usadas = ejecutar_grafo_asistente(

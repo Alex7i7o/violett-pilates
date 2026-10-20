@@ -78,3 +78,190 @@ def obtener_datos_transferencia_estudio() -> str:
 • Titular: {titular}
 
 Una vez realizada la transferencia, podés enviarme la foto del comprobante directamente por acá para acreditar tus clases ✦."""
+
+
+@tool
+def aprobar_comprobante_pago(identificador: str = "") -> str:
+    """
+    Comando administrativo para la dueña / administración del estudio.
+    Aprueba un comprobante de pago pendiente, acredita el plan a la alumna en la base de datos,
+    dispara el auto-agendamiento de turnos recurrentes fijos y notifica a la alumna por WhatsApp.
+    Parámetro 'identificador': Código hexadecimal del comprobante (ej: '953e69') o nombre de la alumna.
+    Si se deja vacío, toma el comprobante pendiente más reciente.
+    """
+    from ..models import ComprobantePendiente, RegistroAccionIA, MensajeWhatsAppLog
+    from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+    from plugins.membresias.backend.models import Plan, Suscripcion
+    from plugins.recurrencias.backend.services import auto_agendar_recurrencias_usuario
+
+    qs = ComprobantePendiente.objects.filter(estado='PENDIENTE').order_by('-created_at')
+    
+    comp = None
+    if identificador:
+        id_clean = identificador.strip().lower()
+        # Buscar por prefijo UUID
+        for c in qs:
+            if c.id.hex.startswith(id_clean):
+                comp = c
+                break
+        
+        # Si no se encontró por ID, buscar por nombre de usuario o emisor
+        if not comp:
+            comp = qs.filter(
+                usuario__nombre__icontains=id_clean
+            ).first() or qs.filter(
+                usuario__apellido__icontains=id_clean
+            ).first() or qs.filter(
+                datos_extraidos__emisor__icontains=id_clean
+            ).first()
+
+    if not comp:
+        # Tomar el más reciente
+        comp = qs.first()
+
+    if not comp:
+        return "No hay ningún comprobante de pago pendiente de aprobación en este momento."
+
+    # Vincular usuario si aún no estaba vinculado
+    usuario = comp.usuario
+    if not usuario and comp.conversacion:
+        usuario = comp.conversacion.usuario
+        if not usuario:
+            tel_8 = comp.conversacion.telefono[-8:]
+            usuario = Usuario.objects.filter(telefono__icontains=tel_8).first()
+        if usuario:
+            comp.usuario = usuario
+
+    if not usuario:
+        return f"El comprobante #{comp.id.hex[:6]} no tiene un usuario de Violett Pilates asociado. Por favor vinculalo primero."
+
+    # Identificar o buscar Plan
+    plan = None
+    if comp.plan_id:
+        plan = Plan.objects.filter(id=comp.plan_id).first()
+    if not plan and comp.monto:
+        plan = Plan.objects.filter(is_active=True, precio=comp.monto).first()
+    if not plan:
+        plan = Plan.objects.filter(is_active=True).order_by('-cantidad_clases').first()
+
+    if not plan:
+        return f"No se encontró un plan activo compatible para el monto ${comp.monto}."
+
+    # Crear o renovar suscripción
+    hoy = timezone.localdate()
+    vencimiento = hoy + datetime.timedelta(days=30)
+    
+    sub = Suscripcion.objects.create(
+        usuario=usuario,
+        plan=plan,
+        fecha_inicio=hoy,
+        fecha_vencimiento=vencimiento,
+        clases_restantes=plan.cantidad_clases,
+        estado='ACTIVO'
+    )
+
+    # Auto-agendar turnos fijos semanales si la alumna tiene recurrencias configuradas
+    reservas_creadas = 0
+    try:
+        reservas_creadas = auto_agendar_recurrencias_usuario(usuario, sub)
+    except Exception as e:
+        logger.error(f"Error auto-agendando recurrencias al aprobar pago: {e}")
+
+    # Marcar comprobante como APROBADO
+    comp.estado = 'APROBADO'
+    comp.plan_nombre = plan.nombre
+    comp.save()
+
+    # Notificar a la alumna vía WhatsApp
+    nombre_alumna = usuario.nombre or "Alumna"
+    clean_phone = comp.conversacion.telefono
+    client = WhatsAppClient()
+    
+    monto_fmt = f"${comp.monto:,.0f}".replace(",", ".") if comp.monto else ""
+    monto_txt = f" por {monto_fmt}" if monto_fmt else ""
+    
+    msg_alumna = (
+        f"✦ ¡Buenas noticias {nombre_alumna}! Tu transferencia{monto_txt} ({plan.nombre}) fue acreditada.\n\n"
+        f"Ya tenés tus {sub.clases_restantes} clases disponibles con vigencia hasta el {vencimiento.strftime('%d/%m/%Y')}."
+    )
+    if reservas_creadas > 0:
+        msg_alumna += f"\n\nAdemás, te aseguramos automáticamente tus {reservas_creadas} turnos fijos de la semana ✦."
+    else:
+        msg_alumna += "\n\nPodés escribirme en cualquier momento para consultar turnos y reservar tu camilla ✦."
+
+    try:
+        client.send_text_message(clean_phone, msg_alumna)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=comp.conversacion,
+            direccion='SALIENTE',
+            agente_responsable='agente_finanzas_aprobacion',
+            texto=msg_alumna
+        )
+    except Exception as e:
+        logger.warning(f"No se pudo enviar WhatsApp a alumna {clean_phone}: {e}")
+
+    # Registrar acción de IA
+    RegistroAccionIA.objects.create(
+        conversacion=comp.conversacion,
+        tipo_accion='PLAN_REACTIVADO',
+        descripcion=f"Comprobante #{comp.id.hex[:6]} aprobado. Plan {plan.nombre} acreditado para {usuario.email}. Clases: {plan.cantidad_clases}, Recurrencias autoagendadas: {reservas_creadas}.",
+        payload={'comprobante_id': str(comp.id), 'usuario_id': str(usuario.id), 'monto': float(comp.monto or 0), 'reservas_creadas': reservas_creadas}
+    )
+
+    return f"✅ ¡Comprobante #{comp.id.hex[:6]} aprobado con éxito!\n• Alumna: *{nombre_alumna}* ({clean_phone})\n• Plan acreditado: *{plan.nombre}* ({plan.cantidad_clases} clases)\n• Turnos fijos agendados automáticamente: *{reservas_creadas}*\n• Alumna notificada por WhatsApp."
+
+
+@tool
+def rechazar_comprobante_pago(identificador: str = "", motivo: str = "") -> str:
+    """
+    Comando administrativo para la dueña / administración del estudio.
+    Rechaza un comprobante de pago pendiente y le avisa con cordialidad a la alumna
+    indicando el motivo para que pueda reenviarlo o revisarlo.
+    """
+    from ..models import ComprobantePendiente, RegistroAccionIA, MensajeWhatsAppLog
+    from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+
+    qs = ComprobantePendiente.objects.filter(estado='PENDIENTE').order_by('-created_at')
+    comp = None
+    if identificador:
+        id_clean = identificador.strip().lower()
+        for c in qs:
+            if c.id.hex.startswith(id_clean):
+                comp = c
+                break
+        if not comp:
+            comp = qs.filter(usuario__nombre__icontains=id_clean).first()
+
+    if not comp:
+        comp = qs.first()
+
+    if not comp:
+        return "No hay ningún comprobante de pago pendiente para rechazar."
+
+    comp.estado = 'RECHAZADO'
+    comp.save()
+
+    nombre_alumna = comp.usuario.nombre if comp.usuario and comp.usuario.nombre else "Alumna"
+    clean_phone = comp.conversacion.telefono
+    client = WhatsAppClient()
+
+    motivo_texto = motivo.strip() if motivo else "no pudimos verificar el ingreso del monto en la cuenta bancaria"
+
+    msg_alumna = (
+        f"¡Hola {nombre_alumna}! ✦ Te escribimos desde Violett Pilates.\n\n"
+        f"Revisamos tu comprobante pero tuvimos la siguiente dificultad: {motivo_texto}.\n\n"
+        f"¿Podrías por favor verificar la operación en tu app bancaria o reenviarnos una foto clara del comprobante? ¡Muchas gracias!"
+    )
+
+    try:
+        client.send_text_message(clean_phone, msg_alumna)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=comp.conversacion,
+            direccion='SALIENTE',
+            agente_responsable='agente_finanzas_rechazo',
+            texto=msg_alumna
+        )
+    except Exception as e:
+        logger.warning(f"No se pudo enviar WhatsApp a alumna {clean_phone}: {e}")
+
+    return f"❌ Comprobante #{comp.id.hex[:6]} rechazado. Se le envió un mensaje a la alumna solicitando regularizar la situación."

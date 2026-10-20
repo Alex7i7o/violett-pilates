@@ -4,7 +4,8 @@ import base64
 import logging
 from django.utils import timezone
 from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
-from ..models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA
+from ..models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA, ComprobantePendiente
+from ..config_loader import get_asistente_config
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ def procesar_comprobante_imagen(phone: str, image_id: str, caption: str = ""):
     """
     Descarga la imagen desde Meta WhatsApp Cloud API y analiza si es un
     comprobante de transferencia bancaria utilizando visión multimodal (gpt-4o-mini).
+    Guarda el comprobante en estado PENDIENTE y notifica a la dueña para su aprobación.
     """
     clean_phone = phone.replace('+', '').replace(' ', '')
     conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
@@ -20,11 +22,13 @@ def procesar_comprobante_imagen(phone: str, image_id: str, caption: str = ""):
     image_bytes = client.download_media_bytes(image_id)
 
     api_key = os.environ.get('OPENAI_API_KEY')
+    config = get_asistente_config()
+    telefono_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '')
     
     # 1. Modo Simulación si no hay API key o no se pudo descargar la imagen
     if not api_key or not image_bytes:
         logger.info(f"[ASISTENTE VISION SIMULADOR] Comprobante recibido de {clean_phone} (image_id: {image_id})")
-        _atender_comprobante_simulado(conversacion, clean_phone, client)
+        _atender_comprobante_simulado(conversacion, clean_phone, client, telefono_duena)
         return
 
     # 2. Análisis con Vision LLM
@@ -84,68 +88,80 @@ Si la imagen no es un comprobante de pago, devolvé {"es_comprobante": false}.""
         monto = datos.get('monto')
         emisor = datos.get('emisor', '')
         nro_op = datos.get('nro_operacion', '')
+        banco = datos.get('banco', 'Billetera / Banco')
         
-        from plugins.membresias.backend.models import Plan, Suscripcion
+        from plugins.membresias.backend.models import Plan
         plan_coincidente = None
+        plan_nom = "Plan personalizado"
+        plan_id = ""
         if monto:
-            # Buscamos un plan cuyo precio coincida con el monto transferido
             plan_coincidente = Plan.objects.filter(is_active=True, precio=monto).first()
+            if plan_coincidente:
+                plan_nom = plan_coincidente.nombre
+                plan_id = str(plan_coincidente.id)
 
-        # Si el usuario está registrado, podemos reactivar o acreditar automáticamente
         usuario = conversacion.usuario
-        if usuario and plan_coincidente:
-            try:
-                from plugins.recurrencias.backend.services import auto_agendar_recurrencias_usuario
-                
-                # Vencer suscripciones anteriores
-                Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).update(estado='VENCIDO')
+        nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else (emisor or "Alumna sin registrar")
 
-                # Crear nueva suscripción
-                today = timezone.localdate()
-                nueva_sub = Suscripcion.objects.create(
-                    usuario=usuario,
-                    plan=plan_coincidente,
-                    clases_restantes=plan_coincidente.cantidad_clases,
-                    fecha_inicio=today,
-                    fecha_vencimiento=today + timezone.timedelta(days=30),
-                    estado='ACTIVO'
-                )
+        # 4. Guardar Comprobante Pendiente de Aprobación
+        comp = ComprobantePendiente.objects.create(
+            conversacion=conversacion,
+            usuario=usuario,
+            monto=monto,
+            plan_nombre=plan_nom,
+            plan_id=plan_id,
+            datos_extraidos=datos,
+            estado='PENDIENTE'
+        )
 
-                # Auto-agendar en sus turnos fijos
-                clases_agendadas = auto_agendar_recurrencias_usuario(usuario, nueva_sub)
-
-                # Registrar auditoría
-                RegistroAccionIA.objects.create(
-                    conversacion=conversacion,
-                    tipo_accion='PLAN_REACTIVADO',
-                    descripcion=f"Plan {plan_coincidente.nombre} acreditado automáticamente por comprobante de ${monto:,.0f} (Op: {nro_op})",
-                    payload=datos
-                )
-
-                agendadas_str = f" y ya te agendé automáticamente en tus {clases_agendadas} clases de horarios fijos del mes" if clases_agendadas > 0 else ""
-                respuesta = f"✦ ¡Comprobante verificado con éxito! Acreditamos tu {plan_coincidente.nombre} por ${monto:,.0f}{agendadas_str}. Tus créditos ya están listos para usar en Violett Pilates. ¡Nos vemos en el estudio!"
-            except Exception as e:
-                logger.error(f"Error acreditando plan automáticamente: {e}")
-                respuesta = f"✦ ¡Muchas gracias! Recibimos tu comprobante por ${monto:,.0f} (Op: {nro_op}). En breve te confirmaremos la acreditación en tu perfil de Violett."
-        else:
-            monto_str = f" por ${monto:,.0f}" if monto else ""
-            respuesta = f"✦ ¡Muchas gracias! Recibimos tu comprobante de transferencia{monto_str}. Nuestro equipo lo cotejará y te confirmará la acreditación en tu cuenta a la brevedad."
-
-        client.send_text_message(clean_phone, respuesta)
+        # 5. Responder a la alumna informando que administración lo está cotejando
+        monto_str = f" por ${monto:,.0f}" if monto else ""
+        respuesta_alumna = (
+            f"✦ ¡Muchas gracias {nombre_alumna.split()[0]}! Recibimos tu comprobante de transferencia{monto_str} (Op: #{nro_op or comp.id.hex[:6]}).\n\n"
+            f"La administración ya fue notificada para cotejar la acreditación en la cuenta. Apenas den el OK, "
+            f"se te activarán los créditos y se reservarán tus turnos automáticamente."
+        )
+        client.send_text_message(clean_phone, respuesta_alumna)
         MensajeWhatsAppLog.objects.create(
             conversacion=conversacion,
             direccion='SALIENTE',
             agente_responsable='agente_finanzas_vision',
-            texto=respuesta
+            texto=respuesta_alumna
         )
+
+        # 6. Notificar a la dueña por WhatsApp con datos y comando de 1-click
+        if telefono_duena:
+            comp_short = comp.id.hex[:6]
+            msg_duena = (
+                f"📥 *NUEVO COMPROBANTE DE PAGO:*\n"
+                f"• Alumna: *{nombre_alumna}* ({clean_phone})\n"
+                f"• Monto: *${monto:,.0f}* ({plan_nom})\n"
+                f"• Banco/App: {banco} | Op: #{nro_op}\n\n"
+                f"👉 Para aprobar y acreditarle las clases automáticamente, respondé:\n"
+                f"*Aprobar {comp_short}* o *Acreditar a {nombre_alumna.split()[0]}*"
+            )
+            client.send_text_message(telefono_duena, msg_duena)
 
     except Exception as e:
         logger.error(f"[ASISTENTE VISION ERROR] {e}", exc_info=True)
-        _atender_comprobante_simulado(conversacion, clean_phone, client)
+        _atender_comprobante_simulado(conversacion, clean_phone, client, telefono_duena)
 
 
-def _atender_comprobante_simulado(conversacion, clean_phone: str, client: WhatsAppClient):
-    respuesta = "¡Hola! ✦ Hemos recibido tu comprobante de pago. Lo estamos verificando para acreditar tus créditos en tu cuenta. ¡Muchas gracias por avisarnos!"
+def _atender_comprobante_simulado(conversacion, clean_phone: str, client: WhatsAppClient, telefono_duena: str):
+    usuario = conversacion.usuario
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Alumna"
+    comp = ComprobantePendiente.objects.create(
+        conversacion=conversacion,
+        usuario=usuario,
+        monto=45000,
+        plan_nombre="Plan Mensual - 8 Clases",
+        datos_extraidos={"simulado": True},
+        estado='PENDIENTE'
+    )
+    respuesta = (
+        f"¡Hola {nombre_alumna}! ✦ Recibimos tu comprobante de pago. La administración ya fue notificada para verificarlo "
+        f"en la cuenta y en cuanto den la aprobación te confirmaremos la acreditación de tus clases."
+    )
     client.send_text_message(clean_phone, respuesta)
     MensajeWhatsAppLog.objects.create(
         conversacion=conversacion,
@@ -153,3 +169,12 @@ def _atender_comprobante_simulado(conversacion, clean_phone: str, client: WhatsA
         agente_responsable='agente_finanzas_simulado',
         texto=respuesta
     )
+    if telefono_duena:
+        comp_short = comp.id.hex[:6]
+        msg_duena = (
+            f"📥 *NUEVO COMPROBANTE RECIBIDO (Simulado):*\n"
+            f"• Alumna: {nombre_alumna} ({clean_phone})\n"
+            f"• Monto estimado: $45.000 (Plan Mensual - 8 Clases)\n\n"
+            f"👉 Para aprobarlo, respondé:\n*Aprobar {comp_short}* o *Acreditar a {nombre_alumna.split()[0]}*"
+        )
+        client.send_text_message(telefono_duena, msg_duena)

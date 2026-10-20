@@ -40,17 +40,19 @@ def consultar_turnos_disponibles(fecha_str: str) -> str:
         fecha=target_date,
         estado='PROGRAMADO',
         cupo_actual__gt=0
-    ).select_related('clase', 'profesor').order_by('hora_inicio')
+    ).select_related('clase').order_by('hora_inicio')
 
     if not turnos.exists():
         return f"No hay turnos con camillas disponibles para el {target_date.strftime('%d/%m/%Y')}."
 
+    from .profesores_tools import obtener_profesor_de_turno
     dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
     dia_nombre = dias_semana[target_date.weekday()]
 
     resultado = [f"✦ Turnos disponibles para el {dia_nombre} {target_date.strftime('%d/%m')}:"]
     for t in turnos:
-        profe = f" (Profe: {t.profesor.nombre})" if t.profesor and hasattr(t.profesor, 'nombre') else ""
+        prof_obj = obtener_profesor_de_turno(t)
+        profe = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
         camillas_libres = t.cupo_actual
         resultado.append(f"• {t.hora_inicio.strftime('%H:%M')} hs - {t.clase.nombre}{profe} ({camillas_libres} camilla{'s' if camillas_libres > 1 else ''} libre{'s' if camillas_libres > 1 else ''}) [ID Turno: {t.id}]")
 
