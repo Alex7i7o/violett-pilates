@@ -69,8 +69,16 @@ class WhatsAppWebhookView(APIView):
                         elif msg_type == 'text':
                             text_body = msg.get('text', {}).get('body', '')
                             logger.info(f"[WHATSAPP] Texto recibido de {phone_number}: {text_body}")
-                            # Auto-respuesta básica
-                            client.send_text_message(phone_number, "¡Hola! Soy el asistente virtual de Violett Pilates. Si enviaste un comprobante de transferencia, lo procesaremos pronto. Para consultas, aguarda a que un humano te responda.")
+                            from backend_core.hooks import registry
+                            # Emitir hook para el Asistente Multi-Agente
+                            registry.execute('whatsapp_mensaje_recibido', {
+                                'phone': phone_number,
+                                'text': text_body,
+                                'raw_msg': msg
+                            })
+                            # Fallback si el plugin asistente no esta activo
+                            if not registry.listeners.get('whatsapp_mensaje_recibido'):
+                                client.send_text_message(phone_number, "¡Hola! ✦ Gracias por comunicarte con nosotros. En breve una recepcionista te responderá.")
                             
             return HttpResponse('EVENT_RECEIVED', status=200)
             

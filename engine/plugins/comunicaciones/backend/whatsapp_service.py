@@ -15,7 +15,10 @@ class WhatsAppClient:
     def _send_template(self, to_number, template_name, components):
         if not self.is_configured:
             logger.info(f"[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name} | Variables: {components}")
-            print(f"\n[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name}\nVariables: {components}\n")
+            try:
+                print(f"\n[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name}\nVariables: {components}\n")
+            except Exception:
+                pass
             from backend_core.hooks import registry
             registry.execute('wpp_enviado_tracker', {})
             return True
@@ -59,7 +62,13 @@ class WhatsAppClient:
     def send_text_message(self, to_number, text_message):
         '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
         if not self.is_configured:
-            print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message}\n")
+            try:
+                print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message}\n")
+            except Exception:
+                try:
+                    print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message.encode('ascii', 'replace').decode('ascii')}\n")
+                except Exception:
+                    pass
             from backend_core.hooks import registry
             registry.execute('wpp_enviado_tracker', {})
             return True

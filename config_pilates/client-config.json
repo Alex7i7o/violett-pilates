@@ -32,7 +32,34 @@
     "webpush",
     "comunicaciones",
     "analitica",
-    "fichas_medicas"
+    "fichas_medicas",
+    "asistente"
   ],
-  "contact_phone": "5491164142172"
+  "contact_phone": "5491164142172",
+  "plugin_config": {
+    "asistente": {
+      "nombre_asistente": "Violett",
+      "telefono_estudio": "5491164142172",
+      "telefono_duena": "5491164142172",
+      "reglas_operativas": {
+        "max_cupo_por_turno": 3,
+        "horas_limite_cancelacion": 2,
+        "estructura_sesion": "55 minutos de clase + 5 minutos de ritual de descompresión",
+        "direccion": "Gral. Guido 1573, Ramos Mejía",
+        "alias_transferencia": "VIOLETT.PILATES",
+        "titular_transferencia": "Débora Zárate"
+      },
+      "estilo_comunicacion": {
+        "icono_sello": "✦",
+        "tratar_de": "vos",
+        "formato_horario": "18:00 hs"
+      },
+      "modos_activos": {
+        "atencion_alumnas": true,
+        "gestion_profesores": true,
+        "asistente_duena": true,
+        "llenado_proactivo_camillas": true
+      }
+    }
+  }
 }
