@@ -21,29 +21,38 @@ def procesar_comprobante_imagen(phone: str, image_id: str, caption: str = ""):
     client = WhatsAppClient()
     image_bytes = client.download_media_bytes(image_id)
 
-    api_key = os.environ.get('OPENAI_API_KEY')
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
+    openai_key = os.environ.get('OPENAI_API_KEY')
     config = get_asistente_config()
     telefono_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '')
     
     # 1. Modo Simulación si no hay API key o no se pudo descargar la imagen
-    if not api_key or not image_bytes:
+    if (not anthropic_key and not openai_key) or not image_bytes:
         logger.info(f"[ASISTENTE VISION SIMULADOR] Comprobante recibido de {clean_phone} (image_id: {image_id})")
         _atender_comprobante_simulado(conversacion, clean_phone, client, telefono_duena)
         return
 
-    # 2. Análisis con Vision LLM
+    # 2. Análisis con Vision LLM (Anthropic o OpenAI)
     try:
-        from langchain_openai import ChatOpenAI
         from langchain_core.messages import HumanMessage
 
         b64_image = base64.b64encode(image_bytes).decode('utf-8')
         image_data_url = f"data:image/jpeg;base64,{b64_image}"
 
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.0,
-            api_key=api_key
-        )
+        if anthropic_key:
+            from langchain_anthropic import ChatAnthropic
+            llm = ChatAnthropic(
+                model=os.environ.get('ANTHROPIC_VISION_MODEL', 'claude-3-5-sonnet-latest'),
+                temperature=0.0,
+                api_key=anthropic_key
+            )
+        else:
+            from langchain_openai import ChatOpenAI
+            llm = ChatOpenAI(
+                model=os.environ.get('OPENAI_MODEL', 'gpt-4o-mini'),
+                temperature=0.0,
+                api_key=openai_key
+            )
 
         prompt_text = """Sos el auditor de cobros de Violett Pilates. Analizá detenidamente esta imagen enviada por WhatsApp y determiná si es un comprobante de transferencia bancaria, pago por Mercado Pago, billetera virtual o depósito bancario.
 

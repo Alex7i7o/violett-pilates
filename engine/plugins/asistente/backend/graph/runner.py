@@ -121,7 +121,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     Ejecuta el ciclo de agente con LangGraph.
     Retorna: (texto_respuesta, agente_responsable, tools_ejecutadas)
     """
-    api_key = os.environ.get('OPENAI_API_KEY')
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
+    openai_key = os.environ.get('OPENAI_API_KEY')
     
     nombre_user = ""
     usuario_id = ""
@@ -130,19 +131,28 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         usuario_id = str(conversacion.usuario.id)
 
     # 1. Modo Simulación si no hay API Key configurada
-    if not api_key:
-        logger.info("[ASISTENTE SIMULADOR] OPENAI_API_KEY no configurada. Ejecutando respuesta inteligente basada en reglas.")
+    if not anthropic_key and not openai_key:
+        logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY ni OPENAI_API_KEY configuradas. Ejecutando respuesta inteligente basada en reglas.")
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
-    # 2. Modo LangGraph con OpenAI
+    # 2. Modo LangGraph con LLM (Anthropic Claude o OpenAI GPT)
     try:
-        from langchain_openai import ChatOpenAI
-
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.3,
-            api_key=api_key
-        ).bind_tools(ALL_TOOLS)
+        if anthropic_key:
+            from langchain_anthropic import ChatAnthropic
+            model_name = os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest')
+            llm = ChatAnthropic(
+                model=model_name,
+                temperature=0.3,
+                api_key=anthropic_key
+            ).bind_tools(ALL_TOOLS)
+        else:
+            from langchain_openai import ChatOpenAI
+            model_name = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+            llm = ChatOpenAI(
+                model=model_name,
+                temperature=0.3,
+                api_key=openai_key
+            ).bind_tools(ALL_TOOLS)
 
         # Cargar historial reciente de la conversación (últimos 8 mensajes)
         mensajes_db = conversacion.mensajes.order_by('-created_at')[:8]
