@@ -470,21 +470,75 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
               <Button onClick={handleAsignarPlan} disabled={loading} variant="outline" className="w-full">Asignar Plan</Button>
             </div>
 
-            {alumno.plan_activo && (
-              <div className="p-4 bg-emerald-50 rounded-xl space-y-3 border border-emerald-100">
-                <h4 className="font-semibold text-emerald-800">Plan Actual: {alumno.plan_activo.plan_nombre}</h4>
-                <div className="text-xs text-emerald-800 space-y-1 bg-emerald-100/40 p-2.5 rounded-lg border border-emerald-200/60">
+            {alumno.plan_activo ? (
+              <div className="p-4 bg-emerald-50 rounded-xl space-y-4 border border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-emerald-800">Plan Actual: {alumno.plan_activo.plan_nombre}</h4>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                    alumno.plan_activo.clases_restantes > 0 
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                      : 'bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}>
+                    {alumno.plan_activo.clases_restantes > 0 ? 'Activo' : 'Clases agendadas (0 créditos)'}
+                  </span>
+                </div>
+
+                <div className="text-xs text-emerald-800 space-y-1.5 bg-emerald-100/40 p-3 rounded-lg border border-emerald-200/60">
                   <p><strong>Créditos disponibles para reservar:</strong> {alumno.plan_activo.clases_restantes}</p>
                   <p><strong>Clases agendadas por tomar:</strong> {alumno.plan_activo.clases_pendientes ?? 0}</p>
                   <p><strong>Vencimiento:</strong> {alumno.plan_activo.fecha_vencimiento}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-emerald-900">Modificar Créditos Restantes</label>
+
+                {/* BOTÓN REACTIVAR / RENOVAR PLAN */}
+                <div className="pt-2 border-t border-emerald-200/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReactivarPlanId(alumno.plan_activo?.plan_id || (planes[0]?.id || ''));
+                      setReactivarClases(alumno.plan_activo?.clases_totales || 8);
+                      const d = new Date();
+                      d.setDate(d.getDate() + 30);
+                      setReactivarVencimiento(d.toISOString().split('T')[0]);
+                      setReactivarAutoAgendar(true);
+                      setShowReactivarModal(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Reactivar y Renovar Plan</span>
+                  </button>
+                  <p className="text-[11px] text-emerald-700/80 text-center mt-1.5">
+                    Resetea créditos, renueva vencimiento a 30 días y ubica automáticamente a la alumna en sus clases fijas.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-200/60">
+                  <label className="block text-xs font-medium mb-1 text-emerald-900">Modificar Créditos Manualmente</label>
                   <div className="flex gap-2">
-                    <input type="number" value={clasesRestantes} onChange={e => setClasesRestantes(parseInt(e.target.value))} className="w-full p-2 border rounded-lg" />
-                    <Button onClick={handleUpdateClases} disabled={loading}>Actualizar</Button>
+                    <input type="number" value={clasesRestantes} onChange={e => setClasesRestantes(parseInt(e.target.value))} className="w-full p-2 border rounded-lg text-sm bg-white" />
+                    <Button onClick={handleUpdateClases} disabled={loading} size="sm">Actualizar</Button>
                   </div>
                 </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-amber-50 rounded-xl space-y-3 border border-amber-200 text-center">
+                <p className="text-sm font-medium text-amber-800">El alumno no tiene un plan activo en este momento.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReactivarPlanId(planes[0]?.id || '');
+                    setReactivarClases(planes[0]?.cantidad_clases || 8);
+                    const d = new Date();
+                    d.setDate(d.getDate() + 30);
+                    setReactivarVencimiento(d.toISOString().split('T')[0]);
+                    setReactivarAutoAgendar(true);
+                    setShowReactivarModal(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-sm transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Activar / Renovar Plan</span>
+                </button>
               </div>
             )}
           </div>
@@ -688,6 +742,125 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
         cancelText="Cancelar"
         isDestructive={true}
       />
+      {/* Modal de Reactivar / Renovar Plan */}
+      <AnimatePresence>
+        {showReactivarModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-neutral-100 space-y-4"
+            >
+              <div className="flex items-center gap-3 text-emerald-700">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <RotateCcw className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-neutral-900">Reactivar y Renovar Plan</h3>
+                  <p className="text-xs text-neutral-500">Alumno: {alumno.nombre} {alumno.apellido}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Plan a Asignar</label>
+                  <select
+                    className="w-full p-2.5 border rounded-lg text-sm bg-neutral-50"
+                    value={reactivarPlanId}
+                    onChange={(e) => {
+                      const pId = e.target.value;
+                      setReactivarPlanId(pId);
+                      const found = planes.find(p => p.id === pId);
+                      if (found) setReactivarClases(found.cantidad_clases);
+                    }}
+                  >
+                    {planes.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre} ({p.cantidad_clases} clases)</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">Créditos a Cargar</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      className="w-full p-2.5 border rounded-lg text-sm"
+                      value={reactivarClases}
+                      onChange={(e) => setReactivarClases(parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">Nuevo Vencimiento</label>
+                    <input
+                      type="date"
+                      className="w-full p-2.5 border rounded-lg text-sm"
+                      value={reactivarVencimiento}
+                      onChange={(e) => setReactivarVencimiento(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Resumen de Horarios Fijos */}
+                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+                  <p className="text-xs font-semibold text-neutral-700 mb-1.5">Horarios Fijos Asignados:</p>
+                  {recurrencias.length === 0 ? (
+                    <p className="text-xs text-neutral-500 italic">No tiene horarios fijos configurados.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {recurrencias.map(r => (
+                        <div key={r.id} className="text-xs text-neutral-700 flex items-center justify-between">
+                          <span>• {r.clase_nombre}</span>
+                          <span className="font-medium text-emerald-700">Todos los {getDiaName(r.dia_semana)} {r.hora_inicio} hs</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkbox Auto-agendar */}
+                {recurrencias.length > 0 && (
+                  <label className="flex items-start gap-2.5 p-2.5 bg-emerald-50/60 border border-emerald-200/80 rounded-lg cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reactivarAutoAgendar}
+                      onChange={(e) => setReactivarAutoAgendar(e.target.checked)}
+                      className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="text-xs">
+                      <span className="font-semibold text-emerald-900 block">Agendar automáticamente en sus clases fijas</span>
+                      <span className="text-emerald-700 text-[11px]">Reserva sus turnos futuros hasta el nuevo vencimiento descontando los créditos.</span>
+                    </div>
+                  </label>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-neutral-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowReactivarModal(false)}
+                  disabled={loadingReactivar}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleReactivarPlanSubmit}
+                  disabled={loadingReactivar}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {loadingReactivar ? 'Reactivando...' : 'Confirmar y Reactivar'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Modal>
   );
 }
