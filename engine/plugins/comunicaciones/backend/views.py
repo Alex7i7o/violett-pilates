@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import os
 from django.http import HttpResponse, JsonResponse
@@ -36,7 +36,7 @@ class WhatsAppWebhookView(APIView):
             
         # Log the incoming message for debugging
         logger.debug(f"[WHATSAPP INCOMING] {body}")
-        print(f"\\n[WHATSAPP RECIBIDO]: {json.dumps(body, indent=2)}\\n")
+        print(f"\n[WHATSAPP RECIBIDO]: {json.dumps(body, indent=2)}\n")
         
         if body.get('object') == 'whatsapp_business_account':
             for entry in body.get('entry', []):
@@ -63,6 +63,21 @@ class WhatsAppWebhookView(APIView):
                             })
                             if not registry.listeners.get('whatsapp_imagen_recibida'):
                                 client.send_text_message(phone_number, "¡Hola! ✦ Recibimos tu comprobante de pago. Nuestro equipo lo verificará a la brevedad.")
+
+                        elif msg_type in ['audio', 'voice']:
+                            audio_obj = msg.get('audio') or msg.get('voice') or {}
+                            audio_id = audio_obj.get('id')
+                            mime_type = audio_obj.get('mime_type', 'audio/ogg')
+                            logger.info(f"[WHATSAPP] Audio recibido de {phone_number}. Audio ID: {audio_id} (mime: {mime_type})")
+                            from backend_core.hooks import registry
+                            registry.execute('whatsapp_audio_recibido', {
+                                'phone': phone_number,
+                                'audio_id': audio_id,
+                                'mime_type': mime_type,
+                                'raw_msg': msg
+                            })
+                            if not registry.listeners.get('whatsapp_audio_recibido'):
+                                client.send_text_message(phone_number, "¡Hola! ✦ Recibimos tu mensaje de audio. En breve te responderemos.")
                             
                         elif msg_type == 'text':
                             text_body = msg.get('text', {}).get('body', '')

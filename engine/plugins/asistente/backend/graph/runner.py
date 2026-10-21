@@ -123,6 +123,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     """
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
+    groq_key = os.environ.get('GROQ_API_KEY')
     
     nombre_user = ""
     usuario_id = ""
@@ -131,11 +132,11 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         usuario_id = str(conversacion.usuario.id)
 
     # 1. Modo Simulación si no hay API Key configurada
-    if not anthropic_key and not openai_key:
-        logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY ni OPENAI_API_KEY configuradas. Ejecutando respuesta inteligente basada en reglas.")
+    if not anthropic_key and not openai_key and not groq_key:
+        logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY, ni OPENAI_API_KEY ni GROQ_API_KEY configuradas. Ejecutando respuesta inteligente basada en reglas.")
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
-    # 2. Modo LangGraph con LLM (Anthropic Claude o OpenAI GPT)
+    # 2. Modo LangGraph con LLM (Anthropic Claude, OpenAI GPT o Groq Llama)
     try:
         if anthropic_key:
             from langchain_anthropic import ChatAnthropic
@@ -145,13 +146,21 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
                 temperature=0.3,
                 api_key=anthropic_key
             ).bind_tools(ALL_TOOLS)
-        else:
+        elif openai_key:
             from langchain_openai import ChatOpenAI
             model_name = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
             llm = ChatOpenAI(
                 model=model_name,
                 temperature=0.3,
                 api_key=openai_key
+            ).bind_tools(ALL_TOOLS)
+        else:
+            from langchain_groq import ChatGroq
+            model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+            llm = ChatGroq(
+                model=model_name,
+                temperature=0.3,
+                api_key=groq_key
             ).bind_tools(ALL_TOOLS)
 
         # Cargar historial reciente de la conversación (últimos 8 mensajes)

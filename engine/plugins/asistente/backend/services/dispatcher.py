@@ -54,11 +54,13 @@ def _ejecutar_ciclo_agente(data: dict):
     conversacion.save()
 
     # 4. Registrar log del mensaje entrante
+    es_audio = data.get('es_audio', False)
+    texto_log = f"🎤 [Audio]: {text}" if es_audio else text
     MensajeWhatsAppLog.objects.create(
         conversacion=conversacion,
         direccion='ENTRANTE',
         agente_responsable='usuario',
-        texto=text
+        texto=texto_log
     )
 
     # 5. Si la conversación está pausada para atención humana, no responder automáticamente
