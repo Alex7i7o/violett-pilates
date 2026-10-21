@@ -156,7 +156,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             ).bind_tools(ALL_TOOLS)
         else:
             from langchain_groq import ChatGroq
-            model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+            model_name = os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')
             llm = ChatGroq(
                 model=model_name,
                 temperature=0.3,
