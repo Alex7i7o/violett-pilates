@@ -48,3 +48,12 @@ Este documento define las políticas operativas oficiales que la Asistente de IA
 ## 6. Prohibición de IDs Técnicos en la Comunicación
 - **NUNCA** se deben mostrar identificadores numéricos de base de datos a las alumnas (ejemplo: `[ID Turno: 14]`, `ID: 5`, etc.).
 - La comunicación debe ser fluida, elegante y clara: *"Martes 18:00 hs - Pilates Reformer (Profe Valentina)"*.
+
+---
+
+## 7. Cancelación Automática por Falta de Cupo Mínimo (< 24 Horas)
+- **Cupo mínimo operativo:** 2 alumnas por turno.
+- **Revisión automática programada (cada 1 hora):**
+  - Si un turno entra en las últimas **24 horas** previas a su inicio y tiene:
+    * **0 alumnas (vacío):** Se cancela automáticamente en el sistema y se le notifica a la profesora titular para que no viaje al estudio.
+    * **1 sola alumna inscripta:** Se cancela automáticamente el turno en el sistema. **Se le reintegra inmediatamente el crédito a la alumna en su abono** y se le envía un mensaje cálido por WhatsApp explicándole que la clase no alcanzó el mínimo requerido de 2 personas, invitándola a reubicar su crédito en otro turno disponible. También se avisa a la profesora.

@@ -18,6 +18,13 @@ def run_recordatorios_proactivos_job():
     except Exception as e:
         logger.error(f"[ASISTENTE RECORDATORIOS JOB ERROR] {e}")
 
+def run_cancelar_clases_bajo_cupo_job():
+    from django.core.management import call_command
+    try:
+        call_command("cancelar_clases_bajo_cupo")
+    except Exception as e:
+        logger.error(f"[ASISTENTE CANCELAR CLASES BAJO CUPO ERROR] {e}")
+
 class AsistenteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'plugins.asistente.backend'
@@ -92,7 +99,14 @@ class AsistenteConfig(AppConfig):
                     id="asistente_recordatorios_proactivos_job",
                     replace_existing=True
                 )
+                scheduler.add_job(
+                    run_cancelar_clases_bajo_cupo_job,
+                    trigger="interval",
+                    minutes=60,
+                    id="asistente_cancelar_clases_bajo_cupo_job",
+                    replace_existing=True
+                )
                 scheduler.start()
-                logger.info("[ASISTENTE IA] Scheduler proactivo iniciado: ocupación (cada 30 min) y recordatorios (cada 15 min).")
+                logger.info("[ASISTENTE IA] Scheduler proactivo iniciado: ocupación (cada 30 min), recordatorios (cada 15 min), cancelación bajo cupo (cada 60 min).")
             except Exception as e:
                 logger.warning(f"[ASISTENTE IA] Scheduler proactivo no iniciado: {e}")
