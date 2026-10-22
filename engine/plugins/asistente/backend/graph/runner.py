@@ -9,14 +9,20 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
 from .state import AgentState
-from ..config_loader import get_brand_persona, get_asistente_config
-from ..tools.turnos_tools import consultar_turnos_disponibles, reservar_camilla_turno, consultar_mis_reservas_alumna
+from ..config_loader import get_brand_persona, get_reglas_negocio, get_asistente_config
+from ..tools.turnos_tools import (
+    consultar_turnos_disponibles,
+    reservar_camilla_turno,
+    consultar_mis_reservas_alumna,
+    cancelar_reserva_alumna
+)
 from ..tools.finanzas_tools import (
     consultar_estado_plan_alumna,
     obtener_planes_y_precios,
     obtener_datos_transferencia_estudio,
     aprobar_comprobante_pago,
-    rechazar_comprobante_pago
+    rechazar_comprobante_pago,
+    consultar_a_la_duena
 )
 from ..tools.profesores_tools import (
     consultar_mis_clases_profesor,
@@ -44,12 +50,14 @@ ALL_TOOLS = [
     consultar_turnos_disponibles,
     reservar_camilla_turno,
     consultar_mis_reservas_alumna,
+    cancelar_reserva_alumna,
     # Finanzas & Pagos
     consultar_estado_plan_alumna,
     obtener_planes_y_precios,
     obtener_datos_transferencia_estudio,
     aprobar_comprobante_pago,
     rechazar_comprobante_pago,
+    consultar_a_la_duena,
     # Profesores & Coberturas
     consultar_mis_clases_profesor,
     gestionar_ausencia_y_buscar_reemplazo,
@@ -68,6 +76,7 @@ ALL_TOOLS = [
 
 def build_system_prompt(rol: str, nombre_usuario: str, usuario_id: str) -> str:
     brand_persona = get_brand_persona()
+    reglas_negocio_doc = get_reglas_negocio()
     config = get_asistente_config()
     reglas = config.get('reglas_operativas', {})
     
@@ -104,16 +113,31 @@ REGLAS OPERATIVAS Y DE NEGOCIO:
 - Capacidad máxima estricta por turno: {reglas.get('max_cupo_por_turno', 3)} camillas de reformer (NUNCA sobrevender más de 3).
 - Estructura de la sesión: {reglas.get('estructura_sesion', '55 minutos de clase + 5 minutos de ritual de descompresión')}.
 - Dirección del estudio: {reglas.get('direccion', 'Gral. Guido 1573, Ramos Mejía')}.
+- Horas límite para cancelar recuperando el crédito: 24 horas estrictas. Con menos de 24 hs, la clase se pierde.
 - {contexto_usuario}
 {instrucciones_rol}
 
-INSTRUCCIONES DE ATENCIÓN:
+---
+INSTRUCCIONES DE ATENCIÓN Y POLÍTICAS ESTRICTAS:
 1. Usá siempre voseo argentino cordial, cálido y elegante ('vos', 'querés', 'fijate', 'sentite').
 2. Colocá el destello ✦ con sutileza en saludos o despedidas.
-3. Si el usuario te consulta por turnos, disponibilidad o reservas, utilizá las herramientas (tools) correspondientes antes de responder.
-4. Si una alumna pide reservar, utilizá 'reservar_camilla_turno' pasando su usuario_id y el turno_id.
-5. Si no tiene créditos para reservar, explicale amablemente el estado de su abono y ofrecé los planes disponibles o los datos de transferencia.
-6. Mantené tus respuestas concisas, bien formateadas para leerse cómodamente en WhatsApp.
+3. PROHIBICIÓN ESTRICTA DE IDs TÉCNICOS:
+   - NUNCA menciones identificadores numéricos de base de datos a las alumnas ni clientes (como '[ID Turno: 14]', 'Turno #12', 'Reserva ID: 5', o '[ID: 5]').
+   - Mostrá los turnos con total elegancia y prolijidad humana: "Lunes 18:00 hs - Pilates Reformer (Profe Valentina)".
+4. CERO ALUCINACIONES - VERACIDAD TOTAL:
+   - NUNCA inventes un alias bancario, CBU, CVU, precio de abono, promoción, horario ni información que no provenga de una herramienta (tool) o de las reglas oficiales.
+   - Si una alumna pregunta por datos de transferencia y el sistema no los tiene cargados, o hace una pregunta que no sabés responder con certeza, decí con total honestidad y calidez: "Dejame que le consulto a la dueña/administración y te respondemos enseguida ✦."
+   - Podés usar la herramienta 'consultar_a_la_duena' para enviarle la consulta automáticamente a Débora por WhatsApp.
+5. REGLA ESTRICTA DE CANCELACIÓN (24 HORAS):
+   - Si una alumna solicita cancelar una clase:
+     * Si cancela con 24 horas o más de anticipación: recupera el crédito de su clase.
+     * Si cancela con MENOS de 24 horas de anticipación: la clase se pierde y no se recupera el crédito (según las políticas oficiales del estudio). Usá 'cancelar_reserva_alumna'.
+6. Si el usuario te consulta por turnos, disponibilidad o reservas, utilizá las herramientas (tools) correspondientes antes de responder.
+7. Si una alumna pide reservar, utilizá 'reservar_camilla_turno'.
+8. Si no tiene créditos para reservar, explicale amablemente el estado de su abono y ofrecé los planes disponibles o los datos de transferencia.
+9. Mantené tus respuestas concisas, bien formateadas para leerse cómodamente en WhatsApp.
+
+{reglas_negocio_doc}
 """
 
 def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, str, List[str]]:
@@ -186,8 +210,27 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
         tool_node = ToolNode(ALL_TOOLS)
 
+        # Enviar aviso inmediato de "espera activa" (anti-clavado de visto) al iniciar tools
+        ack_enviado = [False]
+
+        def tools_wrapper_node(state: AgentState):
+            if not ack_enviado[0]:
+                ack_enviado[0] = True
+                phone = state.get("phone")
+                if phone:
+                    try:
+                        from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+                        print(f"[ASISTENTE ESPERA ACTIVA] Enviando aviso previo a {phone}...", flush=True)
+                        WhatsAppClient().send_text_message(
+                            phone,
+                            "¡Dale! ✦ Aguardame un segundito que ya me fijo en el sistema..."
+                        )
+                    except Exception as e:
+                        logger.warning(f"Error enviando ack de espera activa: {e}")
+            return tool_node.invoke(state)
+
         workflow.add_node("agente", agente_node)
-        workflow.add_node("tools", tool_node)
+        workflow.add_node("tools", tools_wrapper_node)
 
         def should_continue(state: AgentState):
             messages = state["messages"]

@@ -11,6 +11,13 @@ def run_yield_optimizer_job():
     except Exception as e:
         logger.error(f"[ASISTENTE YIELD JOB ERROR] {e}")
 
+def run_recordatorios_proactivos_job():
+    from django.core.management import call_command
+    try:
+        call_command("enviar_recordatorios_proactivos")
+    except Exception as e:
+        logger.error(f"[ASISTENTE RECORDATORIOS JOB ERROR] {e}")
+
 class AsistenteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'plugins.asistente.backend'
@@ -78,7 +85,14 @@ class AsistenteConfig(AppConfig):
                     id="asistente_yield_optimizer_job",
                     replace_existing=True
                 )
+                scheduler.add_job(
+                    run_recordatorios_proactivos_job,
+                    trigger="interval",
+                    minutes=15,
+                    id="asistente_recordatorios_proactivos_job",
+                    replace_existing=True
+                )
                 scheduler.start()
-                logger.info("[ASISTENTE IA] Scheduler proactivo de ocupación iniciado (cada 30 min).")
+                logger.info("[ASISTENTE IA] Scheduler proactivo iniciado: ocupación (cada 30 min) y recordatorios (cada 15 min).")
             except Exception as e:
                 logger.warning(f"[ASISTENTE IA] Scheduler proactivo no iniciado: {e}")

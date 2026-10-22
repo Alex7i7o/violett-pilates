@@ -33,6 +33,25 @@ def get_brand_persona() -> str:
 Respondé siempre con cordialidad, calidez, respeto y estilo elegante.
 Utilizá voseo argentino respetuoso y el icono ✦ como separador visual."""
 
+def get_reglas_negocio() -> str:
+    """
+    Carga el manual de reglas operativas y políticas de negocio (reglas_negocio.md).
+    """
+    candidate_paths = [
+        BASE_DIR / 'config' / 'reglas_negocio.md',
+        BASE_DIR.parent.parent / 'config_pilates' / 'reglas_negocio.md',
+        BASE_DIR.parent.parent / 'config_estetica' / 'reglas_negocio.md',
+    ]
+
+    for path in candidate_paths:
+        if path.exists():
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                logger.warning(f"Error leyendo reglas_negocio.md desde {path}: {e}")
+    return ""
+
 def get_asistente_config() -> dict:
     """
     Devuelve la configuracion operativa del plugin asistente desde client-config.json.
@@ -40,10 +59,10 @@ def get_asistente_config() -> dict:
     cfg = get_plugin_config('asistente')
     default_rules = {
         "max_cupo_por_turno": 3,
-        "horas_limite_cancelacion": 2,
+        "horas_limite_cancelacion": 24,
         "estructura_sesion": "55 minutos de clase + 5 minutos de ritual de descompresión",
         "direccion": "Gral. Guido 1573, Ramos Mejía",
-        "alias_transferencia": "VIOLETT.PILATES",
+        "alias_transferencia": "",
         "titular_transferencia": "Débora Zárate"
     }
     

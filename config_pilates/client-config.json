@@ -43,10 +43,10 @@
       "telefono_duena": "5491164142172",
       "reglas_operativas": {
         "max_cupo_por_turno": 3,
-        "horas_limite_cancelacion": 2,
+        "horas_limite_cancelacion": 24,
         "estructura_sesion": "55 minutos de clase + 5 minutos de ritual de descompresión",
         "direccion": "Gral. Guido 1573, Ramos Mejía",
-        "alias_transferencia": "VIOLETT.PILATES",
+        "alias_transferencia": "",
         "titular_transferencia": "Débora Zárate"
       },
       "estilo_comunicacion": {

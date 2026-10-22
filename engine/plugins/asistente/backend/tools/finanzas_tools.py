@@ -67,17 +67,57 @@ def obtener_planes_y_precios() -> str:
 def obtener_datos_transferencia_estudio() -> str:
     """
     Retorna los datos bancarios oficiales del estudio para transferencias (Alias, CBU, Titular).
+    Si no están cargados en el sistema, informa honestamente que se consultará con la administración.
+    NUNCA inventes un alias si no está configurado.
     """
     config = get_asistente_config()
     reglas = config.get('reglas_operativas', {})
-    alias = reglas.get('alias_transferencia', 'VIOLETT.PILATES')
-    titular = reglas.get('titular_transferencia', 'Débora Zárate')
+    alias = reglas.get('alias_transferencia', '').strip()
+    titular = reglas.get('titular_transferencia', '').strip()
 
-    return f"""✦ Datos oficiales para transferencia bancaria:
-• Alias: {alias}
-• Titular: {titular}
+    if not alias or alias.upper() in ['VIOLETT.PILATES', 'CONSULTAR', 'A_DEFINIR']:
+        # Alertar a la dueña si está configurado su teléfono
+        tel_duena = config.get('telefono_duena')
+        if tel_duena:
+            try:
+                from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+                WhatsAppClient().send_text_message(
+                    tel_duena,
+                    "✦ [ALERTA ASISTENTE]: Una clienta solicitó los datos de transferencia/alias bancario, pero aún no están cargados en la configuración oficial del sistema."
+                )
+            except Exception:
+                pass
+        return "Actualmente no tengo registrado el alias bancario oficial en el sistema. Ya le dejé un aviso a Débora (dueña del estudio) para que te lo facilitemos a la brevedad ✦."
 
-Una vez realizada la transferencia, podés enviarme la foto del comprobante directamente por acá para acreditar tus clases ✦."""
+    lineas = ["✦ Datos oficiales para transferencia bancaria:"]
+    lineas.append(f"• Alias: {alias}")
+    if titular:
+        lineas.append(f"• Titular: {titular}")
+    lineas.append("\nUna vez realizada la transferencia, podés enviarme la foto del comprobante directamente por acá para acreditar tus clases ✦.")
+    return "\n".join(lineas)
+
+
+@tool
+def consultar_a_la_duena(pregunta_o_motivo: str, remitente_info: str = "") -> str:
+    """
+    Envía una consulta o duda urgente directamente a la dueña del estudio (Débora) por WhatsApp
+    cuando una alumna o interesada pregunta algo que no figura en la base de datos ni en las reglas oficiales.
+    NUNCA inventes información. Si no sabés, usá esta herramienta.
+    """
+    config = get_asistente_config()
+    tel_duena = config.get('telefono_duena')
+    if not tel_duena:
+        return "Disculpá, en este momento no pude derivar la consulta automáticamente. En breve una recepcionista te responderá."
+
+    try:
+        from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+        remitente_str = f" de {remitente_info}" if remitente_info else ""
+        msg = f"✦ [CONSULTA DERIVADA POR ASISTENTE]{remitente_str}:\n'{pregunta_o_motivo}'\n\nPodés responderle directamente o indicarme qué informarle."
+        WhatsAppClient().send_text_message(tel_duena, msg)
+        return "✦ Ya le envié tu consulta a Débora (dueña del estudio) para confirmarte con exactitud. En cuanto nos indique, te avisamos por acá."
+    except Exception as e:
+        logger.error(f"Error derivando consulta a dueña: {e}")
+        return "✦ Dejame registrada tu consulta para transmitírsela a la dueña a la brevedad."
 
 
 @tool
