@@ -26,6 +26,7 @@ def _ejecutar_ciclo_agente(data: dict):
     config = get_asistente_config()
     telefono_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '').replace('-', '')
     clean_phone = phone.replace('+', '').replace(' ', '').replace('-', '')
+    print(f"[ASISTENTE CICLO INICIADO] Mensaje de {clean_phone}: '{text}'", flush=True)
 
     # 1. Obtener o crear Conversacion
     conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
@@ -76,6 +77,7 @@ def _ejecutar_ciclo_agente(data: dict):
             mensaje_usuario=text
         )
     except Exception as e:
+        print(f"[ASISTENTE ERROR GRAFO] Excepción para {clean_phone}: {e}", flush=True)
         logger.error(f"[ASISTENTE ERROR] Excepción ejecutando LangGraph para {clean_phone}: {e}", exc_info=True)
         respuesta_texto = "¡Hola! ✦ Disculpá, estoy experimentando una breve interrupción momentánea. En unos minutos vuelvo a estar disponible."
         agente_responsable = "fallback_error"
@@ -91,6 +93,7 @@ def _ejecutar_ciclo_agente(data: dict):
     )
 
     # 8. Despachar a WhatsApp
+    print(f"[ASISTENTE DESPACHANDO RESPUESTA] De: {agente_responsable} -> A: {clean_phone} -> '{respuesta_texto[:60]}...'", flush=True)
     client = WhatsAppClient()
     client.send_text_message(clean_phone, respuesta_texto)
     logger.info(f"[ASISTENTE] Mensaje respondido a {clean_phone} por {agente_responsable}: {respuesta_texto[:60]}...")

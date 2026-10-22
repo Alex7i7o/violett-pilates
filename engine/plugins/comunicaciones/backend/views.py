@@ -19,11 +19,14 @@ class WhatsAppWebhookView(APIView):
         token = request.GET.get('hub.verify_token')
         challenge = request.GET.get('hub.challenge')
         
+        print(f"[WHATSAPP WEBHOOK GET] mode={mode}, token={token}", flush=True)
         if mode and token:
             if mode == 'subscribe' and token == verify_token:
                 logger.info("[WHATSAPP WEBHOOK] Verified successfully.")
+                print("[WHATSAPP WEBHOOK] Verificado exitosamente con Meta (hub.challenge devuelto).", flush=True)
                 return HttpResponse(challenge, status=200)
             else:
+                print(f"[WHATSAPP WEBHOOK ERROR] Token no coincide: recibido='{token}', esperado='{verify_token}'", flush=True)
                 return HttpResponse('Invalid verification token', status=403)
         return HttpResponse('Hello from WhatsApp Webhook', status=200)
 
@@ -32,16 +35,21 @@ class WhatsAppWebhookView(APIView):
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
+            print("[WHATSAPP WEBHOOK ERROR] Payload recibido no es JSON valido", flush=True)
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
             
-        # Log the incoming message for debugging
-        logger.debug(f"[WHATSAPP INCOMING] {body}")
-        print(f"\n[WHATSAPP RECIBIDO]: {json.dumps(body, indent=2)}\n")
+        print(f"\n[WHATSAPP WEBHOOK POST RECIBIDO]:\n{json.dumps(body, indent=2)}\n", flush=True)
         
         if body.get('object') == 'whatsapp_business_account':
             for entry in body.get('entry', []):
                 for change in entry.get('changes', []):
                     value = change.get('value', {})
+                    
+                    # Log de status updates (sent, delivered, read, failed)
+                    statuses = value.get('statuses', [])
+                    for st in statuses:
+                        print(f"[WHATSAPP STATUS] Destino: {st.get('recipient_id')} | Estado: {st.get('status')} | Errores: {st.get('errors')}", flush=True)
+                    
                     messages = value.get('messages', [])
                     
                     for msg in messages:

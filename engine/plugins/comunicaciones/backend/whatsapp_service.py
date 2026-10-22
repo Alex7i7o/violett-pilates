@@ -84,51 +84,51 @@ class WhatsAppClient:
     def send_text_message(self, to_number, text_message):
         '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
         if not self.is_configured:
-            try:
-                print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message}\n")
-            except Exception:
-                try:
-                    print(f"\n[WHATSAPP SIMULATOR] Texto a {to_number}: {text_message.encode('ascii', 'replace').decode('ascii')}\n")
-                except Exception:
-                    pass
+            print(f"\n[WHATSAPP NO CONFIGURADO / SIMULADOR] (WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID vacios en el contenedor)", flush=True)
+            print(f"-> Destino: {to_number}", flush=True)
+            print(f"-> Mensaje: {text_message}\n", flush=True)
             from backend_core.hooks import registry
             registry.execute('wpp_enviado_tracker', {})
             return True
 
         if not to_number:
+            print("[WHATSAPP ERROR] to_number vacio", flush=True)
             return False
-            
-        phone = str(to_number).replace("+", "").replace("-", "").replace(" ", "")
-        
+
+        phone = str(to_number).replace('+', '').replace('-', '').replace(' ', '')
+
         headers = {
-            "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/json"
+            'Authorization': f'Bearer {self.token}',
+            'Content-Type': 'application/json'
         }
-        
+
         payload = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": phone,
-            "type": "text",
-            "text": {
-                "preview_url": False,
-                "body": text_message
+            'messaging_product': 'whatsapp',
+            'recipient_type': 'individual',
+            'to': phone,
+            'type': 'text',
+            'text': {
+                'preview_url': False,
+                'body': text_message
             }
         }
-        
+
         try:
-            response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
+            print(f'[WHATSAPP ENVIANDO A META] URL: {self.base_url} | Destino: {phone}', flush=True)
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
             if response.status_code in [200, 201]:
+                print(f'[WHATSAPP ENVIADO EXITOSAMENTE] Status: {response.status_code} | Respuesta: {response.text}', flush=True)
                 from backend_core.hooks import registry
                 registry.execute('wpp_enviado_tracker', {})
                 return True
             else:
-                logger.error(f"[WHATSAPP TEXT ERROR] {response.status_code} - {response.text}")
+                print(f'[WHATSAPP ERROR META] Status: {response.status_code} | Respuesta: {response.text}', flush=True)
+                logger.error(f'[WHATSAPP TEXT ERROR] {response.status_code} - {response.text}')
                 return False
         except Exception as e:
-            logger.error(f"[WHATSAPP TEXT EXCEPTION] {e}")
+            print(f'[WHATSAPP EXCEPTION] {e}', flush=True)
+            logger.error(f'[WHATSAPP TEXT EXCEPTION] {e}')
             return False
-
 def notificar_cancelacion_clase(usuario, turno):
     client = WhatsAppClient()
     components = [{
