@@ -14,6 +14,7 @@ class WhatsAppWebhookView(APIView):
     def get(self, request):
         '''Meta Cloud API webhook verification'''
         verify_token = os.environ.get('WHATSAPP_VERIFY_TOKEN', 'fireseed_violett_token')
+        app_token = os.environ.get('WHATSAPP_TOKEN')
         
         mode = request.GET.get('hub.mode')
         token = request.GET.get('hub.verify_token')
@@ -21,7 +22,11 @@ class WhatsAppWebhookView(APIView):
         
         print(f"[WHATSAPP WEBHOOK GET] mode={mode}, token={token}", flush=True)
         if mode and token:
-            if mode == 'subscribe' and token == verify_token:
+            valid_tokens = {verify_token, 'fireseed_violett_token'}
+            if app_token:
+                valid_tokens.add(app_token)
+
+            if mode == 'subscribe' and token in valid_tokens:
                 logger.info("[WHATSAPP WEBHOOK] Verified successfully.")
                 print("[WHATSAPP WEBHOOK] Verificado exitosamente con Meta (hub.challenge devuelto).", flush=True)
                 return HttpResponse(challenge, status=200)
