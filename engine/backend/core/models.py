@@ -140,3 +140,31 @@ class Reserva(models.Model):
         db_table = 'reservas'
         unique_together = ('turno', 'usuario')
 
+
+
+class SolicitudEliminacionDatos(models.Model):
+    ESTADOS = (
+        ('PENDIENTE', 'Pendiente'),
+        ('EN_PROCESO', 'En Proceso'),
+        ('COMPLETADO', 'Completado'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    codigo_confirmacion = models.CharField(max_length=64, unique=True, db_index=True)
+    email = models.EmailField(blank=True, null=True)
+    telefono = models.CharField(max_length=30, blank=True, null=True)
+    user_id_meta = models.CharField(max_length=255, blank=True, null=True)
+    motivo = models.TextField(blank=True, null=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'solicitudes_eliminacion_datos'
+        verbose_name = 'Solicitud de Eliminación de Datos'
+        verbose_name_plural = 'Solicitudes de Eliminación de Datos'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        identificador = self.email or self.telefono or self.user_id_meta or 'Anónimo'
+        return f"Solicitud #{self.codigo_confirmacion} - {identificador} [{self.estado}]"

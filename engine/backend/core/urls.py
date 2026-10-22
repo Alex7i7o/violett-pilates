@@ -14,6 +14,7 @@ from .admin_views import (
     AdminUsuarioViewSet,
     ConfiguracionView,
 )
+from .views_deletion import DataDeletionCallbackView, SolicitarEliminacionWebAPIView
 
 router = DefaultRouter()
 # Admin routes
@@ -38,4 +39,9 @@ urlpatterns = [
     path('reservas/historial/', ClientHistoryView.as_view(), name='client_history'),
     path('admin/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('admin/config/', ConfiguracionView.as_view(), name='admin-config'),
+
+    # Meta Data Deletion & Ley 25.326 endpoints
+    path('eliminar-datos/', DataDeletionCallbackView.as_view(), name='data_deletion_callback'),
+    path('eliminar-datos/solicitar/', SolicitarEliminacionWebAPIView.as_view(), name='solicitar_eliminacion_web'),
+    path('data-deletion/', DataDeletionCallbackView.as_view(), name='data_deletion_en'),
 ]
