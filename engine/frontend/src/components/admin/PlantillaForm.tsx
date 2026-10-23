@@ -130,7 +130,7 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
     >
       <div>
         <label className="block text-sm font-semibold mb-1 text-foreground">Día de la semana</label>
-        <select name="dia_semana" value={formData.dia_semana} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
+        <select name="dia_semana" value={formData.dia_semana} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
           {DIAS.map(d => (
             <option key={d.val} value={d.val}>{d.label}</option>
           ))}
@@ -139,7 +139,7 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
 
       <div>
         <label className="block text-sm font-semibold mb-1 text-foreground">Clase</label>
-        <select name="clase" required value={formData.clase} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
+        <select name="clase" required value={formData.clase} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
           <option value="">Selecciona una clase</option>
           {clases.map(c => (
             <option key={c.id} value={c.id}>{c.nombre} (Capacidad: {c.cupo_maximo || 3} camillas)</option>
@@ -150,17 +150,17 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold mb-1 text-foreground">Hora de inicio</label>
-          <input type="time" name="hora_inicio" required value={formData.hora_inicio} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+          <input type="time" name="hora_inicio" required value={formData.hora_inicio} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-main" />
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1 text-foreground">Hora de fin</label>
-          <input type="time" name="hora_fin" required value={formData.hora_fin} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+          <input type="time" name="hora_fin" required value={formData.hora_fin} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-main" />
         </div>
       </div>
 
       <div>
         <label className="block text-sm font-semibold mb-1 text-foreground">Profesor Asignado</label>
-        <select name="profesor" value={formData.profesor} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
+        <select name="profesor" value={formData.profesor} onChange={handleChange} className="w-full p-2.5 rounded-xl border border-primary-light text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
           <option value="">Dejar libre (Bolsa de trabajo)</option>
           {profesores.map(p => (
             <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
@@ -208,14 +208,14 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
             placeholder="Nombre y apellido (ej: Marcela Pérez)"
             value={nuevoNombreManual}
             onChange={(e) => setNuevoNombreManual(e.target.value)}
-            className="flex-1 p-2 rounded-xl border border-primary-light text-xs focus:outline-none focus:ring-2 focus:ring-primary-main bg-white"
+            className="flex-1 p-2.5 sm:p-2 rounded-xl border border-primary-light text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-primary-main bg-white"
           />
           <input 
             type="text" 
             placeholder="Teléfono (opcional)"
             value={nuevoTelefonoManual}
             onChange={(e) => setNuevoTelefonoManual(e.target.value)}
-            className="sm:w-36 p-2 rounded-xl border border-primary-light text-xs focus:outline-none focus:ring-2 focus:ring-primary-main bg-white"
+            className="sm:w-36 p-2.5 sm:p-2 rounded-xl border border-primary-light text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-primary-main bg-white"
           />
           <Button 
             type="button" 
@@ -255,9 +255,9 @@ export function PlantillaForm({ initialData, profesores, clases, onSubmit, onCan
         )}
       </div>
 
-      <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-primary-light">
+      <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm -mx-4 -mb-4 p-4 sm:-mx-6 sm:-mb-6 sm:p-5 border-t border-primary-light flex items-center justify-end gap-3 z-10 mt-6 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
         <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="min-w-[130px]">
           {isSubmitting ? 'Guardando...' : 'Guardar Horario'}
         </Button>
       </div>

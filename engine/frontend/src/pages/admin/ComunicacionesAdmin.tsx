@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { 
+  ArrowLeft,
   MessageSquare, 
   Mail, 
   Search, 
@@ -40,6 +41,7 @@ export function ComunicacionesAdmin() {
   // ==========================================
   const [conversaciones, setConversaciones] = useState<ConversacionCRM[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [mensajes, setMensajes] = useState<MensajeCRM[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
@@ -225,10 +227,10 @@ export function ComunicacionesAdmin() {
         </div>
 
         {/* Selector de Pestañas */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 self-start sm:self-auto">
+        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('whatsapp')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'whatsapp'
                 ? 'bg-primary-main text-white shadow-sm'
                 : 'text-slate-600 hover:text-primary-main hover:bg-white/50'
@@ -239,7 +241,7 @@ export function ComunicacionesAdmin() {
           </button>
           <button
             onClick={() => setActiveTab('emails')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'emails'
                 ? 'bg-primary-main text-white shadow-sm'
                 : 'text-slate-600 hover:text-primary-main hover:bg-white/50'
@@ -257,10 +259,12 @@ export function ComunicacionesAdmin() {
       {activeTab === 'whatsapp' && (
         <Card className="border-primary-light/50 overflow-hidden shadow-sm">
           <CardContent className="p-0">
-            <div className="flex flex-col md:flex-row h-[calc(100vh-210px)] min-h-[580px] bg-slate-50">
+            <div className="flex flex-col md:flex-row h-[calc(100dvh-175px)] md:h-[calc(100vh-210px)] min-h-[460px] md:min-h-[580px] bg-slate-50">
               
               {/* COLUMNA IZQUIERDA: LISTA DE CHATS */}
-              <div className="w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-white shrink-0">
+              <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-white shrink-0 ${
+                mobileView === 'chat' ? 'hidden md:flex' : 'flex'
+              }`}>
                 
                 {/* Buscador y Filtros */}
                 <div className="p-3 border-b border-slate-100 space-y-2 bg-slate-50/70">
@@ -316,7 +320,10 @@ export function ComunicacionesAdmin() {
                       return (
                         <button
                           key={conv.id}
-                          onClick={() => setSelectedConvId(conv.id)}
+                          onClick={() => {
+                            setSelectedConvId(conv.id);
+                            setMobileView('chat');
+                          }}
                           className={`w-full text-left p-3.5 transition-all flex items-start gap-3 hover:bg-slate-50/80 ${
                             isSelected ? 'bg-primary-light/35 border-l-4 border-primary-main shadow-2xs' : ''
                           }`}
@@ -363,19 +370,29 @@ export function ComunicacionesAdmin() {
               </div>
 
               {/* COLUMNA DERECHA: VENTANA DE CHAT */}
-              <div className="flex-1 flex flex-col bg-slate-100/60 h-full min-w-0">
+              <div className={`flex-1 flex flex-col bg-slate-100/60 h-full min-w-0 ${
+                mobileView === 'list' ? 'hidden md:flex' : 'flex'
+              }`}>
                 {selectedConv ? (
                   <>
                     {/* Header del Chat */}
-                    <div className="p-3.5 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-primary-light text-primary-main flex items-center justify-center font-bold text-sm shrink-0">
+                    <div className="p-3 sm:p-3.5 bg-white border-b border-slate-200 flex items-center justify-between gap-2 sm:gap-3 shadow-2xs">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setMobileView('list')}
+                          className="md:hidden p-2 -ml-1 text-slate-600 hover:text-foreground hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+                          aria-label="Volver a lista de chats"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary-light text-primary-main flex items-center justify-center font-bold text-sm shrink-0">
                           {selectedConv.nombre.charAt(0).toUpperCase() || '✦'}
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-foreground truncate flex items-center gap-2">
-                            <span>{selectedConv.nombre}</span>
-                            <span className="text-xs font-normal text-muted font-mono">({selectedConv.telefono})</span>
+                          <h3 className="font-bold text-xs sm:text-sm text-foreground truncate flex items-center gap-1.5 sm:gap-2">
+                            <span className="truncate">{selectedConv.nombre}</span>
+                            <span className="text-[11px] sm:text-xs font-normal text-muted font-mono shrink-0">({selectedConv.telefono})</span>
                           </h3>
                           <div className="flex items-center gap-2 text-xs">
                             {selectedConv.estado === 'ESPERANDO_HUMANO' ? (
@@ -407,13 +424,15 @@ export function ComunicacionesAdmin() {
                         >
                           {selectedConv.estado === 'ESPERANDO_HUMANO' ? (
                             <>
-                              <PlayCircle className="w-4 h-4 text-emerald-600" />
-                              <span>Reanudar IA</span>
+                              <PlayCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span className="hidden sm:inline">Reanudar IA</span>
+                              <span className="sm:hidden">Reanudar</span>
                             </>
                           ) : (
                             <>
-                              <PauseCircle className="w-4 h-4 text-amber-600" />
-                              <span>Pausar IA / Atender yo</span>
+                              <PauseCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span className="hidden sm:inline">Pausar IA / Atender yo</span>
+                              <span className="sm:hidden">Pausar</span>
                             </>
                           )}
                         </button>
@@ -497,22 +516,22 @@ export function ComunicacionesAdmin() {
                     </div>
 
                     {/* Barra de Entrada de Mensaje */}
-                    <form onSubmit={handleEnviarMensaje} className="p-3 bg-white border-t border-slate-200 flex gap-2">
+                    <form onSubmit={handleEnviarMensaje} className="p-2.5 sm:p-3 bg-white border-t border-slate-200 flex gap-2">
                       <input
                         type="text"
-                        placeholder="Escribir un mensaje manual de WhatsApp a esta clienta..."
+                        placeholder="Escribir mensaje a esta clienta..."
                         value={nuevoMensajeTexto}
                         onChange={(e) => setNuevoMensajeTexto(e.target.value)}
                         disabled={isSendingMsg}
-                        className="flex-1 p-2.5 rounded-xl border border-primary-light text-xs focus:outline-none focus:ring-2 focus:ring-primary-main bg-white"
+                        className="flex-1 p-2.5 rounded-xl border border-primary-light text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-primary-main bg-white"
                       />
                       <Button
                         type="submit"
                         disabled={isSendingMsg || !nuevoMensajeTexto.trim()}
-                        className="bg-primary-main hover:bg-primary-dark text-white px-4 shrink-0 text-xs font-bold"
+                        className="bg-primary-main hover:bg-primary-dark text-white px-3 sm:px-4 shrink-0 text-xs font-bold"
                       >
-                        <Send className="w-3.5 h-3.5 mr-1" />
-                        {isSendingMsg ? 'Enviando...' : 'Enviar'}
+                        <Send className="w-3.5 h-3.5 sm:mr-1" />
+                        <span className="hidden sm:inline">{isSendingMsg ? 'Enviando...' : 'Enviar'}</span>
                       </Button>
                     </form>
                   </>

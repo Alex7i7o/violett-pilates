@@ -33,7 +33,7 @@ ssh root@$SERVER_IP << 'ENDSSH'
   docker compose build --no-cache frontend_estetica
 
   echo "--- Construyendo backend y proxy..."
-  docker compose build backend_pilates backend_estetica nginx_proxy
+  docker compose build --no-cache backend_pilates backend_estetica nginx_proxy
 
   echo "--- Iniciando todos los servicios..."
   docker compose up -d

@@ -124,27 +124,32 @@ class AdminEmailLogsView(APIView):
         except ValueError:
             limit = 100
 
-        logs = EmailLog.objects.all()
-        if q:
-            from django.db.models import Q
-            logs = logs.filter(Q(destinatario__icontains=q) | Q(asunto__icontains=q))
-        if estado:
-            logs = logs.filter(estado=estado)
+        try:
+            logs = EmailLog.objects.all()
+            if q:
+                from django.db.models import Q
+                logs = logs.filter(Q(destinatario__icontains=q) | Q(asunto__icontains=q))
+            if estado:
+                logs = logs.filter(estado=estado)
 
-        logs = logs.order_by('-created_at')[:limit]
+            logs = logs.order_by('-created_at')[:limit]
 
-        data = [{
-            'id': str(log.id),
-            'destinatario': log.destinatario,
-            'asunto': log.asunto,
-            'template_name': log.template_name,
-            'estado': log.estado,
-            'error_mensaje': log.error_mensaje,
-            'cuerpo_texto': log.cuerpo_texto[:150] if log.cuerpo_texto else '',
-            'created_at': log.created_at.strftime('%d/%m/%Y %H:%M')
-        } for log in logs]
+            data = [{
+                'id': str(log.id),
+                'destinatario': log.destinatario,
+                'asunto': log.asunto,
+                'template_name': log.template_name,
+                'estado': log.estado,
+                'error_mensaje': log.error_mensaje,
+                'cuerpo_texto': log.cuerpo_texto[:150] if log.cuerpo_texto else '',
+                'created_at': log.created_at.strftime('%d/%m/%Y %H:%M')
+            } for log in logs]
 
-        return Response(data)
+            return Response(data)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f'Error querying email logs: {e}')
+            return Response([])
 
 class AdminEmailLogDetailView(APIView):
     permission_classes = [IsAdminUser]
@@ -152,7 +157,7 @@ class AdminEmailLogDetailView(APIView):
     def get(self, request, log_id):
         try:
             log = EmailLog.objects.get(id=log_id)
-        except EmailLog.DoesNotExist:
+        except Exception:
             return Response({'detail': 'Log no encontrado'}, status=404)
 
         return Response({

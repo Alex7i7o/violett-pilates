@@ -70,31 +70,33 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             exit={isMobile ? { y: "100%", opacity: 1 } : { scale: 0.95, opacity: 0 }}
             transition={springConfig}
             className={cn(
-              "relative z-50 w-full bg-card shadow-2xl flex flex-col pointer-events-auto",
+              "relative z-50 w-full bg-card shadow-2xl flex flex-col pointer-events-auto overflow-hidden",
               isMobile 
-                ? "mt-auto rounded-t-[32px] pb-safe max-h-[90vh]" 
-                : "max-w-lg rounded-2xl sm:w-[90%] m-4",
+                ? "mt-auto rounded-t-[32px] pb-safe max-h-[90dvh]" 
+                : "max-w-lg rounded-2xl sm:w-[90%] m-4 max-h-[88vh]",
               className
             )}
           >
             {/* Grabber handle for mobile */}
             {isMobile && (
-              <div className="flex w-full items-center justify-center pt-3 pb-1" onClick={onClose}>
+              <div className="flex w-full items-center justify-center pt-3 pb-1 shrink-0 cursor-pointer" onClick={onClose}>
                 <div className="h-1.5 w-12 rounded-full bg-gray-300" />
               </div>
             )}
             
-            <div className={cn("flex items-center justify-between border-b border-primary-light px-6 py-4", isMobile ? "pt-2" : "")}>
-              {title && <h2 className="text-xl font-semibold text-foreground">{title}</h2>}
+            <div className={cn("flex items-center justify-between border-b border-primary-light px-5 sm:px-6 py-3.5 sm:py-4 shrink-0", isMobile ? "pt-2" : "")}>
+              {title && <h2 className="text-lg sm:text-xl font-semibold text-foreground truncate pr-2">{title}</h2>}
               <button
+                type="button"
                 onClick={onClose}
-                className="rounded-full p-2 text-muted transition-colors hover:bg-primary-light/50 hover:text-foreground active:scale-95 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className="rounded-full p-2 text-muted transition-colors hover:bg-primary-light/50 hover:text-foreground active:scale-95 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0 ml-auto"
+                aria-label="Cerrar modal"
               >
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 custom-scrollbar overscroll-contain">
               {children}
             </div>
           </motion.div>

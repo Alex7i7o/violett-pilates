@@ -6,7 +6,7 @@ import threading
 
 def on_reserva_creada(data, **kwargs):
     reserva = data
-    if reserva and reserva.turno:
+    if reserva and reserva.turno and getattr(reserva, "usuario", None):
         
         # Enviar email y WhatsApp en background
         def send_notifications():
@@ -40,7 +40,7 @@ def on_reserva_creada(data, **kwargs):
 
 def on_reserva_cancelada_a_tiempo(data, **kwargs):
     reserva = data
-    if reserva and reserva.turno:
+    if reserva and reserva.turno and getattr(reserva, "usuario", None):
         
         # Enviar email y WhatsApp en background
         def send_notifications():
@@ -78,6 +78,8 @@ def on_turno_cancelado_por_falta_cupo(data, **kwargs):
             from core.models import Reserva
             reservas = Reserva.objects.filter(turno=turno)
             for r in reservas:
+                if not getattr(r, "usuario", None):
+                    continue
                 try:
                     notificar_cancelacion_clase(r.usuario, turno)
                 except Exception as e:
@@ -114,7 +116,7 @@ def on_turno_alerta_cupo(data, **kwargs):
 
 def on_reserva_recordatorio(data, **kwargs):
     reserva = data
-    if reserva and reserva.turno:
+    if reserva and reserva.turno and getattr(reserva, "usuario", None):
         def process_reminder():
             try:
                 client = WhatsAppClient()
