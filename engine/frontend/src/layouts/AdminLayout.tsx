@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
 import { getPluginAdminSidebarItems } from '../core/pluginLoader';
 import { useClientConfig } from '../context/ClientConfigContext';
-import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings } from 'lucide-react';
+import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings, MessageSquare } from 'lucide-react';
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -39,6 +39,7 @@ export function AdminLayout() {
     { name: 'Profesores', path: '/admin/profesores', icon: UserSquare },
     { name: 'Planes', path: '/admin/planes', icon: CreditCard },
     { name: 'Esquema', path: '/admin/esquema', icon: Layers },
+    { name: 'Comunicaciones', path: '/admin/comunicaciones', icon: MessageSquare },
     { name: 'Reglas de Negocio', path: '/admin/reglas', icon: Settings }
   ];
 

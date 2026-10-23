@@ -26,6 +26,7 @@ import { ProfesoresAdmin } from '../pages/admin/ProfesoresAdmin';
 import { PlanesAdmin } from '../pages/admin/PlanesAdmin';
 import { ClasesAdmin } from '../pages/admin/ClasesAdmin';
 import { ReglasNegocioAdmin } from '../pages/admin/ReglasNegocioAdmin';
+import { ComunicacionesAdmin } from '../pages/admin/ComunicacionesAdmin';
 
 import { getPluginAdminRoutes, getPluginRoleRoute, getPluginPublicRoutes } from '../core/pluginLoader';
 
@@ -82,6 +83,7 @@ export function BookingRoutes() {
           <Route path="profesores" element={<ProfesoresAdmin />} />
           <Route path="planes" element={<PlanesAdmin />} />
           <Route path="clases" element={<ClasesAdmin />} />
+          <Route path="comunicaciones" element={<ComunicacionesAdmin />} />
           
           {/* Plugin Injected Routes */}
           {adminPluginRoutes.map((pr, idx) => (

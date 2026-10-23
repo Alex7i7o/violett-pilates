@@ -109,3 +109,61 @@ class WhatsAppWebhookView(APIView):
             return HttpResponse('EVENT_RECEIVED', status=200)
             
         return HttpResponse(status=404)
+
+from rest_framework.permissions import IsAdminUser
+from .models import EmailLog
+
+class AdminEmailLogsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        q = request.query_params.get('q', '').strip()
+        estado = request.query_params.get('estado', '').strip()
+        try:
+            limit = min(int(request.query_params.get('limit', 100)), 200)
+        except ValueError:
+            limit = 100
+
+        logs = EmailLog.objects.all()
+        if q:
+            from django.db.models import Q
+            logs = logs.filter(Q(destinatario__icontains=q) | Q(asunto__icontains=q))
+        if estado:
+            logs = logs.filter(estado=estado)
+
+        logs = logs.order_by('-created_at')[:limit]
+
+        data = [{
+            'id': str(log.id),
+            'destinatario': log.destinatario,
+            'asunto': log.asunto,
+            'template_name': log.template_name,
+            'estado': log.estado,
+            'error_mensaje': log.error_mensaje,
+            'cuerpo_texto': log.cuerpo_texto[:150] if log.cuerpo_texto else '',
+            'created_at': log.created_at.strftime('%d/%m/%Y %H:%M')
+        } for log in logs]
+
+        return Response(data)
+
+class AdminEmailLogDetailView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, log_id):
+        try:
+            log = EmailLog.objects.get(id=log_id)
+        except EmailLog.DoesNotExist:
+            return Response({'detail': 'Log no encontrado'}, status=404)
+
+        return Response({
+            'id': str(log.id),
+            'destinatario': log.destinatario,
+            'asunto': log.asunto,
+            'template_name': log.template_name,
+            'cuerpo_html': log.cuerpo_html,
+            'cuerpo_texto': log.cuerpo_texto,
+            'estado': log.estado,
+            'error_mensaje': log.error_mensaje,
+            'created_at': log.created_at.strftime('%d/%m/%Y %H:%M')
+        })
+
