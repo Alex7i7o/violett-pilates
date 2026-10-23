@@ -150,6 +150,16 @@ export function PlantillasAdmin() {
                           ) : (
                             <Badge variant="outline" className="mt-1.5 text-[10px] uppercase font-bold bg-yellow-50 text-yellow-700 border-yellow-200">Sin Profesor</Badge>
                           )}
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                              👥 {(p.alumnos?.length || 0) + (p.alumnos_manuales?.length || 0)} camillas
+                            </span>
+                            {(p.alumnos_manuales?.length || 0) > 0 && (
+                              <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                ✦ {p.alumnos_manuales.length} manual
+                              </span>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     ))
@@ -170,7 +180,8 @@ export function PlantillasAdmin() {
               clase: plantillas.find(p => p.id === editId)?.clase || '', 
               profesor: plantillas.find(p => p.id === editId)?.profesor || '' 
             ,
-                alumnos: plantillas.find(p => p.id === editId)?.alumnos || []
+                alumnos: plantillas.find(p => p.id === editId)?.alumnos || [],
+                alumnos_manuales: plantillas.find(p => p.id === editId)?.alumnos_manuales || []
               }}
             profesores={profesores}
             clases={clases}

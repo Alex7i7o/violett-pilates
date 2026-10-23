@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import viewsets, views
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -55,6 +56,36 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
             
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=True, methods=['post'], url_path='apartar-manual')
+    def apartar_manual(self, request, pk=None):
+        turno = self.get_object()
+        nombre = request.data.get('nombre', '').strip()
+        telefono = request.data.get('telefono', '').strip()
+        
+        if not nombre:
+            return Response({'detail': 'El nombre de la alumna es obligatorio.'}, status=400)
+            
+        if turno.cupo_actual <= 0:
+            return Response({'detail': 'No hay cupos disponibles en este turno.'}, status=400)
+            
+        with transaction.atomic():
+            reserva = Reserva.objects.create(
+                turno=turno,
+                usuario=None,
+                nombre_temporal=nombre,
+                telefono_temporal=telefono,
+                tipo_reserva='MANUAL_TEMPORAL',
+                es_recurrente=False,
+                estado='CONFIRMADA'
+            )
+            turno.cupo_actual = max(0, turno.cupo_actual - 1)
+            turno.save()
+            
+            from backend_core.hooks import registry
+            registry.execute('reserva_creada', reserva)
+            
+        return Response(AdminReservaSerializer(reserva).data, status=201)
+
     def perform_create(self, serializer):
         instance = serializer.save()
         alumnos = self.request.data.get('alumnos', [])
@@ -62,6 +93,23 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
             usuario = Usuario.objects.filter(id=alumno_id).first()
             if usuario:
                 Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
+                instance.cupo_actual = max(0, instance.cupo_actual - 1)
+        
+        alumnos_manuales = self.request.data.get('alumnos_manuales', [])
+        for manual in alumnos_manuales:
+            nom = manual.get('nombre') or manual.get('nombre_temporal') or ''
+            tel = manual.get('telefono') or manual.get('telefono_temporal') or ''
+            if nom:
+                Reserva.objects.create(
+                    turno=instance,
+                    usuario=None,
+                    nombre_temporal=nom,
+                    telefono_temporal=tel,
+                    tipo_reserva='MANUAL_TEMPORAL',
+                    estado='CONFIRMADA'
+                )
+                instance.cupo_actual = max(0, instance.cupo_actual - 1)
+        instance.save()
         
         from backend_core.hooks import registry
         registry.execute("after_turno_created_manual", self.request.data, instance=instance)
@@ -70,7 +118,7 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
         alumnos = self.request.data.get('alumnos', None)
         if alumnos is not None:
-            current_reservas = Reserva.objects.filter(turno=instance).exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])
+            current_reservas = Reserva.objects.filter(turno=instance, usuario__isnull=False).exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])
             current_alumnos_ids = set(str(u_id) for u_id in current_reservas.values_list('usuario_id', flat=True))
             new_alumnos_ids = set(str(a) for a in alumnos)
             
@@ -79,12 +127,15 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                 usuario = Usuario.objects.filter(id=alumno_id).first()
                 if usuario:
                     Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
+                    instance.cupo_actual = max(0, instance.cupo_actual - 1)
             
             # To remove
             for reserva in current_reservas:
                 if str(reserva.usuario_id) not in new_alumnos_ids:
                     reserva.estado = 'CANCELADA_TIEMPO'
                     reserva.save()
+                    instance.cupo_actual += 1
+            instance.save()
                     
         from backend_core.hooks import registry
         registry.execute("after_turno_updated_manual", self.request.data, instance=instance)
@@ -93,6 +144,89 @@ class AdminReservaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     queryset = Reserva.objects.all()
     serializer_class = AdminReservaSerializer
+
+    @action(detail=True, methods=['patch', 'post'], url_path='asistencia')
+    def asistencia(self, request, pk=None):
+        reserva = self.get_object()
+        estado = request.data.get('estado')
+        if estado not in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
+            return Response({'detail': 'Estado inválido.'}, status=400)
+        reserva.estado = estado
+        reserva.save()
+        return Response(AdminReservaSerializer(reserva).data)
+
+    @action(detail=True, methods=['post'], url_path='vincular-usuario')
+    def vincular_usuario(self, request, pk=None):
+        reserva = self.get_object()
+        usuario_id = request.data.get('usuario_id')
+        if not usuario_id:
+            return Response({'detail': 'El id de usuario es requerido.'}, status=400)
+            
+        try:
+            usuario = Usuario.objects.get(id=usuario_id)
+        except Usuario.DoesNotExist:
+            return Response({'detail': 'Usuario no encontrado.'}, status=404)
+            
+        # Check if user already has an active reservation on this turno
+        if Reserva.objects.filter(turno=reserva.turno, usuario=usuario).exclude(id=reserva.id).exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA']).exists():
+            return Response({'detail': 'Este usuario ya tiene una reserva activa en este turno.'}, status=400)
+            
+        with transaction.atomic():
+            reserva.usuario = usuario
+            reserva.tipo_reserva = 'REGISTRADO'
+            reserva.save()
+            
+            try:
+                from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+                if not ReservaMembresia.objects.filter(reserva=reserva).exists():
+                    sub = Suscripcion.objects.filter(
+                        usuario=usuario,
+                        estado='ACTIVO',
+                        clases_restantes__gt=0,
+                        fecha_vencimiento__gte=reserva.turno.fecha
+                    ).order_by('fecha_vencimiento').first()
+                    if sub:
+                        ReservaMembresia.objects.create(reserva=reserva, suscripcion=sub)
+                        sub.clases_restantes -= 1
+                        if sub.clases_restantes <= 0:
+                            sub.estado = 'AGOTADO'
+                        sub.save()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Error asociando membresía: {e}")
+                
+            from backend_core.hooks import registry
+            registry.execute('reserva_creada', reserva)
+            
+        return Response(AdminReservaSerializer(reserva).data)
+
+    def destroy(self, request, *args, **kwargs):
+        reserva = self.get_object()
+        with transaction.atomic():
+            if reserva.estado == 'CONFIRMADA':
+                reserva.estado = 'CANCELADA_TIEMPO'
+                reserva.save()
+                
+                turno = reserva.turno
+                turno.cupo_actual += 1
+                turno.save()
+                
+                from backend_core.hooks import registry
+                registry.execute('reserva_cancelada_a_tiempo', reserva)
+                
+                try:
+                    rm = reserva.consumo_suscripcion
+                    sub = rm.suscripcion
+                    rm.delete()
+                    sub.clases_restantes += 1
+                    if sub.estado == 'AGOTADO':
+                        sub.estado = 'ACTIVO'
+                    sub.save()
+                except Exception:
+                    pass
+            else:
+                reserva.delete()
+        return Response(status=204)
 
 class ClaseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]

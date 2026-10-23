@@ -157,12 +157,32 @@ class CustomRegisterSerializer(RegisterSerializer):
 
 
 class AdminReservaSerializer(serializers.ModelSerializer):
-    alumno_nombre = serializers.CharField(source='usuario.nombre', read_only=True)
-    alumno_apellido = serializers.CharField(source='usuario.apellido', read_only=True)
-    alumno_id = serializers.UUIDField(source='usuario.id', read_only=True)
+    alumno_nombre = serializers.SerializerMethodField()
+    alumno_apellido = serializers.SerializerMethodField()
+    alumno_id = serializers.SerializerMethodField()
+
     class Meta:
         model = Reserva
-        fields = ['id', 'alumno_id', 'alumno_nombre', 'alumno_apellido', 'estado', 'es_recurrente']
+        fields = [
+            'id', 'alumno_id', 'alumno_nombre', 'alumno_apellido',
+            'estado', 'es_recurrente', 'tipo_reserva',
+            'nombre_temporal', 'telefono_temporal'
+        ]
+
+    def get_alumno_nombre(self, obj):
+        if obj.usuario:
+            return obj.usuario.nombre
+        return obj.nombre_temporal or 'Manual'
+
+    def get_alumno_apellido(self, obj):
+        if obj.usuario:
+            return obj.usuario.apellido
+        return ''
+
+    def get_alumno_id(self, obj):
+        if obj.usuario:
+            return str(obj.usuario.id)
+        return None
 
 class ClaseSerializer(serializers.ModelSerializer):
     class Meta:

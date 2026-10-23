@@ -131,9 +131,10 @@ class Command(BaseCommand):
             elif inscriptas == 1:
                 reserva = reservas_confirmadas.first()
                 alumna = reserva.usuario
+                nombre_display = (f"{alumna.nombre} {alumna.apellido}").strip() if alumna else (reserva.nombre_temporal or 'Alumna Manual')
                 self.stdout.write(
                     self.style.WARNING(
-                        f"• Cancelando clase con 1 sola alumna ({alumna.nombre} {alumna.apellido}): "
+                        f"• Cancelando clase con 1 sola alumna ({nombre_display}): "
                         f"{dia_nom} {fecha_str} a las {hora_str} hs ({turno.clase.nombre})"
                     )
                 )
@@ -146,38 +147,40 @@ class Command(BaseCommand):
                         reserva.estado = 'CANCELADA_TIEMPO'
                         reserva.save()
 
-                        # Reintegrar crédito a la alumna
-                        try:
-                            from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
-                            rm = ReservaMembresia.objects.filter(reserva=reserva).first()
-                            if rm:
-                                sub = rm.suscripcion
-                                sub.clases_restantes += 1
-                                if sub.estado == 'AGOTADO':
-                                    sub.estado = 'ACTIVO'
-                                sub.save()
-                                rm.delete()
-                            else:
-                                sub = Suscripcion.objects.filter(
-                                    usuario=alumna,
-                                    estado__in=['ACTIVO', 'AGOTADO']
-                                ).order_by('-fecha_inicio').first()
-                                if sub:
+                        # Reintegrar crédito a la alumna si es registrada
+                        if alumna:
+                            try:
+                                from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+                                rm = ReservaMembresia.objects.filter(reserva=reserva).first()
+                                if rm:
+                                    sub = rm.suscripcion
                                     sub.clases_restantes += 1
                                     if sub.estado == 'AGOTADO':
                                         sub.estado = 'ACTIVO'
                                     sub.save()
-                        except Exception as e:
-                            logger.error(f"Error reintegrando crédito a {alumna}: {e}")
+                                    rm.delete()
+                                else:
+                                    sub = Suscripcion.objects.filter(
+                                        usuario=alumna,
+                                        estado__in=['ACTIVO', 'AGOTADO']
+                                    ).order_by('-fecha_inicio').first()
+                                    if sub:
+                                        sub.clases_restantes += 1
+                                        if sub.estado == 'AGOTADO':
+                                            sub.estado = 'ACTIVO'
+                                        sub.save()
+                            except Exception as e:
+                                logger.error(f"Error reintegrando crédito a {alumna}: {e}")
 
                         registry.execute('reserva_cancelada_a_tiempo', reserva)
                         registry.execute('turno_cancelado_por_falta_cupo', turno)
 
                     # Notificar a la alumna por WhatsApp con tono Pilates Princess
-                    clean_phone = alumna.telefono.replace('+', '').replace(' ', '').replace('-', '') if alumna.telefono else ''
+                    tel_raw = alumna.telefono if alumna else reserva.telefono_temporal
+                    clean_phone = tel_raw.replace('+', '').replace(' ', '').replace('-', '') if tel_raw else ''
                     if clean_phone and len(clean_phone) >= 8:
                         conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
-                        nombre_alumna = alumna.nombre.strip() if alumna.nombre else "Hermosa"
+                        nombre_alumna = alumna.nombre.strip() if (alumna and alumna.nombre) else (reserva.nombre_temporal.strip() if reserva.nombre_temporal else "Hermosa")
 
                         msg_alumna = (
                             f"¡Hola {nombre_alumna}! ✦ Te escribimos desde Violett Pilates.\n\n"

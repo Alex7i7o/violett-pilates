@@ -83,8 +83,8 @@ class AsistenteConfig(AppConfig):
         registry.register('whatsapp_audio_recibido', on_whatsapp_audio)
         logger.info("[ASISTENTE IA] Hooks 'whatsapp_mensaje_recibido', 'whatsapp_imagen_recibida' y 'whatsapp_audio_recibido' registrados.")
 
-        # Iniciar Scheduler proactivo en background si no es un comando de migración/shell
-        if not any(cmd in arg for arg in sys.argv for cmd in ['makemigrations', 'migrate', 'collectstatic', 'shell', 'test']):
+        # Iniciar Scheduler proactivo en background si no es un comando de migración/shell/check
+        if not any(cmd in arg for arg in sys.argv for cmd in ['makemigrations', 'migrate', 'collectstatic', 'shell', 'test', 'check']):
             try:
                 from apscheduler.schedulers.background import BackgroundScheduler
                 from django_apscheduler.jobstores import DjangoJobStore

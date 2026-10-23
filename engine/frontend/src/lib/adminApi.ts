@@ -16,11 +16,14 @@ export interface Profesor {
 
 export interface ReservaAdmin {
     id: string;
-    alumno_id: string;
+    alumno_id: string | null;
     alumno_nombre: string;
     alumno_apellido: string;
     estado: string;
     es_recurrente: boolean;
+    tipo_reserva?: 'REGISTRADO' | 'MANUAL_TEMPORAL' | 'BLOQUEO';
+    nombre_temporal?: string;
+    telefono_temporal?: string;
 }
 
 export interface TurnoAdmin {
@@ -71,7 +74,20 @@ export const createAdminTurno = (data: any) => api.post('/admin/turnos/', data);
 export const updateAdminTurno = (id: string, data: any) => api.patch(`/admin/turnos/${id}/`, data);
 export const deleteAdminTurno = (id: string, future?: boolean) => api.delete(`/admin/turnos/${id}/${future ? '?future=true' : ''}`);
 
-export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => api.patch(`/admin/reservas/${id}/asistencia/`, { estado });
+export const apartarCamillaManual = (turnoId: string, nombre: string, telefono?: string) =>
+    api.post(`/admin/turnos/${turnoId}/apartar-manual/`, { nombre, telefono });
+
+export const vincularReservaUsuario = (reservaId: string, usuarioId: string) =>
+    api.post(`/admin/reservas/${reservaId}/vincular-usuario/`, { usuario_id: usuarioId });
+
+export const liberarCamilla = (reservaId: string) =>
+    api.delete(`/admin/reservas/${reservaId}/`);
+
+export const vincularRecurrenciaUsuario = (recurrenciaId: string, usuarioId: string) =>
+    api.post(`/admin/recurrencias/${recurrenciaId}/vincular-usuario/`, { usuario_id: usuarioId });
+
+export const updateAsistencia = (id: string, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') =>
+    api.patch(`/admin/reservas/${id}/asistencia/`, { estado });
 
 export const getAdminAlumnos = (search: string = '') => api.get<UsuarioAdmin[]>(`/admin/alumnos/?q=${search}`);
 export const createAdminAlumno = (data: any) => api.post('/admin/alumnos/', data);
@@ -80,8 +96,6 @@ export const getAdminAlumnoDetalle = (id: string) => api.get<UsuarioAdmin>(`/adm
 export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/admin/alumnos/${id}/asignar-plan/`, { plan_id });
 
 export const getAdminClases = () => api.get('/admin/clases/');
-
-
 
 export const updateAdminAlumno = async (id: string, data: Partial<UsuarioAdmin>): Promise<UsuarioAdmin> => {
   const res = await api.put(`/admin/alumnos/${id}/`, data);

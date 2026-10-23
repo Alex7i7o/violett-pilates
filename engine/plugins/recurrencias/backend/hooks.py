@@ -112,8 +112,10 @@ def handle_plantilla_alumnos(data, instance=None, old_dia=None, old_hora=None, o
     if not instance:
         return data
         
-    from core.models import Usuario
+    from core.models import Usuario, Turno, Reserva
     from .models import Recurrencia
+    from django.utils import timezone
+    now = timezone.localdate()
     
     # First migrate existing recurrencias if time changed
     if old_dia and old_hora and old_clase_id:
@@ -127,14 +129,12 @@ def handle_plantilla_alumnos(data, instance=None, old_dia=None, old_hora=None, o
         
     alumnos = data.get('alumnos', None)
     if alumnos is not None:
-        from core.models import Usuario
-        from .models import Recurrencia
-        
-        # current recurrencias for this slot
+        # current recurrencias for this slot (registered)
         current_recs = Recurrencia.objects.filter(
             clase=instance.clase,
             dia_semana=instance.dia_semana,
-            hora_inicio=instance.hora_inicio
+            hora_inicio=instance.hora_inicio,
+            usuario__isnull=False
         )
         
         new_alumnos_ids = set(str(a) for a in alumnos)
@@ -160,6 +160,100 @@ def handle_plantilla_alumnos(data, instance=None, old_dia=None, old_hora=None, o
             if str(rec.usuario_id) not in new_alumnos_ids and rec.is_active:
                 rec.is_active = False
                 rec.save()
+
+    alumnos_manuales = data.get('alumnos_manuales', None)
+    if alumnos_manuales is not None:
+        current_manual = list(Recurrencia.objects.filter(
+            clase=instance.clase,
+            dia_semana=instance.dia_semana,
+            hora_inicio=instance.hora_inicio,
+            usuario__isnull=True,
+            is_active=True
+        ))
+        
+        kept_rec_ids = set()
+        for item in alumnos_manuales:
+            nom = (item.get('nombre') or item.get('nombre_temporal') or '').strip()
+            tel = (item.get('telefono') or item.get('telefono_temporal') or '').strip()
+            rec_id = item.get('id')
+            if not nom:
+                continue
+            
+            rec_obj = None
+            if rec_id:
+                rec_obj = Recurrencia.objects.filter(id=rec_id).first()
+                
+            if rec_obj:
+                rec_obj.nombre_temporal = nom
+                rec_obj.telefono_temporal = tel
+                rec_obj.is_active = True
+                rec_obj.save()
+            else:
+                rec_obj = Recurrencia.objects.create(
+                    clase=instance.clase,
+                    dia_semana=instance.dia_semana,
+                    hora_inicio=instance.hora_inicio,
+                    usuario=None,
+                    nombre_temporal=nom,
+                    telefono_temporal=tel,
+                    is_active=True
+                )
+            kept_rec_ids.add(str(rec_obj.id))
+            
+            # Asignar a turnos futuros existentes
+            future_turnos = Turno.objects.filter(
+                clase=instance.clase,
+                fecha__gte=now,
+                hora_inicio=instance.hora_inicio,
+                estado='PROGRAMADO'
+            )
+            for ft in future_turnos:
+                if ft.fecha.isoweekday() == instance.dia_semana:
+                    has_res = Reserva.objects.filter(
+                        turno=ft,
+                        usuario__isnull=True,
+                        nombre_temporal__iexact=nom,
+                        estado='CONFIRMADA'
+                    ).exists()
+                    if not has_res and ft.cupo_actual > 0:
+                        Reserva.objects.create(
+                            turno=ft,
+                            usuario=None,
+                            nombre_temporal=nom,
+                            telefono_temporal=tel,
+                            tipo_reserva='MANUAL_TEMPORAL',
+                            es_recurrente=True,
+                            estado='CONFIRMADA'
+                        )
+                        ft.cupo_actual = max(0, ft.cupo_actual - 1)
+                        ft.save()
+
+        # Quitar manuales que ya no estén
+        for old_rec in current_manual:
+            if str(old_rec.id) not in kept_rec_ids:
+                old_rec.is_active = False
+                old_rec.save()
+                
+                future_turnos = Turno.objects.filter(
+                    clase=instance.clase,
+                    fecha__gte=now,
+                    hora_inicio=instance.hora_inicio,
+                    estado='PROGRAMADO'
+                )
+                for ft in future_turnos:
+                    if ft.fecha.isoweekday() == instance.dia_semana:
+                        to_cancel = Reserva.objects.filter(
+                            turno=ft,
+                            usuario__isnull=True,
+                            nombre_temporal__iexact=old_rec.nombre_temporal,
+                            estado='CONFIRMADA',
+                            es_recurrente=True
+                        )
+                        for r in to_cancel:
+                            r.estado = 'CANCELADA_TIEMPO'
+                            r.save()
+                            ft.cupo_actual += 1
+                            ft.save()
                 
     return data
 
@@ -176,10 +270,82 @@ def enrich_plantilla_with_alumnos(data, instance=None, **kwargs):
             hora_inicio=instance.hora_inicio,
             is_active=True
         )
-        data['alumnos'] = [str(r.usuario_id) for r in recs]
+        data['alumnos'] = [str(r.usuario_id) for r in recs if r.usuario_id]
+        data['alumnos_manuales'] = [
+            {
+                'id': str(r.id),
+                'nombre_temporal': r.nombre_temporal,
+                'telefono_temporal': r.telefono_temporal or ''
+            }
+            for r in recs if not r.usuario_id
+        ]
     return data
 
 registry.register('plantilla_serializer', enrich_plantilla_with_alumnos)
+
+def on_after_turno_created(data, instance=None, plantilla=None, **kwargs):
+    if not instance:
+        return data
+    from .models import Recurrencia
+    from core.models import Reserva
+    
+    active_recs = Recurrencia.objects.filter(
+        clase=instance.clase,
+        dia_semana=instance.fecha.isoweekday(),
+        hora_inicio=instance.hora_inicio,
+        is_active=True
+    )
+    
+    for rec in active_recs:
+        if instance.cupo_actual <= 0:
+            break
+            
+        if not rec.usuario and rec.nombre_temporal:
+            if not Reserva.objects.filter(turno=instance, usuario__isnull=True, nombre_temporal__iexact=rec.nombre_temporal, estado='CONFIRMADA').exists():
+                Reserva.objects.create(
+                    turno=instance,
+                    usuario=None,
+                    nombre_temporal=rec.nombre_temporal,
+                    telefono_temporal=rec.telefono_temporal or '',
+                    tipo_reserva='MANUAL_TEMPORAL',
+                    es_recurrente=True,
+                    estado='CONFIRMADA'
+                )
+                instance.cupo_actual = max(0, instance.cupo_actual - 1)
+                instance.save()
+                
+        elif rec.usuario:
+            try:
+                from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+                sub = Suscripcion.objects.filter(
+                    usuario=rec.usuario,
+                    estado='ACTIVO',
+                    clases_restantes__gt=0,
+                    fecha_vencimiento__gte=instance.fecha
+                ).order_by('fecha_vencimiento').first()
+                if sub:
+                    if not Reserva.objects.filter(turno=instance, usuario=rec.usuario, estado='CONFIRMADA').exists():
+                        r = Reserva.objects.create(
+                            turno=instance,
+                            usuario=rec.usuario,
+                            es_recurrente=True,
+                            estado='CONFIRMADA'
+                        )
+                        ReservaMembresia.objects.create(reserva=r, suscripcion=sub)
+                        sub.clases_restantes -= 1
+                        if sub.clases_restantes <= 0:
+                            sub.estado = 'AGOTADO'
+                        sub.save()
+                        instance.cupo_actual = max(0, instance.cupo_actual - 1)
+                        instance.save()
+                        registry.execute('reserva_creada', r)
+            except Exception:
+                pass
+                
+    return data
+
+registry.register('after_turno_created', on_after_turno_created)
+
 
 def on_slot_destroyed(data, clase_id=None, dia_semana=None, hora_inicio=None, **kwargs):
     if not clase_id or not dia_semana or not hora_inicio:

@@ -5,7 +5,9 @@ from core.models import Usuario, Clase
 
 class Recurrencia(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='recurrencias')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='recurrencias', null=True, blank=True)
+    nombre_temporal = models.CharField(max_length=150, blank=True, default='')
+    telefono_temporal = models.CharField(max_length=30, blank=True, default='')
     clase = models.ForeignKey(Clase, on_delete=models.CASCADE)
     dia_semana = models.IntegerField() # 1=Lunes, 7=Domingo (isoweekday)
     hora_inicio = models.TimeField()
@@ -14,6 +16,3 @@ class Recurrencia(models.Model):
 
     class Meta:
         db_table = 'recurrencias'
-
-
-

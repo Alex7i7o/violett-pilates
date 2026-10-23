@@ -194,3 +194,67 @@ class AdminRecurrenciaView(APIView):
                 
         return Response({"detail": "Horario fijo eliminado exitosamente"})
 
+class AdminVincularRecurrenciaView(APIView):
+    permission_classes = [IsAdminUser]
+
+    @transaction.atomic
+    def post(self, request, recurrencia_id):
+        usuario_id = request.data.get('usuario_id')
+        if not usuario_id:
+            return Response({"detail": "El id de usuario es requerido."}, status=400)
+            
+        from django.contrib.auth import get_user_model
+        Usuario = get_user_model()
+        try:
+            usuario = Usuario.objects.get(id=usuario_id)
+        except Usuario.DoesNotExist:
+            return Response({"detail": "Usuario no encontrado."}, status=404)
+            
+        try:
+            rec = Recurrencia.objects.get(id=recurrencia_id, is_active=True)
+        except Recurrencia.DoesNotExist:
+            return Response({"detail": "Horario fijo no encontrado."}, status=404)
+            
+        nombre_anterior = rec.nombre_temporal
+        rec.usuario = usuario
+        rec.nombre_temporal = ''
+        rec.save()
+        
+        from core.models import Turno, Reserva
+        from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+        now = timezone.localdate()
+        
+        future_turnos = Turno.objects.filter(
+            clase=rec.clase,
+            hora_inicio=rec.hora_inicio,
+            fecha__gte=now,
+            estado='PROGRAMADO'
+        )
+        for t in future_turnos:
+            if t.fecha.isoweekday() == rec.dia_semana:
+                res_manual = Reserva.objects.filter(
+                    turno=t,
+                    usuario__isnull=True,
+                    nombre_temporal__iexact=nombre_anterior,
+                    estado='CONFIRMADA'
+                ).first()
+                if res_manual:
+                    res_manual.usuario = usuario
+                    res_manual.tipo_reserva = 'REGISTRADO'
+                    res_manual.save()
+                    
+                    sub = Suscripcion.objects.filter(
+                        usuario=usuario,
+                        estado='ACTIVO',
+                        clases_restantes__gt=0,
+                        fecha_vencimiento__gte=t.fecha
+                    ).order_by('fecha_vencimiento').first()
+                    if sub and not ReservaMembresia.objects.filter(reserva=res_manual).exists():
+                        ReservaMembresia.objects.create(reserva=res_manual, suscripcion=sub)
+                        sub.clases_restantes -= 1
+                        if sub.clases_restantes <= 0:
+                            sub.estado = 'AGOTADO'
+                        sub.save()
+                        
+        return Response({"detail": "Horario fijo vinculado a la cuenta exitosamente."})
+

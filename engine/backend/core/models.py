@@ -131,14 +131,27 @@ class Reserva(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     turno = models.ForeignKey(Turno, on_delete=models.CASCADE, related_name='reservas')
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='reservas')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='reservas', null=True, blank=True)
+    nombre_temporal = models.CharField(max_length=150, blank=True, default='')
+    telefono_temporal = models.CharField(max_length=30, blank=True, default='')
+    tipo_reserva = models.CharField(max_length=20, default='REGISTRADO', choices=(
+        ('REGISTRADO', 'Registrado'),
+        ('MANUAL_TEMPORAL', 'Manual Temporal'),
+        ('BLOQUEO', 'Bloqueo'),
+    ))
     created_at = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='CONFIRMADA', db_index=True)
     es_recurrente = models.BooleanField(default=False)
     
     class Meta:
         db_table = 'reservas'
-        unique_together = ('turno', 'usuario')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['turno', 'usuario'],
+                condition=models.Q(usuario__isnull=False),
+                name='unique_turno_usuario_registrado'
+            )
+        ]
 
 
 
