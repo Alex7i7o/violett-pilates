@@ -12,18 +12,15 @@ class WhatsAppClient:
         self.base_url = f"https://graph.facebook.com/v19.0/{self.phone_number_id}/messages"
         self.is_configured = bool(self.token and self.phone_number_id)
 
-    def _send_template(self, to_number, template_name, components):
+    def _send_template(self, to_number, template_name, components, language_code="es_AR"):
         if not self.is_configured:
-            logger.info(f"[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name} | Variables: {components}")
-            try:
-                print(f"\n[WHATSAPP SIMULATOR] Mensaje a {to_number}: Plantilla {template_name}\nVariables: {components}\n")
-            except Exception:
-                pass
+            print(f"\n[WHATSAPP SIMULATOR] Plantilla '{template_name}' a {to_number} (Variables: {components})\n", flush=True)
             from backend_core.hooks import registry
             registry.execute('wpp_enviado_tracker', {})
             return True
 
         if not to_number:
+            print("[WHATSAPP ERROR] to_number vacío para plantilla", flush=True)
             return False
             
         phone = str(to_number).replace("+", "").replace("-", "").replace(" ", "")
@@ -40,22 +37,36 @@ class WhatsAppClient:
             "template": {
                 "name": template_name,
                 "language": {
-                    "code": "es_AR"
+                    "code": language_code
                 },
                 "components": components
             }
         }
         
         try:
-            response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
+            print(f"[WHATSAPP ENVIANDO PLANTILLA] '{template_name}' (Lang: {language_code}) a {phone}", flush=True)
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
             if response.status_code in [200, 201]:
+                print(f"[WHATSAPP PLANTILLA ENVIADA EXITOSAMENTE] Status: {response.status_code} a {phone}", flush=True)
                 from backend_core.hooks import registry
                 registry.execute('wpp_enviado_tracker', {})
                 return True
             else:
+                if language_code == "es_AR" and "language" in response.text.lower():
+                    print("[WHATSAPP PLANTILLA] Idioma es_AR no disponible. Reintentando con 'es'...", flush=True)
+                    payload["template"]["language"]["code"] = "es"
+                    res2 = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
+                    if res2.status_code in [200, 201]:
+                        print(f"[WHATSAPP PLANTILLA ENVIADA CON 'es'] Status: {res2.status_code}", flush=True)
+                        from backend_core.hooks import registry
+                        registry.execute('wpp_enviado_tracker', {})
+                        return True
+
+                print(f"[WHATSAPP ERROR META PLANTILLA] Status: {response.status_code} | Respuesta: {response.text}", flush=True)
                 logger.error(f"[WHATSAPP ERROR] {response.status_code} - {response.text}")
                 return False
         except Exception as e:
+            print(f"[WHATSAPP EXCEPTION PLANTILLA] {e}", flush=True)
             logger.error(f"[WHATSAPP EXCEPTION] {e}")
             return False
 
