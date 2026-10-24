@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
 import { getPluginAdminSidebarItems } from '../core/pluginLoader';
 import { useClientConfig } from '../context/ClientConfigContext';
-import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings, MessageSquare } from 'lucide-react';
+import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings, MessageSquare, BarChart3 } from 'lucide-react';
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -49,9 +49,33 @@ export function AdminLayout() {
     baseNavItems = baseNavItems.filter(item => !['Reglas de Negocio'].includes(item.name));
   }
 
+  const resolvePluginIcon = (item: { name: string; path: string; icon?: any }) => {
+    if (item.icon && typeof item.icon !== 'string') {
+      return item.icon;
+    }
+    const nameLower = (item.name || '').toLowerCase();
+    const pathLower = (item.path || '').toLowerCase();
+    if (
+      item.icon === 'BarChart3' ||
+      item.icon === 'BarChart' ||
+      item.icon === 'BarChart2' ||
+      nameLower.includes('estadística') ||
+      nameLower.includes('analítica') ||
+      pathLower.includes('analitica')
+    ) {
+      return BarChart3;
+    }
+    if (nameLower.includes('reseña') || pathLower.includes('resenas')) {
+      return MessageSquare;
+    }
+    return Layers;
+  };
+
   const allNavItems = [
     ...baseNavItems,
-    ...pluginItems.filter(p => isEstetica || (!p.path.includes('estetica') && p.name !== 'Servicios' && p.name !== 'Paquetes' && p.name !== 'Horarios Estetica')).map(p => ({ ...p, icon: p.icon || Layers }))
+    ...pluginItems
+      .filter(p => isEstetica || (!p.path.includes('estetica') && p.name !== 'Servicios' && p.name !== 'Paquetes' && p.name !== 'Horarios Estetica'))
+      .map(p => ({ ...p, icon: resolvePluginIcon(p) }))
   ];
 
   // Primary tabs for mobile bottom bar

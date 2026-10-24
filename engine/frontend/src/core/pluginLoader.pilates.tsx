@@ -14,6 +14,7 @@ const modules = import.meta.glob([
   '@plugins/pagos/frontend/routes.tsx',
   '@plugins/recurrencias/frontend/routes.tsx',
   '@plugins/webpush/frontend/routes.tsx',
+  '@plugins/analitica/frontend/routes.tsx',
 ], { eager: true });
 
 export interface PluginRoute {
@@ -24,6 +25,7 @@ export interface PluginRoute {
 export interface PluginSidebarItem {
   name: string;
   path: string;
+  icon?: any;
 }
 
 const getPluginNameFromPath = (path: string): string => {
