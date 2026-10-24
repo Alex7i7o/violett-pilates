@@ -77,47 +77,67 @@ class ProfesorViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='reenviar-acceso')
     def reenviar_acceso(self, request, pk=None):
-        profesor = self.get_object()
-        if not profesor.email:
-            return Response(
-                {'detail': 'El profesor no tiene configurado un correo electrónico.'},
-                status=400
-            )
-
-        from core.models import Usuario
-        from core.services import enviar_email_bienvenida_profesor
-
-        # Obtener o crear/vincular el usuario
-        usuario = profesor.usuario
-        if usuario:
-            if (usuario.email != profesor.email or 
-                usuario.nombre != profesor.nombre or 
-                usuario.apellido != profesor.apellido):
-                usuario.email = profesor.email
-                usuario.nombre = profesor.nombre
-                usuario.apellido = profesor.apellido
-                usuario.save()
-        else:
-            usuario = Usuario.objects.filter(email=profesor.email).first()
-            if not usuario:
-                import string, random
-                raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-                usuario = Usuario.objects.create_user(
-                    email=profesor.email,
-                    nombre=profesor.nombre,
-                    apellido=profesor.apellido,
-                    password=raw_password,
-                    rol='PROFESOR'
+        try:
+            profesor = self.get_object()
+            if not profesor.email:
+                return Response(
+                    {'detail': 'El profesor no tiene configurado un correo electrónico.'},
+                    status=400
                 )
-            profesor.usuario = usuario
-            profesor.save()
 
-        # Enviar el correo para definir / restablecer contraseña
-        ok = enviar_email_bienvenida_profesor(usuario)
-        if ok:
-            return Response({'detail': f'Correo enviado exitosamente a {usuario.email} para definir su contraseña.'})
-        else:
-            return Response({'detail': f'No se pudo enviar el correo a {usuario.email}. Verificá la configuración del servidor de correo.'}, status=500)
+            from core.models import Usuario
+            from core.services import enviar_email_bienvenida_profesor
+
+            clean_email = profesor.email.strip().lower()
+
+            # Obtener o crear/vincular el usuario
+            usuario = profesor.usuario
+            if usuario:
+                cambios = False
+                if usuario.email != clean_email:
+                    if not Usuario.objects.filter(email=clean_email).exclude(id=usuario.id).exists():
+                        usuario.email = clean_email
+                        cambios = True
+                if usuario.nombre != profesor.nombre:
+                    usuario.nombre = profesor.nombre
+                    cambios = True
+                if usuario.apellido != profesor.apellido:
+                    usuario.apellido = profesor.apellido
+                    cambios = True
+                if cambios:
+                    usuario.save()
+            else:
+                usuario = Usuario.objects.filter(email__iexact=clean_email).first()
+                if not usuario:
+                    import string, random
+                    raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+                    usuario = Usuario.objects.create_user(
+                        email=clean_email,
+                        nombre=profesor.nombre,
+                        apellido=profesor.apellido,
+                        password=raw_password,
+                        rol='PROFESOR'
+                    )
+                # Liberar usuario de cualquier otro profesor (por ejemplo uno inactivo/borrado) para evitar IntegrityError en OneToOne
+                Profesor.objects.filter(usuario=usuario).exclude(id=profesor.id).update(usuario=None)
+                profesor.usuario = usuario
+                profesor.save(update_fields=['usuario'])
+
+            # Enviar el correo para definir / restablecer contraseña
+            ok, msg_resultado = enviar_email_bienvenida_profesor(usuario)
+            if ok:
+                return Response({'detail': f'Correo enviado exitosamente a {usuario.email} para definir su contraseña.'})
+            else:
+                return Response({
+                    'detail': f'No se pudo enviar el correo a {usuario.email}: {msg_resultado}'
+                }, status=400)
+
+        except Exception as e:
+            import logging, traceback
+            logging.getLogger(__name__).error(f"Error en reenviar_acceso: {traceback.format_exc()}")
+            return Response({
+                'detail': f'Error al procesar la solicitud del profesor: {str(e)}'
+            }, status=500)
 
     def perform_destroy(self, instance):
         instance.is_active = False

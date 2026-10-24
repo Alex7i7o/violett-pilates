@@ -40,7 +40,8 @@ export function ProfesoresAdmin() {
       const res = await reenviarAccesoProfesor(prof.id);
       toast.success(res.data?.detail || `Correo enviado exitosamente a ${prof.email}`);
     } catch (e: any) {
-      toast.error(e.response?.data?.detail || 'Error al enviar el correo');
+      const msg = e.response?.data?.detail || e.message || 'Error al enviar el correo';
+      toast.error(msg, { duration: 6000 });
     } finally {
       setSendingEmailId(null);
     }

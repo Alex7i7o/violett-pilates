@@ -158,11 +158,25 @@ def enviar_email_bienvenida(usuario, raw_password):
 
 def enviar_email_bienvenida_profesor(usuario):
     from django.conf import settings
-    from allauth.account.forms import default_token_generator
-    from allauth.account.utils import user_pk_to_url_str
-    
-    uid = user_pk_to_url_str(usuario)
-    temp_key = default_token_generator.make_token(usuario)
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        from allauth.account.utils import user_pk_to_url_str
+        uid = user_pk_to_url_str(usuario)
+    except Exception:
+        uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+
+    try:
+        from allauth.account.forms import default_token_generator as allauth_token_gen
+        temp_key = allauth_token_gen.make_token(usuario)
+    except Exception as te:
+        logger.warning(f"Allauth token generator fallo ({te}), usando token generator estandar de Django")
+        temp_key = default_token_generator.make_token(usuario)
+
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://violett.com.ar/pilates').rstrip('/')
     reset_url = f"{frontend_url}/reset-password/{uid}/{temp_key}"
     login_url = f"{frontend_url}/login"
@@ -177,27 +191,32 @@ def enviar_email_bienvenida_profesor(usuario):
 
     try:
         from plugins.comunicaciones.backend.email_service import send_transactional_email
-        return send_transactional_email(
+        send_transactional_email(
             subject='¡Bienvenido al equipo de Violett! Configurá tu contraseña',
             template_name='emails/welcome_profesor.html',
             context=context,
             recipient_list=[usuario.email]
         )
+        return True, "Enviado exitosamente"
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(f"Fallback direct send bienvenida profesor: {e}")
+        err_str = str(e)
+        logger.warning(f"Error en send_transactional_email: {err_str}. Intentando fallback directo...")
+        
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Violett <hola@violett.com.ar>')
+        if 'domain' in err_str.lower() or 'not match' in err_str.lower() or '550' in err_str:
+            from_email = 'Violett <onboarding@resend.dev>'
+
         try:
             from django.core.mail import EmailMultiAlternatives
             from django.template.loader import render_to_string
             html_content = render_to_string('emails/welcome_profesor.html', context)
             subject = '¡Bienvenido al equipo de Violett! Configurá tu contraseña'
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Violett <hola@violett.com.ar>')
             to_email = [usuario.email]
             
             msg = EmailMultiAlternatives(subject, html_content, from_email, to_email)
             msg.attach_alternative(html_content, 'text/html')
-            msg.send()
-            return True
+            msg.send(fail_silently=False)
+            return True, "Enviado exitosamente"
         except Exception as err:
-            logging.getLogger(__name__).error(f'Error al enviar email de bienvenida profesor: {err}')
-            return False
+            logger.error(f'Error al enviar email de bienvenida profesor: {err}')
+            return False, str(err)
