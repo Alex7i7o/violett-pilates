@@ -33,7 +33,7 @@ registry.register('profile_data', on_profile_data)
 
 def on_enrich_admin_usuario(data, instance=None, **kwargs):
     if instance:
-        suscripcion = Suscripcion.objects.filter(usuario=instance).order_by('-fecha_inicio').first()
+        suscripcion = Suscripcion.objects.filter(usuario=instance, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
         if suscripcion:
             from core.models import Reserva
             clases_pendientes = Reserva.objects.filter(

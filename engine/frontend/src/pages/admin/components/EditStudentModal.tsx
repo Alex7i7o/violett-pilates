@@ -3,17 +3,17 @@ import { Modal } from '../../../components/ui/Modal';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { Button } from '../../../components/ui/Button';
 import { api } from '../../../lib/api';
-import { deleteAdminAlumno } from '../../../lib/adminApi';
+import { deleteAdminAlumno, asignarPlanAlumno, cancelarPlanAlumno, cancelarClasesFuturasAlumno, cancelarReservaAdmin } from '../../../lib/adminApi';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus, RotateCcw } from 'lucide-react';
+import { Trash2, Plus, Minus, RotateCcw, XCircle, Calendar, AlertTriangle } from 'lucide-react';
 import { useClientConfig } from '../../../context/ClientConfigContext';
 
 interface EditStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
   alumno: any;
-  onUpdate: () => void;
+  onUpdate: (shouldClose?: boolean) => void;
 }
 
 export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate }: EditStudentModalProps) {
@@ -56,6 +56,26 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [clasesRestantes, setClasesRestantes] = useState<number>(0);
   const [fechaVencimiento, setFechaVencimiento] = useState<string>('');
+
+  // Estados Asignar Plan con créditos iniciales
+  const [asignarClases, setAsignarClases] = useState<number>(8);
+  const [asignarVencimiento, setAsignarVencimiento] = useState<string>('');
+  const [asignarAutoAgendar, setAsignarAutoAgendar] = useState<boolean>(true);
+
+  // Estado Cancelar Plan
+  const [showCancelarPlanModal, setShowCancelarPlanModal] = useState<boolean>(false);
+
+  // Estados Liberar Clases Futuras
+  const [showLiberarModal, setShowLiberarModal] = useState<boolean>(false);
+  const [liberarCantidad, setLiberarCantidad] = useState<number | 'todas'>(4);
+  const [liberarDevolverCreditos, setLiberarDevolverCreditos] = useState<boolean>(false);
+  const [loadingLiberar, setLoadingLiberar] = useState<boolean>(false);
+
+  // Estados Cancelar Turno Individual
+  const [reservaParaCancelar, setReservaParaCancelar] = useState<any | null>(null);
+  const [showCancelarReservaModal, setShowCancelarReservaModal] = useState<boolean>(false);
+  const [devolverCreditoReserva, setDevolverCreditoReserva] = useState<boolean>(true);
+  const [loadingCancelarReserva, setLoadingCancelarReserva] = useState<boolean>(false);
 
   // Reactivar Plan State
   const [showReactivarModal, setShowReactivarModal] = useState(false);
@@ -250,16 +270,73 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     if (!selectedPlanId) return toast.error('Seleccione un plan');
     setLoading(true);
     try {
-      await api.post(`/admin/alumnos/${alumno.id}/asignar-plan/`, {
-        plan_id: selectedPlanId
+      const res = await asignarPlanAlumno(alumno.id, {
+        plan_id: selectedPlanId,
+        clases: asignarClases,
+        fecha_vencimiento: asignarVencimiento || undefined,
+        auto_agendar: asignarAutoAgendar
       });
-      toast.success('Plan asignado correctamente');
-      onUpdate();
-      onClose();
-    } catch (e) {
-      toast.error('Error al asignar plan');
+      const { clases_cargadas, clases_agendadas } = res.data;
+      toast.success(`¡Plan asignado! Se cargaron ${clases_cargadas} créditos y se agendaron ${clases_agendadas} clases.`);
+      setSelectedPlanId('');
+      onUpdate(false);
+      fetchAlumnoReservas();
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al asignar plan');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmarCancelarPlan = async () => {
+    if (!alumno?.id) return;
+    setLoading(true);
+    try {
+      const res = await cancelarPlanAlumno(alumno.id, true);
+      toast.success(res.data?.detail || 'Plan cancelado y clases futuras liberadas');
+      setShowCancelarPlanModal(false);
+      onUpdate(false);
+      fetchAlumnoReservas();
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al cancelar plan');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmarLiberarClases = async () => {
+    if (!alumno?.id) return;
+    setLoadingLiberar(true);
+    try {
+      const res = await cancelarClasesFuturasAlumno(alumno.id, {
+        cantidad: typeof liberarCantidad === 'number' ? liberarCantidad : undefined,
+        devolver_creditos: liberarDevolverCreditos
+      });
+      toast.success(res.data?.detail || 'Clases liberadas correctamente');
+      setShowLiberarModal(false);
+      onUpdate(false);
+      fetchAlumnoReservas();
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al liberar clases');
+    } finally {
+      setLoadingLiberar(false);
+    }
+  };
+
+  const handleConfirmarCancelarReserva = async () => {
+    if (!reservaParaCancelar?.id) return;
+    setLoadingCancelarReserva(true);
+    try {
+      await cancelarReservaAdmin(reservaParaCancelar.id, devolverCreditoReserva);
+      toast.success('Turno cancelado y camilla liberada');
+      setShowCancelarReservaModal(false);
+      setReservaParaCancelar(null);
+      fetchAlumnoReservas();
+      onUpdate(false);
+    } catch (e: any) {
+      toast.error('Error al cancelar turno');
+    } finally {
+      setLoadingCancelarReserva(false);
     }
   };
 
@@ -461,13 +538,90 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
           {activeTab === 'plan' && !isEstetica && (
           <div className="space-y-6">
             <div className="p-4 bg-primary-light/30 rounded-xl space-y-3 border">
-              <h4 className="font-semibold text-primary-main">Asignar Nuevo Plan</h4>
-              <p className="text-xs text-muted">Esto reemplazará el plan actual del alumno.</p>
-              <select className="w-full p-2 border rounded-lg" value={selectedPlanId} onChange={e => setSelectedPlanId(e.target.value)}>
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-primary-main">Asignar Nuevo Plan</h4>
+                {selectedPlanId && (
+                  <span className="text-[11px] font-bold text-primary-main bg-white px-2 py-0.5 rounded border border-primary-light">
+                    {planes.find(p => p.id === selectedPlanId)?.cantidad_clases || 0} clases base
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted">Seleccioná el plan y definí cuántos créditos iniciales cargar antes de agendar sus clases.</p>
+              
+              <select 
+                className="w-full p-2.5 border rounded-lg text-sm bg-white" 
+                value={selectedPlanId} 
+                onChange={e => {
+                  const pId = e.target.value;
+                  setSelectedPlanId(pId);
+                  const p = planes.find(item => item.id === pId);
+                  if (p) {
+                    setAsignarClases(p.cantidad_clases);
+                    const d = new Date();
+                    d.setDate(d.getDate() + 30);
+                    setAsignarVencimiento(d.toISOString().split('T')[0]);
+                  }
+                }}
+              >
                 <option value="">Seleccione un plan...</option>
                 {planes.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.cantidad_clases} clases)</option>)}
               </select>
-              <Button onClick={handleAsignarPlan} disabled={loading} variant="outline" className="w-full">Asignar Plan</Button>
+
+              {selectedPlanId && (
+                <div className="space-y-3 pt-2 border-t border-primary-light/60">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                        Créditos a Cargar
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={asignarClases}
+                        onChange={e => setAsignarClases(parseInt(e.target.value) || 0)}
+                        className="w-full p-2 border rounded-lg text-sm bg-white font-bold text-primary-main"
+                      />
+                      <p className="text-[10px] text-muted mt-0.5">Podés ingresar menos créditos si paga parcial o arranca con saldo.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                        Fecha de Vencimiento
+                      </label>
+                      <input
+                        type="date"
+                        value={asignarVencimiento}
+                        onChange={e => setAsignarVencimiento(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-sm bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {recurrencias.length > 0 && (
+                    <label className="flex items-start gap-2 p-2.5 bg-white/80 border border-primary-light rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={asignarAutoAgendar}
+                        onChange={e => setAsignarAutoAgendar(e.target.checked)}
+                        className="mt-0.5 rounded text-primary-main focus:ring-primary-main"
+                      />
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground block">Agendar automáticamente en sus horarios fijos</span>
+                        <span className="text-muted text-[11px]">
+                          {asignarClases > 0 
+                            ? `Ocupará hasta ${asignarClases} turnos futuros en sus horarios fijos descontando de estos créditos.`
+                            : 'No se agendarán turnos porque seleccionaste 0 créditos.'}
+                        </span>
+                      </div>
+                    </label>
+                  )}
+
+                  <Button onClick={handleAsignarPlan} disabled={loading} className="w-full bg-primary-main hover:bg-primary-hover text-white font-bold py-2.5">
+                    Asignar Plan con {asignarClases} créditos
+                  </Button>
+                </div>
+              )}
             </div>
 
             {alumno.plan_activo ? (
@@ -483,14 +637,30 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                   </span>
                 </div>
 
-                <div className="text-xs text-emerald-800 space-y-1.5 bg-emerald-100/40 p-3 rounded-lg border border-emerald-200/60">
+                <div className="text-xs text-emerald-800 space-y-2 bg-emerald-100/40 p-3 rounded-lg border border-emerald-200/60">
                   <p><strong>Créditos disponibles para reservar:</strong> {alumno.plan_activo.clases_restantes}</p>
-                  <p><strong>Clases agendadas por tomar:</strong> {alumno.plan_activo.clases_pendientes ?? 0}</p>
+                  <div className="flex items-center justify-between">
+                    <p><strong>Clases agendadas por tomar:</strong> {alumno.plan_activo.clases_pendientes ?? 0}</p>
+                    {Boolean(alumno.plan_activo.clases_pendientes && alumno.plan_activo.clases_pendientes > 0) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const p = alumno.plan_activo?.clases_pendientes || 4;
+                          setLiberarCantidad(p > 4 ? 4 : p);
+                          setLiberarDevolverCreditos(false);
+                          setShowLiberarModal(true);
+                        }}
+                        className="text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded border border-amber-300 transition-colors shadow-2xs"
+                      >
+                        Liberar clases...
+                      </button>
+                    )}
+                  </div>
                   <p><strong>Vencimiento:</strong> {alumno.plan_activo.fecha_vencimiento}</p>
                 </div>
 
-                {/* BOTÓN REACTIVAR / RENOVAR PLAN */}
-                <div className="pt-2 border-t border-emerald-200/60">
+                {/* BOTONES DE ACCIÓN: REACTIVAR Y CANCELAR PLAN */}
+                <div className="pt-2 border-t border-emerald-200/60 space-y-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -502,13 +672,23 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                       setReactivarAutoAgendar(true);
                       setShowReactivarModal(true);
                     }}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all"
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all text-xs"
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>Reactivar y Renovar Plan</span>
                   </button>
-                  <p className="text-[11px] text-emerald-700/80 text-center mt-1.5">
-                    Resetea créditos, renueva vencimiento a 30 días y ubica automáticamente a la alumna en sus clases fijas.
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelarPlanModal(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-medium py-2 px-4 rounded-lg transition-all text-xs"
+                  >
+                    <XCircle className="w-4 h-4 text-rose-600" />
+                    <span>Dar de Baja / Cancelar Plan Actual</span>
+                  </button>
+
+                  <p className="text-[10px] text-emerald-800/80 text-center">
+                    Podés reactivar para sumar un nuevo mes, o cancelar para darlo de baja y liberar sus turnos agendados.
                   </p>
                 </div>
 
@@ -642,6 +822,27 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
               </div>
             </div>
 
+            {/* Banner resumen de clases agendadas y botón para liberar */}
+            {reservas.filter(r => r.estado === 'CONFIRMADA').length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                <div className="text-amber-900">
+                  <span className="font-bold">{reservas.filter(r => r.estado === 'CONFIRMADA').length} clases agendadas</span> en este mes.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cnt = reservas.filter(r => r.estado === 'CONFIRMADA').length;
+                    setLiberarCantidad(cnt > 4 ? 4 : cnt);
+                    setLiberarDevolverCreditos(false);
+                    setShowLiberarModal(true);
+                  }}
+                  className="text-xs font-bold text-amber-900 bg-amber-200/70 hover:bg-amber-200 px-2.5 py-1 rounded-lg border border-amber-300 transition-colors shrink-0"
+                >
+                  Liberar clases futuras
+                </button>
+              </div>
+            )}
+
             {/* Listado de Clases */}
             {loadingReservas ? (
               <p className="text-center py-6 text-xs text-muted">Cargando clases...</p>
@@ -689,6 +890,20 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                       <div className="flex items-center gap-2">
                         {getEstadoBadge(r.estado)}
                         <div className="flex gap-1 ml-1">
+                          {r.estado === 'CONFIRMADA' && (
+                            <button 
+                              onClick={() => {
+                                setReservaParaCancelar(r);
+                                setDevolverCreditoReserva(false);
+                                setShowCancelarReservaModal(true);
+                              }}
+                              title="Cancelar este turno y liberar camilla"
+                              className="text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-0.5"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Cancelar</span>
+                            </button>
+                          )}
                           {r.estado !== 'TOMADA' && (
                             <button 
                               onClick={() => handleUpdateReservaStatus(r.id, 'TOMADA')} 
@@ -742,6 +957,199 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
         cancelText="Cancelar"
         isDestructive={true}
       />
+
+      {/* Modal Cancelar Plan Actual */}
+      <ConfirmModal
+        isOpen={showCancelarPlanModal}
+        onClose={() => setShowCancelarPlanModal(false)}
+        onConfirm={handleConfirmarCancelarPlan}
+        title="Cancelar Plan Actual"
+        message={`¿Seguro que deseas cancelar el plan actual de ${alumno.nombre} ${alumno.apellido}? Se dará de baja el plan y se liberarán automáticamente todas sus reservas futuras agendadas.`}
+        confirmText="Sí, dar de baja plan y liberar clases"
+        cancelText="Volver"
+        isDestructive={true}
+      />
+
+      {/* Modal Liberar Clases Futuras */}
+      <AnimatePresence>
+        {showLiberarModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-neutral-100 space-y-4"
+            >
+              <div className="flex items-center gap-3 text-amber-700">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-neutral-900">Liberar Clases Futuras</h3>
+                  <p className="text-xs text-neutral-500">Alumno: {alumno.nombre} {alumno.apellido}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <p className="text-xs text-neutral-600 leading-relaxed">
+                  Podés cancelar las clases agendadas que se generaron de más para liberar las camillas en los horarios fijos.
+                </p>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                    Cantidad de clases futuras a cancelar
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setLiberarCantidad(4)}
+                      className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
+                        liberarCantidad === 4
+                          ? 'border-primary-main bg-primary-light/50 text-primary-main'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      Cancelar 4 clases
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiberarCantidad('todas')}
+                      className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all ${
+                        liberarCantidad === 'todas'
+                          ? 'border-primary-main bg-primary-light/50 text-primary-main'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      Cancelar todas ({alumno.plan_activo?.clases_pendientes || 'todas'})
+                    </button>
+                  </div>
+
+                  {liberarCantidad !== 'todas' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted">O ingresar cantidad:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={alumno.plan_activo?.clases_pendientes || 50}
+                        value={typeof liberarCantidad === 'number' ? liberarCantidad : 1}
+                        onChange={e => setLiberarCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-20 p-1.5 border rounded-lg text-xs font-bold"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <label className="flex items-start gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={liberarDevolverCreditos}
+                    onChange={e => setLiberarDevolverCreditos(e.target.checked)}
+                    className="mt-0.5 rounded text-primary-main focus:ring-primary-main"
+                  />
+                  <div className="text-xs">
+                    <span className="font-semibold text-foreground block">Devolver créditos al plan</span>
+                    <span className="text-muted text-[11px]">
+                      Dejalo desmarcado si estas clases se agendaron por error y querés que solo le queden sus créditos reales.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-neutral-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowLiberarModal(false)}
+                  disabled={loadingLiberar}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmarLiberarClases}
+                  disabled={loadingLiberar}
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {loadingLiberar ? 'Liberando...' : 'Liberar Clases'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Cancelar Turno Individual */}
+      <AnimatePresence>
+        {showCancelarReservaModal && reservaParaCancelar && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-neutral-100 space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-700">
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-neutral-900">Cancelar Turno</h3>
+                  <p className="text-xs text-neutral-500">Alumno: {alumno.nombre} {alumno.apellido}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <p className="text-xs text-neutral-700 leading-relaxed">
+                  ¿Estás segura de cancelar la reserva para el día{' '}
+                  <strong>{reservaParaCancelar.fecha} a las {reservaParaCancelar.hora_inicio} hs</strong> ({reservaParaCancelar.clase_nombre})?
+                </p>
+                <p className="text-xs text-muted">
+                  La camilla quedará libre inmediatamente para que otra clienta pueda reservarla.
+                </p>
+
+                <label className="flex items-start gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={devolverCreditoReserva}
+                    onChange={e => setDevolverCreditoReserva(e.target.checked)}
+                    className="mt-0.5 rounded text-primary-main focus:ring-primary-main"
+                  />
+                  <div className="text-xs">
+                    <span className="font-semibold text-foreground block">Devolver 1 crédito al plan</span>
+                    <span className="text-muted text-[11px]">
+                      Desmarcalo si esta clase se había agendado por error y no corresponde sumarle un crédito.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-neutral-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCancelarReservaModal(false);
+                    setReservaParaCancelar(null);
+                  }}
+                  disabled={loadingCancelarReserva}
+                  className="flex-1"
+                >
+                  Volver
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmarCancelarReserva}
+                  disabled={loadingCancelarReserva}
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
+                >
+                  {loadingCancelarReserva ? 'Cancelando...' : 'Confirmar Cancelación'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       {/* Modal de Reactivar / Renovar Plan */}
       <AnimatePresence>
         {showReactivarModal && (

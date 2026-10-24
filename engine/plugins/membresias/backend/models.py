@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from django.db import models
 from django.core.validators import MinValueValidator
 from core.models import Usuario, Reserva
@@ -21,6 +21,7 @@ class Suscripcion(models.Model):
         ('ACTIVO', 'Activo'),
         ('AGOTADO', 'Agotado'),
         ('VENCIDO', 'Vencido'),
+        ('CANCELADO', 'Cancelado'),
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

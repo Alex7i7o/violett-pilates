@@ -93,7 +93,33 @@ export const getAdminAlumnos = (search: string = '') => api.get<UsuarioAdmin[]>(
 export const createAdminAlumno = (data: any) => api.post('/admin/alumnos/', data);
 export const deleteAdminAlumno = (id: string) => api.delete(`/admin/alumnos/${id}/`);
 export const getAdminAlumnoDetalle = (id: string) => api.get<UsuarioAdmin>(`/admin/alumnos/${id}/`);
-export const asignarPlanAlumno = (id: string, plan_id: string) => api.post(`/admin/alumnos/${id}/asignar-plan/`, { plan_id });
+export const asignarPlanAlumno = (
+  id: string, 
+  data: { 
+    plan_id: string; 
+    clases?: number; 
+    fecha_vencimiento?: string; 
+    auto_agendar?: boolean; 
+  } | string
+) => {
+  const payload = typeof data === 'string' ? { plan_id: data } : data;
+  return api.post(`/admin/alumnos/${id}/asignar-plan/`, payload);
+};
+
+export const cancelarPlanAlumno = (id: string, cancelarReservasFuturas: boolean = true) =>
+  api.post(`/admin/alumnos/${id}/cancelar-plan/`, { cancelar_reservas_futuras: cancelarReservasFuturas });
+
+export const cancelarClasesFuturasAlumno = (
+  id: string, 
+  options: { 
+    devolver_creditos?: boolean; 
+    cantidad?: number; 
+    reserva_ids?: string[]; 
+  } = {}
+) => api.post(`/admin/alumnos/${id}/cancelar-clases-futuras/`, options);
+
+export const cancelarReservaAdmin = (reservaId: string, devolverCredito: boolean = true) =>
+  api.delete(`/admin/reservas/${reservaId}/?devolver_credito=${devolverCredito}`);
 
 export const getAdminClases = () => api.get('/admin/clases/');
 

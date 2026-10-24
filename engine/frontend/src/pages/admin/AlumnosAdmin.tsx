@@ -269,9 +269,16 @@ export function AlumnosAdmin() {
         isOpen={!!selectedAlumno}
         onClose={() => setSelectedAlumno(null)}
         alumno={selectedAlumno}
-        onUpdate={() => {
+        onUpdate={(shouldClose: boolean = false) => {
           fetchAlumnos();
-          setSelectedAlumno(null);
+          if (shouldClose) {
+            setSelectedAlumno(null);
+          } else if (selectedAlumno) {
+            getAdminAlumnos().then(res => {
+              const updated = res.data.find((a: any) => a.id === selectedAlumno.id);
+              if (updated) setSelectedAlumno(updated);
+            }).catch(console.error);
+          }
         }}
       />
 
