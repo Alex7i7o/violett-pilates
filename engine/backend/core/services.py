@@ -157,8 +157,6 @@ def enviar_email_bienvenida(usuario, raw_password):
         return False
 
 def enviar_email_bienvenida_profesor(usuario):
-    from django.core.mail import EmailMultiAlternatives
-    from django.template.loader import render_to_string
     from django.conf import settings
     from allauth.account.forms import default_token_generator
     from allauth.account.utils import user_pk_to_url_str
@@ -178,16 +176,28 @@ def enviar_email_bienvenida_profesor(usuario):
     }
 
     try:
-        html_content = render_to_string('emails/welcome_profesor.html', context)
-        subject = '¡Bienvenido al equipo de Violett!'
-        from_email = settings.DEFAULT_FROM_EMAIL
-        to_email = [usuario.email]
-        
-        msg = EmailMultiAlternatives(subject, html_content, from_email, to_email)
-        msg.attach_alternative(html_content, 'text/html')
-        msg.send()
-        return True
+        from plugins.comunicaciones.backend.email_service import send_transactional_email
+        return send_transactional_email(
+            subject='¡Bienvenido al equipo de Violett! Configurá tu contraseña',
+            template_name='emails/welcome_profesor.html',
+            context=context,
+            recipient_list=[usuario.email]
+        )
     except Exception as e:
         import logging
-        logging.getLogger(__name__).error(f'Error al enviar email de bienvenida profesor: {e}')
-        return False
+        logging.getLogger(__name__).warning(f"Fallback direct send bienvenida profesor: {e}")
+        try:
+            from django.core.mail import EmailMultiAlternatives
+            from django.template.loader import render_to_string
+            html_content = render_to_string('emails/welcome_profesor.html', context)
+            subject = '¡Bienvenido al equipo de Violett! Configurá tu contraseña'
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Violett <hola@violett.com.ar>')
+            to_email = [usuario.email]
+            
+            msg = EmailMultiAlternatives(subject, html_content, from_email, to_email)
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
+            return True
+        except Exception as err:
+            logging.getLogger(__name__).error(f'Error al enviar email de bienvenida profesor: {err}')
+            return False

@@ -3,7 +3,7 @@ import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { InputField } from '../../components/ui/InputField';
 import { SelectField } from '../../components/ui/SelectField';
 import { toast } from "sonner";
-import { getAdminProfesores, createAdminProfesor, updateAdminProfesor, deleteAdminProfesor } from '../../lib/adminApi';
+import { getAdminProfesores, createAdminProfesor, updateAdminProfesor, deleteAdminProfesor, reenviarAccesoProfesor } from '../../lib/adminApi';
 import type { Profesor } from '../../lib/adminApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { ProfesorForm, type ProfesorFormData } from '../../components/admin/ProfesorForm';
 import { Modal } from '../../components/ui/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { KeyRound } from 'lucide-react';
 
 export function ProfesoresAdmin() {
   const [profesores, setProfesores] = useState<Profesor[]>([]);
@@ -19,6 +20,23 @@ export function ProfesoresAdmin() {
   const [showModal, setShowModal] = useState(false);
   const [currentProfesor, setCurrentProfesor] = useState<Profesor | null>(null);
   const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+
+  const handleReenviarAcceso = async (prof: Profesor) => {
+    if (!prof.email) {
+      toast.error('Este profesor no tiene un email configurado.');
+      return;
+    }
+    setSendingEmailId(prof.id);
+    try {
+      const res = await reenviarAccesoProfesor(prof.id);
+      toast.success(res.data?.detail || `Correo enviado exitosamente a ${prof.email}`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al enviar el correo');
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -120,9 +138,23 @@ export function ProfesoresAdmin() {
                     </div>
                   </div>
                   
-                  <div className="flex justify-end gap-2 mt-auto pt-4 border-t border-primary-light/50">
-                    <Button size="sm" variant="outline" onClick={() => openEditModal(prof)}>Editar</Button>
-                    <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-100" onClick={() => setProfesorToDelete(prof.id)}>Eliminar</Button>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-auto pt-4 border-t border-primary-light/50">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleReenviarAcceso(prof)}
+                      disabled={sendingEmailId === prof.id || !prof.email}
+                      className="text-xs text-primary-main hover:bg-primary-light/40 border-primary-light flex items-center gap-1.5 font-semibold"
+                      title={prof.email ? `Reenviar correo para definir contraseña a ${prof.email}` : 'Sin email'}
+                    >
+                      <KeyRound className={`w-3.5 h-3.5 ${sendingEmailId === prof.id ? 'animate-spin' : ''}`} />
+                      <span>{sendingEmailId === prof.id ? 'Enviando...' : 'Reenviar Contraseña'}</span>
+                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openEditModal(prof)}>Editar</Button>
+                      <Button size="sm" variant="outline" className="text-red-500 hover:bg-red-50 hover:text-red-600 border-red-100" onClick={() => setProfesorToDelete(prof.id)}>Eliminar</Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

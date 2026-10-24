@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -42,6 +43,81 @@ class ProfesorViewSet(viewsets.ModelViewSet):
                 import logging
                 logging.getLogger(__name__).error(f"Error creando usuario profesor: {e}")
                 pass
+
+    def perform_update(self, serializer):
+        profesor = serializer.save()
+        if profesor.email:
+            try:
+                from core.models import Usuario
+                if profesor.usuario:
+                    if (profesor.usuario.email != profesor.email or 
+                        profesor.usuario.nombre != profesor.nombre or 
+                        profesor.usuario.apellido != profesor.apellido):
+                        profesor.usuario.email = profesor.email
+                        profesor.usuario.nombre = profesor.nombre
+                        profesor.usuario.apellido = profesor.apellido
+                        profesor.usuario.save()
+                else:
+                    u = Usuario.objects.filter(email=profesor.email).first()
+                    if not u:
+                        import string, random
+                        raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                        u = Usuario.objects.create_user(
+                            email=profesor.email,
+                            nombre=profesor.nombre,
+                            apellido=profesor.apellido,
+                            password=raw_password,
+                            rol='PROFESOR'
+                        )
+                    profesor.usuario = u
+                    profesor.save()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error sincronizando usuario profesor: {e}")
+
+    @action(detail=True, methods=['post'], url_path='reenviar-acceso')
+    def reenviar_acceso(self, request, pk=None):
+        profesor = self.get_object()
+        if not profesor.email:
+            return Response(
+                {'detail': 'El profesor no tiene configurado un correo electrónico.'},
+                status=400
+            )
+
+        from core.models import Usuario
+        from core.services import enviar_email_bienvenida_profesor
+
+        # Obtener o crear/vincular el usuario
+        usuario = profesor.usuario
+        if usuario:
+            if (usuario.email != profesor.email or 
+                usuario.nombre != profesor.nombre or 
+                usuario.apellido != profesor.apellido):
+                usuario.email = profesor.email
+                usuario.nombre = profesor.nombre
+                usuario.apellido = profesor.apellido
+                usuario.save()
+        else:
+            usuario = Usuario.objects.filter(email=profesor.email).first()
+            if not usuario:
+                import string, random
+                raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                usuario = Usuario.objects.create_user(
+                    email=profesor.email,
+                    nombre=profesor.nombre,
+                    apellido=profesor.apellido,
+                    password=raw_password,
+                    rol='PROFESOR'
+                )
+            profesor.usuario = usuario
+            profesor.save()
+
+        # Enviar el correo para definir / restablecer contraseña
+        ok = enviar_email_bienvenida_profesor(usuario)
+        if ok:
+            return Response({'detail': f'Correo enviado exitosamente a {usuario.email} para definir su contraseña.'})
+        else:
+            return Response({'detail': f'No se pudo enviar el correo a {usuario.email}. Verificá la configuración del servidor de correo.'}, status=500)
 
     def perform_destroy(self, instance):
         instance.is_active = False

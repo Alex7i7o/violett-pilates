@@ -68,6 +68,7 @@ export const getAdminProfesores = () => api.get<Profesor[]>('/admin/profesores/'
 export const createAdminProfesor = (data: any) => api.post('/admin/profesores/', data);
 export const updateAdminProfesor = (id: string, data: any) => api.patch(`/admin/profesores/${id}/`, data);
 export const deleteAdminProfesor = (id: string) => api.delete(`/admin/profesores/${id}/`);
+export const reenviarAccesoProfesor = (id: string) => api.post(`/admin/profesores/${id}/reenviar-acceso/`);
 
 export const getAdminAgenda = (fecha: string) => api.get<TurnoAdmin[]>(`/admin/agenda/?fecha=${fecha}`);
 export const createAdminTurno = (data: any) => api.post('/admin/turnos/', data);
