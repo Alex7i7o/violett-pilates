@@ -13,6 +13,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+test_env/
 
 # Environment Variables
 .env
@@ -25,6 +26,8 @@ frontend/.npm/
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+engine/frontend/node_modules/
+engine/frontend/dist/
 
 # Landings
 landings/node_modules/
@@ -38,6 +41,7 @@ Thumbs.db
 
 # Temporales
 temporales/
+temp_extract/
 *.tar.gz
 *.zip
 temporales/
