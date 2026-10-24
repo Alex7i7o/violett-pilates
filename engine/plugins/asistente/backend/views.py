@@ -6,6 +6,14 @@ from django.utils import timezone
 from .models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA
 from .config_loader import get_asistente_config, get_brand_persona
 
+def format_datetime_local(dt, fmt='%d/%m/%Y %H:%M'):
+    if not dt:
+        return ""
+    try:
+        return timezone.localtime(dt).strftime(fmt)
+    except Exception:
+        return dt.strftime(fmt)
+
 class ConversacionesAdminView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -52,7 +60,7 @@ class ConversacionesAdminView(APIView):
                 'rol_detectado': c.rol_detectado,
                 'estado': c.estado,
                 'ultimo_mensaje': ultimo_msg.texto if ultimo_msg else "",
-                'ultimo_mensaje_at': ultimo_msg.created_at.strftime('%d/%m %H:%M') if ultimo_msg else "",
+                'ultimo_mensaje_at': format_datetime_local(ultimo_msg.created_at, '%d/%m %H:%M') if (ultimo_msg and ultimo_msg.created_at) else "",
                 'total_mensajes': c.mensajes.count()
             })
         return Response(data)
@@ -74,7 +82,7 @@ class ConversacionMensajesAdminView(APIView):
             'agente_responsable': m.agente_responsable,
             'texto': m.texto,
             'tools_ejecutadas': m.tools_ejecutadas,
-            'created_at': m.created_at.strftime('%d/%m/%Y %H:%M')
+            'created_at': format_datetime_local(m.created_at, '%d/%m/%Y %H:%M')
         } for m in mensajes])
 
 
@@ -133,7 +141,7 @@ class EnviarMensajeManualAdminView(APIView):
             'agente_responsable': msg.agente_responsable,
             'texto': msg.texto,
             'tools_ejecutadas': msg.tools_ejecutadas,
-            'created_at': msg.created_at.strftime('%d/%m/%Y %H:%M')
+            'created_at': format_datetime_local(msg.created_at, '%d/%m/%Y %H:%M')
         }, status=status.HTTP_201_CREATED)
 
 

@@ -15,8 +15,9 @@ class AutomatizacionesConfig(AppConfig):
             from apscheduler.schedulers.background import BackgroundScheduler
             from django_apscheduler.jobstores import DjangoJobStore, register_events
             from django.core.management import call_command
+            from django.conf import settings
             
-            scheduler = BackgroundScheduler()
+            scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
             scheduler.add_jobstore(DjangoJobStore(), "default")
             
             @scheduler.scheduled_job("interval", minutes=15, id="cancel_empty_classes_job", replace_existing=True)

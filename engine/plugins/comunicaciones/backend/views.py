@@ -2,11 +2,21 @@ import json
 import logging
 import os
 from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from .whatsapp_service import WhatsAppClient
 
 logger = logging.getLogger(__name__)
+
+def format_datetime_local(dt, fmt='%d/%m/%Y %H:%M'):
+    if not dt:
+        return ''
+    try:
+        return timezone.localtime(dt).strftime(fmt)
+    except Exception:
+        return dt.strftime(fmt)
+
 
 class WhatsAppWebhookView(APIView):
     permission_classes = [AllowAny] # Meta servers need access without our JWT
@@ -142,7 +152,7 @@ class AdminEmailLogsView(APIView):
                 'estado': log.estado,
                 'error_mensaje': log.error_mensaje,
                 'cuerpo_texto': log.cuerpo_texto[:150] if log.cuerpo_texto else '',
-                'created_at': log.created_at.strftime('%d/%m/%Y %H:%M')
+                'created_at': format_datetime_local(log.created_at, '%d/%m/%Y %H:%M')
             } for log in logs]
 
             return Response(data)
@@ -169,6 +179,6 @@ class AdminEmailLogDetailView(APIView):
             'cuerpo_texto': log.cuerpo_texto,
             'estado': log.estado,
             'error_mensaje': log.error_mensaje,
-            'created_at': log.created_at.strftime('%d/%m/%Y %H:%M')
+            'created_at': format_datetime_local(log.created_at, '%d/%m/%Y %H:%M')
         })
 
