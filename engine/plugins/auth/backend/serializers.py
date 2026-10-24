@@ -195,7 +195,7 @@ class CustomPasswordResetSerializer(PasswordResetSerializer):
             uid = user_pk_to_url_str(user)
             
             # Construir URL del frontend explícitamente para que no falle
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://violett.com.ar/pilates/app').rstrip('/')
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://violett.com.ar/pilates/').rstrip('/')
             reset_url = f"{frontend_url}/reset-password/{uid}/{temp_key}"
             
             context = {

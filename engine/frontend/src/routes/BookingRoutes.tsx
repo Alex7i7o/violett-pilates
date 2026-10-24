@@ -48,6 +48,19 @@ export function BookingRoutes() {
     }
   };
 
+  // Si la ruta contiene reset-password, permitir siempre acceder a la pantalla de restablecer contrasena sin importar la sesion
+  if (location.pathname.includes('reset-password')) {
+    const publicRoutes = getPluginPublicRoutes(config.active_plugins || []);
+    return (
+      <Routes>
+        {publicRoutes.map((route, i) => (
+          <Route key={i} path={route.path} element={route.element} />
+        ))}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-primary-main font-medium bg-background">

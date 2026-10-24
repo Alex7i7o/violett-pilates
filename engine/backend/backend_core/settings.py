@@ -290,7 +290,8 @@ SIMPLE_JWT = {
 
 
 # Password Reset Config
-PASSWORD_RESET_URL = os.environ.get('FRONTEND_URL', 'https://violett.com.ar/pilates/app/') + 'reset-password/{uid}/{token}'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://violett.com.ar/pilates/').rstrip('/') + '/'
+PASSWORD_RESET_URL = FRONTEND_URL + 'reset-password/{uid}/{token}'
 
 
 

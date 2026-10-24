@@ -10,7 +10,9 @@ export const publicRoutes: RouteObject[] = [
   { path: '/forgot-password', element: <ForgotPasswordPlugin /> },
   { path: 'forgot-password', element: <ForgotPasswordPlugin /> },
   { path: '/reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> },
-  { path: 'reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> }
+  { path: 'reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> },
+  { path: '/app/reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> },
+  { path: 'app/reset-password/:uidb64/:token', element: <ResetPasswordPlugin /> }
 ];
 
 export const roleRoutes: Record<string, RouteObject[]> = {};

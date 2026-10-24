@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useClientConfig } from '@/context/ClientConfigContext';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
@@ -20,6 +22,8 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const [password, setPassword] = useState('password123')
   
   const [showPassword, setShowPassword] = useState(false);
+  const [isRegisterPasswordFocused, setIsRegisterPasswordFocused] = useState(false);
+  const [isLoginPasswordFocused, setIsLoginPasswordFocused] = useState(false);
   
   // Install Prompt Hook
   const { deferredPrompt, isIOS, isStandalone, promptInstall } = useInstallPrompt();
@@ -162,11 +166,22 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               <div>
                 <label className="text-sm font-semibold text-foreground">Contraseña</label>
                 <div className="relative mt-1">
-                  <input type={showPassword ? "text" : "password"} required value={password} onChange={e=>setPassword(e.target.value)} minLength={8} placeholder="Mínimo 8 caracteres" className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    value={password} 
+                    onChange={e=>setPassword(e.target.value)} 
+                    onFocus={() => setIsRegisterPasswordFocused(true)}
+                    onBlur={() => setIsRegisterPasswordFocused(false)}
+                    minLength={8} 
+                    placeholder="Mínimo 8 caracteres" 
+                    className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" 
+                  />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                <PasswordRequirements password={password} isFocused={isRegisterPasswordFocused} />
               </div>
               <div>
                 <label className="text-sm font-semibold text-foreground">Teléfono (WhatsApp)</label>
@@ -272,11 +287,34 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
             <div>
               <label className="text-sm font-semibold text-foreground">Contraseña</label>
               <div className="relative mt-1">
-                <input type={showPassword ? "text" : "password"} required value={password} onChange={e=>setPassword(e.target.value)} minLength={8} className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={password} 
+                  onChange={e=>setPassword(e.target.value)} 
+                  onFocus={() => setIsLoginPasswordFocused(true)}
+                  onBlur={() => setIsLoginPasswordFocused(false)}
+                  minLength={8} 
+                  className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" 
+                />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              <AnimatePresence>
+                {isLoginPasswordFocused && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="mt-1.5 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-2"
+                  >
+                    <span className="text-primary-main font-bold">ℹ</span>
+                    <span>Tu contraseña contiene mínimo 8 caracteres (mayúsculas, números o caracteres especiales).</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
               <div className="mt-2 text-right">

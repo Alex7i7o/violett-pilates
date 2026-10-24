@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { Eye, EyeOff } from 'lucide-react';
+import { PasswordRequirements } from '@/components/ui/PasswordRequirements';
 
 export function ResetPassword() {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ export function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const [isConfirmFocused, setIsConfirmFocused] = useState(false);
 
   if (!uid || !token) {
     return (
@@ -20,7 +23,7 @@ export function ResetPassword() {
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <p className="text-red-500 mb-4">El enlace es invalido o ha expirado.</p>
-            <button onClick={() => navigate('/')} className="text-violett-600 underline">Volver al inicio</button>
+            <button onClick={() => navigate('/login')} className="text-violett-600 underline">Volver al inicio</button>
           </CardContent>
         </Card>
       </div>
@@ -77,7 +80,7 @@ export function ResetPassword() {
           {status === 'success' ? (
             <div className="text-center space-y-4">
               <p className="text-green-600 font-medium">Tu contraseña ha sido actualizada con exito!</p>
-              <button onClick={() => navigate('/')} className="w-full bg-primary-main hover:bg-primary-hover text-white p-3 rounded-xl font-bold transition-all">
+              <button onClick={() => navigate('/login')} className="w-full bg-primary-main hover:bg-primary-hover text-white p-3 rounded-xl font-bold transition-all">
                 Ir a Iniciar Sesion
               </button>
             </div>
@@ -92,6 +95,8 @@ export function ResetPassword() {
                     minLength={8}
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={() => setIsPasswordFocused(false)}
                     className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" 
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
@@ -108,9 +113,18 @@ export function ResetPassword() {
                   minLength={8}
                   value={passwordConfirm} 
                   onChange={e => setPasswordConfirm(e.target.value)} 
+                  onFocus={() => setIsConfirmFocused(true)}
+                  onBlur={() => setIsConfirmFocused(false)}
                   className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" 
                 />
               </div>
+
+              <PasswordRequirements 
+                password={password} 
+                passwordConfirm={passwordConfirm} 
+                isFocused={isPasswordFocused || isConfirmFocused} 
+                showConfirm={true} 
+              />
 
               {errorMsg && <p className="text-red-500 text-sm text-center font-medium">{errorMsg}</p>}
               
