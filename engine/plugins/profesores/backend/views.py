@@ -12,7 +12,7 @@ from .serializers import ProfesorSerializer
 from core.models import Turno, PlantillaTurno
 
 class ProfesorViewSet(viewsets.ModelViewSet):
-    queryset = Profesor.objects.filter(is_active=True)
+    queryset = Profesor.objects.filter(is_active=True).prefetch_related('plantillaprofesor_set__plantilla__clase')
     serializer_class = ProfesorSerializer
     permission_classes = [IsAdminUser]
 

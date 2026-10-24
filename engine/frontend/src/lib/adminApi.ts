@@ -1,5 +1,14 @@
 import { api } from './api';
 
+export interface ClaseFijaProfesor {
+    id: string;
+    dia_semana: number;
+    dia_nombre: string;
+    hora_inicio: string;
+    hora_fin: string;
+    clase_nombre: string;
+}
+
 export interface Profesor {
     id: string;
     nombre: string;
@@ -12,6 +21,7 @@ export interface Profesor {
     fecha_nacimiento: string | null;
     sexo: string | null;
     edad: number | null;
+    clases_fijas?: ClaseFijaProfesor[];
 }
 
 export interface ReservaAdmin {

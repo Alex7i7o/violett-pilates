@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { ProfesorForm, type ProfesorFormData } from '../../components/admin/ProfesorForm';
 import { Modal } from '../../components/ui/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 
 export function ProfesoresAdmin() {
   const [profesores, setProfesores] = useState<Profesor[]>([]);
@@ -21,6 +21,14 @@ export function ProfesoresAdmin() {
   const [currentProfesor, setCurrentProfesor] = useState<Profesor | null>(null);
   const [profesorToDelete, setProfesorToDelete] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [expandedProfesorIds, setExpandedProfesorIds] = useState<Record<string, boolean>>({});
+
+  const toggleExpandProfesor = (id: string) => {
+    setExpandedProfesorIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const handleReenviarAcceso = async (prof: Profesor) => {
     if (!prof.email) {
@@ -127,7 +135,7 @@ export function ProfesoresAdmin() {
                     </div>
                   </div>
                   
-                  <div className="space-y-2 mb-6 flex-1 text-sm">
+                  <div className="space-y-2 mb-4 text-sm">
                     <div className="flex items-center text-muted">
                       <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                       {prof.telefono || 'Sin teléfono'}
@@ -136,6 +144,93 @@ export function ProfesoresAdmin() {
                       <svg className="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                       {prof.email || 'Sin email'}
                     </div>
+                  </div>
+
+                  {/* Horarios / Clases Fijas (Badge + Toggle) */}
+                  <div className="mt-auto mb-4 pt-3 border-t border-slate-100">
+                    {(() => {
+                      const clases = prof.clases_fijas || [];
+                      const isExpanded = !!expandedProfesorIds[prof.id];
+                      const diasUnicos = Array.from(new Set(clases.map(c => c.dia_nombre.slice(0, 3))));
+                      const diasResumen = diasUnicos.join(', ');
+
+                      if (clases.length === 0) {
+                        return (
+                          <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs text-muted">
+                            <span className="flex items-center gap-1.5 font-medium text-slate-500">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                              Sin clases fijas asignadas
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">0 turnos</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-1.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandProfesor(prof.id)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-xs font-semibold transition-all duration-200 ${
+                              isExpanded 
+                                ? 'bg-primary-light text-primary-main border-primary-light shadow-2xs' 
+                                : 'bg-primary-light/40 text-primary-main border-primary-light/60 hover:bg-primary-light/70'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <Calendar className="w-3.5 h-3.5 shrink-0 text-primary-main" />
+                              <span className="truncate">
+                                <span className="font-bold">{diasResumen}</span>
+                                <span className="text-primary-main/70 font-normal"> · {clases.length} {clases.length === 1 ? 'clase fija' : 'clases fijas'}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 ml-2">
+                              <span className="text-[11px] font-medium text-primary-main/80">
+                                {isExpanded ? 'Ocultar' : 'Ver horarios'}
+                              </span>
+                              {isExpanded ? (
+                                <ChevronUp className="w-3.5 h-3.5 text-primary-main" />
+                              ) : (
+                                <ChevronDown className="w-3.5 h-3.5 text-primary-main" />
+                              )}
+                            </div>
+                          </button>
+
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="pt-1.5 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                                  {clases.map((cf) => (
+                                    <div
+                                      key={cf.id}
+                                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-50/90 border border-slate-200/70 text-xs"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary-main text-white shadow-2xs">
+                                          {cf.dia_nombre.slice(0, 3)}
+                                        </span>
+                                        <span className="font-semibold text-slate-700">
+                                          {cf.hora_inicio} a {cf.hora_fin} hs
+                                        </span>
+                                      </div>
+                                      <span className="text-[11px] text-primary-main font-medium truncate ml-2">
+                                        {cf.clase_nombre}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   <div className="flex flex-wrap items-center justify-between gap-2 mt-auto pt-4 border-t border-primary-light/50">
