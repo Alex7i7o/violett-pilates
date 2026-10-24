@@ -47,11 +47,85 @@ class AnaliticaDashboardView(APIView):
         total_alumnos = clientes.count()
         nuevos_alumnos = in_month(clientes, 'created_at').count()
 
+        # Auto-reconciliación: Asegurar que toda Suscripcion creada en este mes tenga su RegistroFacturacion
+        try:
+            from plugins.membresias.backend.models import Suscripcion
+            existing_sub_ids = set(
+                RegistroFacturacion.objects.exclude(suscripcion_id__isnull=True)
+                .exclude(suscripcion_id='')
+                .values_list('suscripcion_id', flat=True)
+            )
+            subs_missing = Suscripcion.objects.filter(
+                fecha_inicio__month=month,
+                fecha_inicio__year=year
+            ).exclude(id__in=existing_sub_ids).select_related('usuario', 'plan')
+
+            for sub in subs_missing:
+                dt_inicio = datetime.datetime.combine(sub.fecha_inicio, datetime.time(12, 0))
+                if timezone.is_naive(dt_inicio):
+                    dt_inicio = timezone.make_aware(dt_inicio)
+                RegistroFacturacion.objects.create(
+                    usuario=sub.usuario,
+                    plan_nombre=sub.plan.nombre if sub.plan else 'Plan',
+                    monto=sub.plan.precio if sub.plan else 0,
+                    suscripcion_id=str(sub.id),
+                    fecha=dt_inicio
+                )
+        except Exception:
+            pass
+
         # Facturación
         facturacion_qs = in_month(RegistroFacturacion.objects, 'fecha')
         total_facturacion = facturacion_qs.aggregate(Sum('monto'))['monto__sum'] or 0
         desglose_planes = list(facturacion_qs.values('plan_nombre').annotate(total=Sum('monto'), cantidad=Count('id')).order_by('-total'))
         planes_asignados_mes = facturacion_qs.count()
+
+        # Enriquecer detalles con datos de Suscripcion y Alumno
+        sub_ids = [r.suscripcion_id for r in facturacion_qs if r.suscripcion_id]
+        subs_map = {}
+        if sub_ids:
+            try:
+                from plugins.membresias.backend.models import Suscripcion
+                for s in Suscripcion.objects.filter(id__in=sub_ids).select_related('plan'):
+                    subs_map[str(s.id)] = s
+            except Exception:
+                pass
+
+        detalles_facturacion = []
+        for r in facturacion_qs.select_related('usuario').order_by('-fecha'):
+            sub = subs_map.get(str(r.suscripcion_id)) if r.suscripcion_id else None
+
+            # Nombre completo
+            nombre_alumno = 'Alumno sin registrar'
+            if r.usuario:
+                nom = f"{r.usuario.nombre or ''} {r.usuario.apellido or ''}".strip()
+                nombre_alumno = nom if nom else (r.usuario.email or 'Alumno')
+
+            # Fecha local
+            if r.fecha:
+                dt = timezone.localtime(r.fecha) if timezone.is_aware(r.fecha) else r.fecha
+                fecha_str = dt.strftime('%d/%m/%Y %H:%M')
+                fecha_corta = dt.strftime('%d/%m/%Y')
+            else:
+                fecha_str = ''
+                fecha_corta = ''
+
+            detalles_facturacion.append({
+                'id': str(r.id),
+                'fecha': fecha_str,
+                'fecha_corta': fecha_corta,
+                'alumno_id': str(r.usuario.id) if r.usuario else None,
+                'alumno_nombre': nombre_alumno,
+                'alumno_email': r.usuario.email if r.usuario else '',
+                'alumno_telefono': getattr(r.usuario, 'telefono', '') if r.usuario else '',
+                'plan_nombre': r.plan_nombre,
+                'monto': float(r.monto or 0),
+                'suscripcion_id': r.suscripcion_id or None,
+                'suscripcion_estado': sub.estado if sub else None,
+                'clases_restantes': sub.clases_restantes if sub else None,
+                'clases_totales': sub.plan.cantidad_clases if (sub and sub.plan) else None,
+                'fecha_vencimiento': sub.fecha_vencimiento.strftime('%d/%m/%Y') if (sub and sub.fecha_vencimiento) else None
+            })
 
         # Comunicaciones automáticas reales
         # Cada nuevo alumno genera correo de bienvenida, cada plan un correo de confirmación, y cada reserva confirmada su notificación
@@ -152,7 +226,8 @@ class AnaliticaDashboardView(APIView):
             },
             'facturacion': {
                 'total': total_facturacion,
-                'desglose_planes': desglose_planes
+                'desglose_planes': desglose_planes,
+                'detalles': detalles_facturacion
             },
             'operatividad': {
                 'promedio_ocupacion': promedio_ocupacion,
