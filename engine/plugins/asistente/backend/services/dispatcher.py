@@ -83,6 +83,13 @@ def _ejecutar_ciclo_agente(data: dict):
         agente_responsable = "fallback_error"
         tools_usadas = []
 
+    # Sanitizar formato nativo de WhatsApp (eliminar ###, convertir tablas y ** a *)
+    try:
+        from .formatter import sanitizar_para_whatsapp
+        respuesta_texto = sanitizar_para_whatsapp(respuesta_texto)
+    except Exception as e:
+        logger.warning(f"[ASISTENTE] Error sanitizando mensaje para WhatsApp: {e}")
+
     # 7. Registrar mensaje saliente en el log
     MensajeWhatsAppLog.objects.create(
         conversacion=conversacion,

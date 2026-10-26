@@ -94,6 +94,11 @@ class WhatsAppClient:
 
     def send_text_message(self, to_number, text_message):
         '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
+        try:
+            from plugins.asistente.backend.services.formatter import sanitizar_para_whatsapp
+            text_message = sanitizar_para_whatsapp(text_message)
+        except Exception:
+            pass
         if not self.is_configured:
             print(f"\n[WHATSAPP NO CONFIGURADO / SIMULADOR] (WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID vacios en el contenedor)", flush=True)
             print(f"-> Destino: {to_number}", flush=True)

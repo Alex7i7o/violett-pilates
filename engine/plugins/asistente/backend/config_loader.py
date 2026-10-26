@@ -1,10 +1,19 @@
 import os
+import re
 import json
 import logging
 from pathlib import Path
 from backend_core.plugin_loader import get_client_config, get_plugin_config, BASE_DIR
 
 logger = logging.getLogger(__name__)
+
+def normalizar_telefono_ar(tel: str) -> str:
+    clean = re.sub(r'[^0-9]', '', str(tel or ''))
+    if len(clean) == 10 and clean.startswith('11'):
+        return f"549{clean}"
+    if len(clean) == 12 and clean.startswith('5411'):
+        return f"549{clean[2:]}"
+    return clean
 
 def get_brand_persona() -> str:
     """
@@ -71,10 +80,17 @@ def get_asistente_config() -> dict:
         if k not in rules:
             rules[k] = v
 
+    tel_duena_raw = (
+        os.environ.get('TELEFONO_DUENA') or 
+        os.environ.get('WHATSAPP_TELEFONO_DUENA') or 
+        cfg.get('telefono_duena', '5491157691786')
+    )
+    telefono_duena = normalizar_telefono_ar(tel_duena_raw)
+
     return {
         "nombre_asistente": cfg.get('nombre_asistente', 'Violett'),
         "telefono_estudio": cfg.get('telefono_estudio', '5491164142172'),
-        "telefono_duena": cfg.get('telefono_duena', ''),
+        "telefono_duena": telefono_duena,
         "reglas_operativas": rules,
         "estilo_comunicacion": cfg.get('estilo_comunicacion', {
             "icono_sello": "✦",

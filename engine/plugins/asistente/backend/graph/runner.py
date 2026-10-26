@@ -135,7 +135,15 @@ INSTRUCCIONES DE ATENCIÓN Y POLÍTICAS ESTRICTAS:
 6. Si el usuario te consulta por turnos, disponibilidad o reservas, utilizá las herramientas (tools) correspondientes antes de responder.
 7. Si una alumna pide reservar, utilizá 'reservar_camilla_turno'.
 8. Si no tiene créditos para reservar, explicale amablemente el estado de su abono y ofrecé los planes disponibles o los datos de transferencia.
-9. Mantené tus respuestas concisas, bien formateadas para leerse cómodamente en WhatsApp.
+9. Mantené tus respuestas concisas, bien estructuradas y fluidas.
+10. REGLAS ESTRICTAS DE FORMATO NATIVO PARA WHATSAPP:
+    - Estás respondiendo en WhatsApp. NUNCA uses encabezados de Markdown con hashtags (`#`, `##`, `###`, `####`). Están TERMINANTEMENTE PROHIBIDOS.
+    - NUNCA uses tablas de Markdown con barras verticales (`| col | col |` o `|---|---|`). Están TERMINANTEMENTE PROHIBIDAS porque en celular se ven rotas e ilegibles.
+    - En WhatsApp la negrita se escribe con UN SOLO ASTERISCO `*texto*`. NUNCA uses doble asterisco `**texto**`.
+    - Cuando presentes listas de planes o turnos, utilizá siempre viñetas ordenadas con el destello ✦ o puntos •:
+      ✦ *Plan Mensual - 8 Clases* ($55.000)
+      • 8 clases mensuales (2 veces por semana)
+      • Ideal para constancia semanal y ritmo continuo.
 
 {reglas_negocio_doc}
 """
@@ -164,7 +172,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     try:
         if anthropic_key:
             from langchain_anthropic import ChatAnthropic
-            model_name = os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest')
+            # Default a Claude 3.5 Haiku para respuesta ultra-rápida en WhatsApp (<1.2s)
+            model_name = os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-haiku-20241022')
             llm = ChatAnthropic(
                 model=model_name,
                 temperature=0.3,
@@ -210,27 +219,9 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
         tool_node = ToolNode(ALL_TOOLS)
 
-        # Enviar aviso inmediato de "espera activa" (anti-clavado de visto) al iniciar tools
-        ack_enviado = [False]
-
-        def tools_wrapper_node(state: AgentState):
-            if not ack_enviado[0]:
-                ack_enviado[0] = True
-                phone = state.get("phone")
-                if phone:
-                    try:
-                        from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
-                        print(f"[ASISTENTE ESPERA ACTIVA] Enviando aviso previo a {phone}...", flush=True)
-                        WhatsAppClient().send_text_message(
-                            phone,
-                            "¡Dale! ✦ Aguardame un segundito que ya me fijo en el sistema..."
-                        )
-                    except Exception as e:
-                        logger.warning(f"Error enviando ack de espera activa: {e}")
-            return tool_node.invoke(state)
-
+        # Conexión directa ultra-rápida de herramientas sin demoras artificiales
         workflow.add_node("agente", agente_node)
-        workflow.add_node("tools", tools_wrapper_node)
+        workflow.add_node("tools", tool_node)
 
         def should_continue(state: AgentState):
             messages = state["messages"]
@@ -272,6 +263,12 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         if not respuesta_final:
             last_msg = final_output["messages"][-1]
             respuesta_final = last_msg.content if hasattr(last_msg, 'content') else "¡Hola! ✦ ¿En qué puedo acompañarte hoy?"
+
+        try:
+            from ..services.formatter import sanitizar_para_whatsapp
+            respuesta_final = sanitizar_para_whatsapp(respuesta_final)
+        except Exception:
+            pass
 
         return respuesta_final, "asistente_recepcionista", tools_usadas
 
