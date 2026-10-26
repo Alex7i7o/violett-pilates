@@ -36,12 +36,14 @@ export function BookingGrid({
   turnos,
   loading,
   onBook,
-  onCancel
+  onCancel,
+  hideTitle = false
 }: {
   turnos: Turno[],
   loading: boolean,
   onBook: (id: string, recurring: boolean) => void,
-  onCancel: (id: string) => void
+  onCancel: (id: string) => void,
+  hideTitle?: boolean
 }) {
   const [selectedTurnoToBook, setSelectedTurnoToBook] = useState<Turno | null>(null)
   const [selectedTurnoToCancel, setSelectedTurnoToCancel] = useState<Turno | null>(null)
@@ -99,7 +101,7 @@ export function BookingGrid({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-primary-main">Agenda Disponible</h2>
+      {!hideTitle && <h2 className="text-2xl font-semibold text-primary-main">Agenda Disponible</h2>}
       
       {/* Tabs */}
       {availableDates.length > 0 && (
