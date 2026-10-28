@@ -1,3 +1,4 @@
+import functools
 import os
 import re
 import json
@@ -15,6 +16,7 @@ def normalizar_telefono_ar(tel: str) -> str:
         return f"549{clean[2:]}"
     return clean
 
+@functools.lru_cache(maxsize=1)
 def get_brand_persona() -> str:
     """
     Carga el manual de tono, estilo y reglas de comunicacion (brand_persona.md)
@@ -42,6 +44,7 @@ def get_brand_persona() -> str:
 Respondé siempre con cordialidad, calidez, respeto y estilo elegante.
 Utilizá voseo argentino respetuoso y el icono ✦ como separador visual."""
 
+@functools.lru_cache(maxsize=1)
 def get_reglas_negocio() -> str:
     """
     Carga el manual de reglas operativas y políticas de negocio (reglas_negocio.md).

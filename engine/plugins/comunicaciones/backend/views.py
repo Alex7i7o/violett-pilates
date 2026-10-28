@@ -105,6 +105,13 @@ class WhatsAppWebhookView(APIView):
                         elif msg_type == 'text':
                             text_body = msg.get('text', {}).get('body', '')
                             logger.info(f"[WHATSAPP] Texto recibido de {phone_number}: {text_body}")
+                            
+                            # Marcar mensaje como leído de inmediato en segundo plano
+                            msg_id = msg.get('id')
+                            if msg_id:
+                                import threading
+                                threading.Thread(target=client.mark_as_read, args=(msg_id,), daemon=True).start()
+
                             from backend_core.hooks import registry
                             # Emitir hook para el Asistente Multi-Agente
                             registry.execute('whatsapp_mensaje_recibido', {

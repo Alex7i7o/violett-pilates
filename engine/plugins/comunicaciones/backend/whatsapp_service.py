@@ -92,6 +92,26 @@ class WhatsAppClient:
             logger.error(f"[WHATSAPP MEDIA EXCEPTION] {e}")
             return None
 
+
+    def mark_as_read(self, message_id: str):
+        '''Marca un mensaje entrante como leído en WhatsApp (doble tilde azul)'''
+        if not self.is_configured or not message_id:
+            return False
+        headers = {
+            'Authorization': f'Bearer {self.token}',
+            'Content-Type': 'application/json'
+        }
+        payload = {
+            'messaging_product': 'whatsapp',
+            'status': 'read',
+            'message_id': message_id
+        }
+        try:
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=5)
+            return response.status_code in [200, 201]
+        except Exception:
+            return False
+
     def send_text_message(self, to_number, text_message):
         '''Envia un mensaje de texto libre (solo funciona dentro de la ventana de 24hs iniciada por el usuario)'''
         try:

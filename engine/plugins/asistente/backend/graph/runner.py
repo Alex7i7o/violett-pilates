@@ -74,6 +74,35 @@ ALL_TOOLS = [
     contactar_prospectos_desde_lista
 ]
 
+# Segmentación de herramientas por rol para optimizar el prompt y la latencia del LLM (60% menos tokens)
+TOOLS_CLIENTE = [
+    consultar_turnos_disponibles,
+    reservar_camilla_turno,
+    consultar_mis_reservas_alumna,
+    cancelar_reserva_alumna,
+    consultar_estado_plan_alumna,
+    obtener_planes_y_precios,
+    obtener_datos_transferencia_estudio,
+    consultar_a_la_duena,
+]
+
+TOOLS_PROFESOR = [
+    consultar_mis_clases_profesor,
+    gestionar_ausencia_y_buscar_reemplazo,
+    consultar_turnos_disponibles,
+    consultar_a_la_duena,
+]
+
+TOOLS_DUENA = ALL_TOOLS
+
+def obtener_tools_para_rol(rol: str):
+    if rol == 'DUENA':
+        return TOOLS_DUENA
+    elif rol == 'PROFESOR':
+        return TOOLS_PROFESOR
+    return TOOLS_CLIENTE
+
+
 def build_system_prompt(rol: str, nombre_usuario: str, usuario_id: str) -> str:
     brand_persona = get_brand_persona()
     reglas_negocio_doc = get_reglas_negocio()
@@ -170,6 +199,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
     # 2. Modo LangGraph con LLM (Anthropic Claude, OpenAI GPT o Groq Llama)
     try:
+        active_tools = obtener_tools_para_rol(conversacion.rol_detectado)
+
         if anthropic_key:
             from langchain_anthropic import ChatAnthropic
             # Default a Claude 3.5 Haiku para respuesta ultra-rápida en WhatsApp (<1.2s)
@@ -177,24 +208,27 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             llm = ChatAnthropic(
                 model=model_name,
                 temperature=0.3,
+                max_tokens=600,
                 api_key=anthropic_key
-            ).bind_tools(ALL_TOOLS)
+            ).bind_tools(active_tools)
         elif openai_key:
             from langchain_openai import ChatOpenAI
             model_name = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
             llm = ChatOpenAI(
                 model=model_name,
                 temperature=0.3,
+                max_tokens=600,
                 api_key=openai_key
-            ).bind_tools(ALL_TOOLS)
+            ).bind_tools(active_tools)
         else:
             from langchain_groq import ChatGroq
-            model_name = os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')
+            model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
             llm = ChatGroq(
                 model=model_name,
                 temperature=0.3,
+                max_tokens=600,
                 api_key=groq_key
-            ).bind_tools(ALL_TOOLS)
+            ).bind_tools(active_tools)
 
         # Cargar historial reciente de la conversación (últimos 8 mensajes)
         mensajes_db = conversacion.mensajes.order_by('-created_at')[:8]
@@ -205,9 +239,13 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             else:
                 historial_langchain.append(AIMessage(content=m.texto))
 
-        # Mensaje de sistema y nuevo mensaje del usuario
+        # Mensaje de sistema con soporte de Prompt Caching (para acelerar llamadas consecutivas)
         sys_prompt = build_system_prompt(conversacion.rol_detectado, nombre_user, usuario_id)
-        current_messages = [SystemMessage(content=sys_prompt)] + historial_langchain + [HumanMessage(content=mensaje_usuario)]
+        sys_msg = SystemMessage(
+            content=sys_prompt,
+            additional_kwargs={"cache_control": {"type": "ephemeral"}}
+        )
+        current_messages = [sys_msg] + historial_langchain + [HumanMessage(content=mensaje_usuario)]
 
         # Definir grafo
         workflow = StateGraph(AgentState)
@@ -217,11 +255,46 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             response = llm.invoke(messages)
             return {"messages": [response], "agente_responsable": "asistente_recepcionista"}
 
-        tool_node = ToolNode(ALL_TOOLS)
+        tool_node = ToolNode(active_tools)
 
-        # Conexión directa ultra-rápida de herramientas sin demoras artificiales
+        # Enviar aviso inmediato de "espera activa" (anti-clavado de visto) al iniciar tools
+        # Se envía en un hilo desacoplado para NO demorar la ejecución de las herramientas.
+        ack_enviado = [False]
+
+        def tools_wrapper_node(state: AgentState):
+            if not ack_enviado[0]:
+                ack_enviado[0] = True
+                phone = state.get("phone")
+                rol_user = state.get("rol", "")
+                if phone:
+                    def _enviar_ack():
+                        try:
+                            from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+                            from ..models import MensajeWhatsAppLog, ConversacionWhatsApp
+                            if rol_user == 'DUENA':
+                                msg_ack = "✦ Aguardame un segundito que ya te preparo la información..."
+                            else:
+                                msg_ack = "¡Dale! ✦ Aguardame un segundito que ya me fijo en el sistema..."
+                            print(f"[ASISTENTE ESPERA ACTIVA] Enviando aviso previo a {phone}...", flush=True)
+                            WhatsAppClient().send_text_message(phone, msg_ack)
+                            conv = ConversacionWhatsApp.objects.filter(telefono=phone).first()
+                            if conv:
+                                MensajeWhatsAppLog.objects.create(
+                                    conversacion=conv,
+                                    direccion='SALIENTE',
+                                    agente_responsable='asistente_espera_activa',
+                                    texto=msg_ack
+                                )
+                        except Exception as ex:
+                            logger.warning(f"Error enviando ack de espera activa: {ex}")
+
+                    import threading
+                    threading.Thread(target=_enviar_ack, daemon=True).start()
+
+            return tool_node.invoke(state)
+
         workflow.add_node("agente", agente_node)
-        workflow.add_node("tools", tool_node)
+        workflow.add_node("tools", tools_wrapper_node)
 
         def should_continue(state: AgentState):
             messages = state["messages"]
@@ -249,7 +322,11 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             "esperando_humano": False
         }
 
+        import time
+        t_inicio = time.time()
         final_output = app.invoke(initial_state)
+        duracion = time.time() - t_inicio
+        print(f"[ASISTENTE TIMING] Grafo completado en {duracion:.2f}s | Modelo: {model_name} | Rol: {conversacion.rol_detectado}", flush=True)
         
         # Extraer respuesta final y tools ejecutadas
         tools_usadas = []

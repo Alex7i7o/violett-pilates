@@ -20,12 +20,13 @@ def consultar_turnos_disponibles(fecha_str: str) -> str:
     """
     target_date = resolver_fecha(fecha_str)
 
-    # Aseguramos generación desde plantillas si no existen
-    try:
-        from core.services import generar_turnos_desde_plantillas
-        generar_turnos_desde_plantillas()
-    except Exception as e:
-        logger.warning(f"Error generando turnos: {e}")
+    # Aseguramos generación desde plantillas únicamente si aún no hay turnos generados para esa fecha
+    if not Turno.objects.filter(fecha=target_date).exists():
+        try:
+            from core.services import generar_turnos_desde_plantillas
+            generar_turnos_desde_plantillas()
+        except Exception as e:
+            logger.warning(f"Error generando turnos: {e}")
 
     turnos = Turno.objects.filter(
         fecha=target_date,
