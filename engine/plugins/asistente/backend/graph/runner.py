@@ -1,15 +1,13 @@
 import os
 import re
+import time
 import logging
 from typing import Tuple, List
-from django.utils import timezone
 
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 from .state import AgentState
-from ..config_loader import get_brand_persona, get_reglas_negocio, get_asistente_config
+from .builder import build_asistente_graph, ALL_ACTIVE_TOOLS
 from ..tools.turnos_tools import (
     consultar_turnos_disponibles,
     reservar_camilla_turno,
@@ -44,148 +42,27 @@ from ..tools.reportes_tools import (
 
 logger = logging.getLogger(__name__)
 
-# Lista consolidada de tools operativas para el agente
-ALL_TOOLS = [
-    # Turnos & Reservas
-    consultar_turnos_disponibles,
-    reservar_camilla_turno,
-    consultar_mis_reservas_alumna,
-    cancelar_reserva_alumna,
-    # Finanzas & Pagos
-    consultar_estado_plan_alumna,
-    obtener_planes_y_precios,
-    obtener_datos_transferencia_estudio,
-    aprobar_comprobante_pago,
-    rechazar_comprobante_pago,
-    consultar_a_la_duena,
-    # Profesores & Coberturas
-    consultar_mis_clases_profesor,
-    gestionar_ausencia_y_buscar_reemplazo,
-    reasignar_profesora_directo,
-    buscar_reemplazo_orden_duena,
-    # Optimizador de Ocupación & Preferencias
-    analizar_optimizacion_turnos_proximos,
-    vincular_alumnas_inseparables,
-    guardar_preferencia_alumna,
-    consultar_preferencias_o_vinculos,
-    # Reportes Ejecutivos & Prospección
-    obtener_reporte_facturacion_semanal,
-    obtener_reporte_ocupacion_hoy,
-    contactar_prospectos_desde_lista
-]
+ALL_TOOLS = ALL_ACTIVE_TOOLS
 
-# Segmentación de herramientas por rol para optimizar el prompt y la latencia del LLM (60% menos tokens)
-TOOLS_CLIENTE = [
-    consultar_turnos_disponibles,
-    reservar_camilla_turno,
-    consultar_mis_reservas_alumna,
-    cancelar_reserva_alumna,
-    consultar_estado_plan_alumna,
-    obtener_planes_y_precios,
-    obtener_datos_transferencia_estudio,
-    consultar_a_la_duena,
-]
+_COMPILED_GRAPH = None
 
-TOOLS_PROFESOR = [
-    consultar_mis_clases_profesor,
-    gestionar_ausencia_y_buscar_reemplazo,
-    consultar_turnos_disponibles,
-    consultar_a_la_duena,
-]
+def get_compiled_graph():
+    """Retorna la instancia compilada en memoria del grafo para evitar recompilaciones innecesarias"""
+    global _COMPILED_GRAPH
+    if _COMPILED_GRAPH is None:
+        _COMPILED_GRAPH = build_asistente_graph()
+    return _COMPILED_GRAPH
 
-TOOLS_DUENA = ALL_TOOLS
-
-def obtener_tools_para_rol(rol: str):
-    if rol == 'DUENA':
-        return TOOLS_DUENA
-    elif rol == 'PROFESOR':
-        return TOOLS_PROFESOR
-    return TOOLS_CLIENTE
-
-
-def build_system_prompt(rol: str, nombre_usuario: str, usuario_id: str) -> str:
-    brand_persona = get_brand_persona()
-    reglas_negocio_doc = get_reglas_negocio()
-    config = get_asistente_config()
-    reglas = config.get('reglas_operativas', {})
-    
-    hoy_str = timezone.localdate().strftime('%A %d de %B de %Y')
-    
-    contexto_usuario = f"Estás hablando con: {nombre_usuario or 'Contacto nuevo'} (Rol: {rol})."
-    if usuario_id:
-        contexto_usuario += f" [ID Sistema: {usuario_id}]"
-
-    instrucciones_rol = ""
-    if rol == 'DUENA':
-        instrucciones_rol = """
-COMANDOS EXCLUSIVOS DE LA DUEÑA / DIRECTORA:
-- Si la dueña aprueba un pago diciendo "Aprobar {código}", "Acreditar a {nombre}", o simplemente "Aprobar", invocá inmediatamente 'aprobar_comprobante_pago'.
-- Si la dueña indica un cambio directo de profesora (ej: "El jueves a las 18 sacá a Cande y poné a Julieta" o "Reemplazá a Mariana por Sofía"), invocá 'reasignar_profesora_directo'.
-- Si la dueña pide buscar quién puede cubrir una clase (ej: "Fijate quién puede cubrir a Cande este martes a las 18"), invocá 'buscar_reemplazo_orden_duena'.
-- Si la dueña consulta la ocupación o pide ver si hay clases para consolidar o juntar (ej: "¿Cómo viene la ocupación de mañana?", "¿Hay clases con 1 sola alumna?"), invocá 'analizar_optimizacion_turnos_proximos'.
-- Si la dueña indica que dos alumnas vienen juntas o son inseparables (ej: "Anotá que Marcela y Valentina son madre e hija y vienen siempre juntas"), invocá 'vincular_alumnas_inseparables'.
-- Si pide métricas o facturación, usá 'obtener_reporte_facturacion_semanal' u 'obtener_reporte_ocupacion_hoy'.
-- Respondé a la dueña con tono ejecutivo, preciso, respetuoso y resolutivo.
-"""
-    elif rol == 'PROFESOR':
-        instrucciones_rol = """
-COMUNICACIÓN CON PROFESORAS:
-- Si consulta sus clases, usá 'consultar_mis_clases_profesor'.
-- Si avisa que no puede asistir un día u horario, usá 'gestionar_ausencia_y_buscar_reemplazo'.
-"""
-
-    return f"""{brand_persona}
-
----
-REGLAS OPERATIVAS Y DE NEGOCIO:
-- Fecha actual de referencia: {hoy_str}.
-- Capacidad máxima estricta por turno: {reglas.get('max_cupo_por_turno', 3)} camillas de reformer (NUNCA sobrevender más de 3).
-- Estructura de la sesión: {reglas.get('estructura_sesion', '55 minutos de clase + 5 minutos de ritual de descompresión')}.
-- Dirección del estudio: {reglas.get('direccion', 'Gral. Guido 1573, Ramos Mejía')}.
-- Horas límite para cancelar recuperando el crédito: 24 horas estrictas. Con menos de 24 hs, la clase se pierde.
-- {contexto_usuario}
-{instrucciones_rol}
-
----
-INSTRUCCIONES DE ATENCIÓN Y POLÍTICAS ESTRICTAS:
-1. Usá siempre voseo argentino cordial, cálido y elegante ('vos', 'querés', 'fijate', 'sentite').
-2. Colocá el destello ✦ con sutileza en saludos o despedidas.
-3. PROHIBICIÓN ESTRICTA DE IDs TÉCNICOS:
-   - NUNCA menciones identificadores numéricos de base de datos a las alumnas ni clientes (como '[ID Turno: 14]', 'Turno #12', 'Reserva ID: 5', o '[ID: 5]').
-   - Mostrá los turnos con total elegancia y prolijidad humana: "Lunes 18:00 hs - Pilates Reformer (Profe Valentina)".
-4. CERO ALUCINACIONES - VERACIDAD TOTAL:
-   - NUNCA inventes un alias bancario, CBU, CVU, precio de abono, promoción, horario ni información que no provenga de una herramienta (tool) o de las reglas oficiales.
-   - Si una alumna pregunta por datos de transferencia y el sistema no los tiene cargados, o hace una pregunta que no sabés responder con certeza, decí con total honestidad y calidez: "Dejame que le consulto a la dueña/administración y te respondemos enseguida ✦."
-   - Podés usar la herramienta 'consultar_a_la_duena' para enviarle la consulta automáticamente a Débora por WhatsApp.
-5. REGLA ESTRICTA DE CANCELACIÓN (24 HORAS):
-   - Si una alumna solicita cancelar una clase:
-     * Si cancela con 24 horas o más de anticipación: recupera el crédito de su clase.
-     * Si cancela con MENOS de 24 horas de anticipación: la clase se pierde y no se recupera el crédito (según las políticas oficiales del estudio). Usá 'cancelar_reserva_alumna'.
-6. Si el usuario te consulta por turnos, disponibilidad o reservas, utilizá las herramientas (tools) correspondientes antes de responder.
-7. Si una alumna pide reservar, utilizá 'reservar_camilla_turno'.
-8. Si no tiene créditos para reservar, explicale amablemente el estado de su abono y ofrecé los planes disponibles o los datos de transferencia.
-9. Mantené tus respuestas concisas, bien estructuradas y fluidas.
-10. REGLAS ESTRICTAS DE FORMATO NATIVO PARA WHATSAPP:
-    - Estás respondiendo en WhatsApp. NUNCA uses encabezados de Markdown con hashtags (`#`, `##`, `###`, `####`). Están TERMINANTEMENTE PROHIBIDOS.
-    - NUNCA uses tablas de Markdown con barras verticales (`| col | col |` o `|---|---|`). Están TERMINANTEMENTE PROHIBIDAS porque en celular se ven rotas e ilegibles.
-    - En WhatsApp la negrita se escribe con UN SOLO ASTERISCO `*texto*`. NUNCA uses doble asterisco `**texto**`.
-    - Cuando presentes listas de planes o turnos, utilizá siempre viñetas ordenadas con el destello ✦ o puntos •:
-      ✦ *Plan Mensual - 8 Clases* ($55.000)
-      • 8 clases mensuales (2 veces por semana)
-      • Ideal para constancia semanal y ritmo continuo.
-
-{reglas_negocio_doc}
-"""
 
 def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, str, List[str]]:
     """
-    Ejecuta el ciclo de agente con LangGraph.
+    Ejecuta el ciclo de atención multi-agente con arquitectura de legos orquestada por LangGraph.
     Retorna: (texto_respuesta, agente_responsable, tools_ejecutadas)
     """
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
     groq_key = os.environ.get('GROQ_API_KEY')
-    
+
     nombre_user = ""
     usuario_id = ""
     if conversacion.usuario:
@@ -197,39 +74,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY, ni OPENAI_API_KEY ni GROQ_API_KEY configuradas. Ejecutando respuesta inteligente basada en reglas.")
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
-    # 2. Modo LangGraph con LLM (Anthropic Claude, OpenAI GPT o Groq Llama)
+    # 2. Modo Orquestador Multi-Agente con LangGraph
     try:
-        active_tools = obtener_tools_para_rol(conversacion.rol_detectado)
-
-        if anthropic_key:
-            from langchain_anthropic import ChatAnthropic
-            # Default a Claude 3.5 Haiku para respuesta ultra-rápida en WhatsApp (<1.2s)
-            model_name = os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-haiku-20241022')
-            llm = ChatAnthropic(
-                model=model_name,
-                temperature=0.3,
-                max_tokens=600,
-                api_key=anthropic_key
-            ).bind_tools(active_tools)
-        elif openai_key:
-            from langchain_openai import ChatOpenAI
-            model_name = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
-            llm = ChatOpenAI(
-                model=model_name,
-                temperature=0.3,
-                max_tokens=600,
-                api_key=openai_key
-            ).bind_tools(active_tools)
-        else:
-            from langchain_groq import ChatGroq
-            model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
-            llm = ChatGroq(
-                model=model_name,
-                temperature=0.3,
-                max_tokens=600,
-                api_key=groq_key
-            ).bind_tools(active_tools)
-
         # Cargar historial reciente de la conversación (últimos 8 mensajes)
         mensajes_db = conversacion.mensajes.order_by('-created_at')[:8]
         historial_langchain = []
@@ -239,75 +85,9 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             else:
                 historial_langchain.append(AIMessage(content=m.texto))
 
-        # Mensaje de sistema con soporte de Prompt Caching (para acelerar llamadas consecutivas)
-        sys_prompt = build_system_prompt(conversacion.rol_detectado, nombre_user, usuario_id)
-        sys_msg = SystemMessage(
-            content=sys_prompt,
-            additional_kwargs={"cache_control": {"type": "ephemeral"}}
-        )
-        current_messages = [sys_msg] + historial_langchain + [HumanMessage(content=mensaje_usuario)]
+        current_messages = historial_langchain + [HumanMessage(content=mensaje_usuario)]
 
-        # Definir grafo
-        workflow = StateGraph(AgentState)
-
-        def agente_node(state: AgentState):
-            messages = state["messages"]
-            response = llm.invoke(messages)
-            return {"messages": [response], "agente_responsable": "asistente_recepcionista"}
-
-        tool_node = ToolNode(active_tools)
-
-        # Enviar aviso inmediato de "espera activa" (anti-clavado de visto) al iniciar tools
-        # Se envía en un hilo desacoplado para NO demorar la ejecución de las herramientas.
-        ack_enviado = [False]
-
-        def tools_wrapper_node(state: AgentState):
-            if not ack_enviado[0]:
-                ack_enviado[0] = True
-                phone = state.get("phone")
-                rol_user = state.get("rol", "")
-                if phone:
-                    def _enviar_ack():
-                        try:
-                            from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
-                            from ..models import MensajeWhatsAppLog, ConversacionWhatsApp
-                            if rol_user == 'DUENA':
-                                msg_ack = "✦ Aguardame un segundito que ya te preparo la información..."
-                            else:
-                                msg_ack = "¡Dale! ✦ Aguardame un segundito que ya me fijo en el sistema..."
-                            print(f"[ASISTENTE ESPERA ACTIVA] Enviando aviso previo a {phone}...", flush=True)
-                            WhatsAppClient().send_text_message(phone, msg_ack)
-                            conv = ConversacionWhatsApp.objects.filter(telefono=phone).first()
-                            if conv:
-                                MensajeWhatsAppLog.objects.create(
-                                    conversacion=conv,
-                                    direccion='SALIENTE',
-                                    agente_responsable='asistente_espera_activa',
-                                    texto=msg_ack
-                                )
-                        except Exception as ex:
-                            logger.warning(f"Error enviando ack de espera activa: {ex}")
-
-                    import threading
-                    threading.Thread(target=_enviar_ack, daemon=True).start()
-
-            return tool_node.invoke(state)
-
-        workflow.add_node("agente", agente_node)
-        workflow.add_node("tools", tools_wrapper_node)
-
-        def should_continue(state: AgentState):
-            messages = state["messages"]
-            last_message = messages[-1]
-            if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                return "tools"
-            return END
-
-        workflow.set_entry_point("agente")
-        workflow.add_conditional_edges("agente", should_continue, {"tools": "tools", END: END})
-        workflow.add_edge("tools", "agente")
-
-        app = workflow.compile()
+        app = get_compiled_graph()
 
         initial_state: AgentState = {
             "messages": current_messages,
@@ -316,28 +96,33 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             "rol": conversacion.rol_detectado,
             "usuario_id": usuario_id,
             "nombre_usuario": nombre_user,
-            "next_node": "agente",
+            "target_agent": None,
+            "next_node": "router",
             "agente_responsable": "asistente_recepcionista",
             "tools_usadas": [],
             "esperando_humano": False
         }
 
-        import time
         t_inicio = time.time()
         final_output = app.invoke(initial_state)
         duracion = time.time() - t_inicio
-        print(f"[ASISTENTE TIMING] Grafo completado en {duracion:.2f}s | Modelo: {model_name} | Rol: {conversacion.rol_detectado}", flush=True)
-        
+
         # Extraer respuesta final y tools ejecutadas
         tools_usadas = []
         respuesta_final = ""
-        for m in final_output["messages"]:
+        agente_responsable = (
+            final_output.get("agente_responsable") or 
+            final_output.get("target_agent") or 
+            "asistente_recepcionista"
+        )
+
+        for m in final_output.get("messages", []):
             if isinstance(m, ToolMessage):
                 tools_usadas.append(getattr(m, 'name', 'tool'))
-            elif isinstance(m, AIMessage) and not m.tool_calls:
+            elif isinstance(m, AIMessage) and not getattr(m, 'tool_calls', None):
                 respuesta_final = m.content
 
-        if not respuesta_final:
+        if not respuesta_final and final_output.get("messages"):
             last_msg = final_output["messages"][-1]
             respuesta_final = last_msg.content if hasattr(last_msg, 'content') else "¡Hola! ✦ ¿En qué puedo acompañarte hoy?"
 
@@ -347,11 +132,14 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         except Exception:
             pass
 
-        return respuesta_final, "asistente_recepcionista", tools_usadas
+        print(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}", flush=True)
+        logger.info(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}")
+
+        return respuesta_final, agente_responsable, tools_usadas
 
     except Exception as e:
-        logger.error(f"[ASISTENTE LLM ERROR] {e}", exc_info=True)
-        # Fallback elegante
+        logger.error(f"[ASISTENTE MULTI-AGENTE ERROR] {e}", exc_info=True)
+        # Fallback elegante a simulador basado en reglas
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
 
@@ -368,7 +156,6 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
     if rol == 'DUENA' or any(k in msg_low for k in ['aprobar', 'acreditar', 'rechazar']):
         # 1. Aprobación de comprobantes
         if any(k in msg_low for k in ['aprobar', 'acreditar']):
-            # Extraer posible identificador (palabra luego de aprobar/acreditar)
             partes = mensaje_usuario.split()
             identificador = ""
             for idx, p in enumerate(partes):
@@ -391,7 +178,6 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
 
         # 3. Reasignación directa de profesoras (ej: "sacá a X y poné a Y", "reemplazá a X por Y")
         if any(k in msg_low for k in ['sacá a', 'saca a', 'poné a', 'pone a', 'reemplazá a', 'reemplaza a', 'en vez de']):
-            # Extraer nombres mediante patrones comunes
             match_saca_pone = re.search(r'(?:sac[aá]|reemplaz[aá])\s+(?:a\s+)?(\w+)\s+(?:y\s+)?(?:pon[eé]|por)\s+(?:a\s+)?(\w+)', msg_low)
             profe_ant = match_saca_pone.group(1) if match_saca_pone else ""
             nueva_profe = match_saca_pone.group(2) if match_saca_pone else ""
@@ -444,7 +230,6 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
 
         # 6. Registro de vínculos inseparables (ej: "Marcela y Valentina son madre e hija")
         if any(k in msg_low for k in ['madre e hija', 'inseparables', 'vienen juntas', 'amigas', 'juntas']):
-            # Intentar extraer dos nombres
             nombres_match = re.search(r'(\w+)\s+y\s+(\w+)', mensaje_usuario)
             if nombres_match:
                 n1, n2 = nombres_match.group(1), nombres_match.group(2)

@@ -2,7 +2,7 @@ from typing import TypedDict, Annotated, List, Optional
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     # Historial de mensajes de la conversación
     messages: Annotated[List[BaseMessage], add_messages]
     
@@ -14,7 +14,8 @@ class AgentState(TypedDict):
     nombre_usuario: Optional[str]
     
     # Orquestación y auditoría
-    next_node: str # Nombre del siguiente agente o END
+    target_agent: Optional[str] # agente_turnos, agente_finanzas, agente_profesores, agente_direccion, agente_recepcionista
+    next_node: str
     agente_responsable: str
     tools_usadas: List[str]
     esperando_humano: bool
