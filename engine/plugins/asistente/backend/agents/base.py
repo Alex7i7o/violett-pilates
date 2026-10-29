@@ -67,12 +67,27 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     elif groq_key:
         from langchain_groq import ChatGroq
         model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
-        llm = ChatGroq(
+        primary_groq = ChatGroq(
             model=model_name,
             temperature=temperature,
             max_tokens=max_tokens,
             api_key=groq_key
         )
+        # Fallback de alta velocidad a llama-3.1-8b-instant si 70b alcanza rate limit (429) o timeout
+        fallback_model = os.environ.get('GROQ_FALLBACK_MODEL', 'llama-3.1-8b-instant')
+        if fallback_model and fallback_model != model_name:
+            secondary_groq = ChatGroq(
+                model=fallback_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_key=groq_key
+            )
+            if tools:
+                return primary_groq.bind_tools(tools).with_fallbacks([secondary_groq.bind_tools(tools)])
+            else:
+                return primary_groq.with_fallbacks([secondary_groq])
+        else:
+            llm = primary_groq
 
     if llm and tools:
         llm = llm.bind_tools(tools)

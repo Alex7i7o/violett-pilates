@@ -142,6 +142,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         return respuesta_final, agente_responsable, tools_usadas
 
     except Exception as e:
+        print(f"[ASISTENTE MULTI-AGENTE ERROR CRITICO] Fallback a simulador por error: {e}", flush=True)
         logger.error(f"[ASISTENTE MULTI-AGENTE ERROR] Fallback a simulador conversacional por error: {e}", exc_info=True)
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
