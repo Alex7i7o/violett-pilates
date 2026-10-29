@@ -22,14 +22,25 @@ def procesar_audio_entrante_async(phone: str, audio_id: str, mime_type: str = "a
     groq_key = os.environ.get('GROQ_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
 
-    # 1. Modo Simulación si no hay API Key o no se pudo descargar el audio
-    if (not groq_key and not openai_key) or not audio_bytes:
-        logger.info(f"[ASISTENTE AUDIO SIMULADOR] Audio recibido de {clean_phone} (audio_id: {audio_id})")
-        texto_transcrito = "Hola, quería consultar qué horarios tienen disponibles para Pilates Reformer mañana por la tarde."
-        _atender_audio_transcrito(conversacion, clean_phone, texto_transcrito, proveedor="simulador")
+    # 1. Si no se pudieron descargar los bytes del audio
+    if not audio_bytes:
+        logger.warning(f"[ASISTENTE AUDIO] No se pudieron descargar bytes de audio {audio_id} para {clean_phone}")
+        client.send_text_message(
+            clean_phone,
+            "¡Hola! ✦ Disculpá, no logré descargar tu mensaje de audio. ¿Podrías reenviarlo o escribirme tu consulta por mensaje de texto? ¡Muchas gracias!"
+        )
         return
 
-    # 2. Transcripción con Groq Whisper (Ultra rápido, ~300ms)
+    # 2. Si no hay API key para Whisper configurada en el servidor
+    if not groq_key and not openai_key:
+        logger.warning(f"[ASISTENTE AUDIO] Ni GROQ_API_KEY ni OPENAI_API_KEY configuradas para transcripción de audio en {clean_phone}.")
+        client.send_text_message(
+            clean_phone,
+            "¡Hola! ✦ Recibí tu audio, pero en este momento no tengo activo el transcriptor de voz en el sistema. ¿Podrías escribirme tu consulta por acá en texto así te respondo enseguida? ¡Muchas gracias!"
+        )
+        return
+
+    # 3. Transcripción con Groq Whisper (Ultra rápido, ~300ms)
     texto_transcrito = ""
     proveedor_usado = ""
 
@@ -39,7 +50,6 @@ def procesar_audio_entrante_async(phone: str, audio_id: str, mime_type: str = "a
             groq_client = Groq(api_key=groq_key)
             model_stt = os.environ.get('GROQ_AUDIO_MODEL', 'whisper-large-v3-turbo')
             
-            # Formato de tupla (nombre_archivo, bytes, content_type)
             file_tuple = ("audio.ogg", audio_bytes, mime_type or "audio/ogg")
             
             transcription = groq_client.audio.transcriptions.create(
@@ -54,7 +64,7 @@ def procesar_audio_entrante_async(phone: str, audio_id: str, mime_type: str = "a
         except Exception as e:
             logger.error(f"[ASISTENTE AUDIO] Error en transcripción con Groq: {e}", exc_info=True)
 
-    # 3. Fallback a OpenAI Whisper si Groq falla o no está configurado
+    # 4. Fallback a OpenAI Whisper si Groq falla o no está configurado
     if not texto_transcrito and openai_key:
         try:
             from openai import OpenAI
@@ -73,14 +83,13 @@ def procesar_audio_entrante_async(phone: str, audio_id: str, mime_type: str = "a
             logger.error(f"[ASISTENTE AUDIO] Error en transcripción con OpenAI: {e}", exc_info=True)
 
     if not texto_transcrito:
-        # Si fallaron los proveedores, avisar cordialmente al usuario
         client.send_text_message(
             clean_phone,
             "¡Hola! ✦ Disculpá, no logré escuchar con claridad tu mensaje de audio. ¿Podrías reenviarlo o escribirme tu consulta en texto? ¡Muchas gracias!"
         )
         return
 
-    # 4. Procesar el texto transcrito con el agente
+    # 5. Procesar el texto transcrito con el agente
     _atender_audio_transcrito(conversacion, clean_phone, texto_transcrito, proveedor=proveedor_usado)
 
 

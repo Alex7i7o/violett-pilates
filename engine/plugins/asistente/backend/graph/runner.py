@@ -71,7 +71,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
     # 1. Modo Simulación si no hay API Key configurada
     if not anthropic_key and not openai_key and not groq_key:
-        logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY, ni OPENAI_API_KEY ni GROQ_API_KEY configuradas. Ejecutando respuesta inteligente basada en reglas.")
+        logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY, ni OPENAI_API_KEY ni GROQ_API_KEY configuradas. Ejecutando respuesta conversacional inteligente basada en reglas.")
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
     # 2. Modo Orquestador Multi-Agente con LangGraph
@@ -138,19 +138,32 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         return respuesta_final, agente_responsable, tools_usadas
 
     except Exception as e:
-        logger.error(f"[ASISTENTE MULTI-AGENTE ERROR] {e}", exc_info=True)
-        # Fallback elegante a simulador basado en reglas
+        logger.error(f"[ASISTENTE MULTI-AGENTE ERROR] Fallback a simulador conversacional por error: {e}", exc_info=True)
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
 
 def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: str, nombre_user: str) -> Tuple[str, str, List[str]]:
     """
-    Modo fallback / simulador inteligente cuando no hay API Key o falla el proveedor LLM.
-    Ejecuta las tools reales de Django según palabras clave y rol detectado.
+    Modo simulador conversacional inteligente cuando no hay API Key o falla el proveedor LLM.
+    Diseñado especialmente con alta empatía, voseo cariñoso, memoria del historial y trato cálido para personas adultas.
     """
-    msg_low = mensaje_usuario.lower()
+    msg_low = mensaje_usuario.lower().strip()
     tools_usadas = []
     rol = conversacion.rol_detectado
+
+    nombre_display = nombre_user.split()[0] if nombre_user else ""
+    saludo_base = f"¡Hola {nombre_display}! ✦ " if nombre_display else "¡Hola! ✦ "
+
+    # Analizar historial reciente para no repetir el saludo inicial ni hablar como un contestador
+    mensajes_previos = list(conversacion.mensajes.order_by('-created_at')[:6])
+    ya_saludo_reciente = False
+    ultimo_mensaje_bot = ""
+    for m in mensajes_previos:
+        if m.direccion == 'SALIENTE':
+            ultimo_mensaje_bot = m.texto.lower()
+            if any(k in ultimo_mensaje_bot for k in ['bienvenida a violett', 'soy la asistente', 'en qué puedo acompañarte', 'hola de nuevo']):
+                ya_saludo_reciente = True
+            break
 
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA ---
     if rol == 'DUENA' or any(k in msg_low for k in ['aprobar', 'acreditar', 'rechazar']):
@@ -176,7 +189,7 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
             tools_usadas.append('rechazar_comprobante_pago')
             return res, "agente_finanzas_rechazo", tools_usadas
 
-        # 3. Reasignación directa de profesoras (ej: "sacá a X y poné a Y", "reemplazá a X por Y")
+        # 3. Reasignación directa de profesoras
         if any(k in msg_low for k in ['sacá a', 'saca a', 'poné a', 'pone a', 'reemplazá a', 'reemplaza a', 'en vez de']):
             match_saca_pone = re.search(r'(?:sac[aá]|reemplaz[aá])\s+(?:a\s+)?(\w+)\s+(?:y\s+)?(?:pon[eé]|por)\s+(?:a\s+)?(\w+)', msg_low)
             profe_ant = match_saca_pone.group(1) if match_saca_pone else ""
@@ -228,7 +241,7 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
             tools_usadas.append('analizar_optimizacion_turnos_proximos')
             return res, "optimizador_ocupacion", tools_usadas
 
-        # 6. Registro de vínculos inseparables (ej: "Marcela y Valentina son madre e hija")
+        # 6. Vínculos inseparables
         if any(k in msg_low for k in ['madre e hija', 'inseparables', 'vienen juntas', 'amigas', 'juntas']):
             nombres_match = re.search(r'(\w+)\s+y\s+(\w+)', mensaje_usuario)
             if nombres_match:
@@ -254,33 +267,164 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
             tools_usadas.append('consultar_mis_clases_profesor')
             return res, "agente_profesores", tools_usadas
 
-    # --- CONSULTAS GENERALES / ALUMNAS ---
-    # 1. Consulta de turnos / horarios / disponibilidad
-    if any(k in msg_low for k in ['turno', 'horario', 'disponib', 'clase', 'hoy', 'mañana', 'lugar', 'camilla']):
-        fecha = 'hoy' if 'hoy' in msg_low else ('mañana' if 'mañana' in msg_low or 'manana' in msg_low else 'hoy')
+    # --- CONSULTAS DE ALUMNAS Y CLIENTAS (CONVERSACIONAL Y CÁLIDO) ---
+
+    # 1. Confirmación de reserva / intención de anotarse tras ver turnos
+    if ('turnos disponibles' in ultimo_mensaje_bot or 'horarios disponibles' in ultimo_mensaje_bot) and any(k in msg_low for k in ['anotame', 'anotáme', 'el de las', 'a las', 'dale', 'reservame', 'guardame']):
+        hora_match = re.search(r'(\d{1,2}(?::\d{2})?)', msg_low)
+        hora_deseada = hora_match.group(1) if hora_match else ""
+        
+        # Validar créditos antes de intentar
+        try:
+            from plugins.membresias.backend.models import Suscripcion
+            sub = Suscripcion.objects.filter(usuario_id=usuario_id, estado__in=['ACTIVO', 'AGOTADO']).first()
+        except Exception:
+            sub = None
+
+        if sub and sub.clases_restantes <= 0:
+            return (
+                f"{saludo_base}Me fijé para anotarte, pero veo que ya tenés agendadas todas las clases de tu abono de este mes, por lo que no te quedan créditos libres para reservar otra clase por ahora.\n\n"
+                f"Si querés sumar una clase individual extra o renovar tu abono para el próximo ciclo, avisame y lo coordinamos juntas con todo gusto 🌸.",
+                "agente_turnos_simulado",
+                []
+            )
+
+        if hora_deseada and usuario_id:
+            res_reserva = reservar_camilla_turno.invoke({
+                "usuario_id": usuario_id,
+                "fecha_o_dia": "mañana" if "mañana" in ultimo_mensaje_bot else "hoy",
+                "hora_str": hora_deseada
+            })
+            tools_usadas.append('reservar_camilla_turno')
+            return f"¡Listo {nombre_display}! ✦ {res_reserva}", "agente_turnos_simulado", tools_usadas
+
+    # 2. Consulta de turnos / horarios / disponibilidad
+    if any(k in msg_low for k in ['turno', 'horario', 'disponib', 'clase', 'hoy', 'mañana', 'lugar', 'camilla', 'cuando puedo ir']):
+        fecha = 'mañana' if any(k in msg_low for k in ['mañana', 'manana']) else 'hoy'
+        for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
+            if d in msg_low:
+                fecha = d
+                break
+
         res = consultar_turnos_disponibles.invoke({"fecha_str": fecha})
         tools_usadas.append('consultar_turnos_disponibles')
-        saludo = f"¡Hola {nombre_user}! ✦ " if nombre_user else "¡Hola! ✦ "
-        return f"{saludo}Te comparto los horarios disponibles:\n\n{res}\n\nSi querés reservar alguna camilla, avisame cuál te queda mejor.", "agente_turnos_simulado", tools_usadas
 
-    # 2. Consulta de plan / saldo / créditos
-    if any(k in msg_low for k in ['plan', 'credito', 'clases que me quedan', 'vence', 'vencimiento', 'cuantas clases']):
+        if "no hay turnos" in res.lower() or "sin camillas" in res.lower():
+            return (
+                f"{saludo_base}Me fijé en la grilla para esa fecha pero por el momento tenemos todas las camillas completas.\n\n"
+                f"Si querés, me puedo fijar para el día siguiente o para otro horario que te quede cómodo, ¿te parece?",
+                "agente_turnos_simulado",
+                tools_usadas
+            )
+
+        return (
+            f"{saludo_base}Con mucho gusto, me fijé en el sistema y tenemos estos lugares disponibles en camilla Reformer:\n\n"
+            f"{res}\n\n"
+            f"¿Te queda bien alguno de estos horarios? Decime cuál preferís y ya te aseguro tu camilla ✦.",
+            "agente_turnos_simulado",
+            tools_usadas
+        )
+
+    # 3. Consulta de plan / saldo / créditos restantes
+    if any(k in msg_low for k in ['plan', 'credito', 'crédito', 'clases que me quedan', 'cuantas clases', 'cuántas clases', 'vence', 'vencimiento', 'mi abono']):
         if usuario_id:
-            res = consultar_estado_plan_alumna.invoke({"usuario_id": usuario_id})
-            tools_usadas.append('consultar_estado_plan_alumna')
-            return f"¡Hola {nombre_user}! ✦ Acá tenés los detalles de tu membresía:\n\n{res}", "agente_finanzas_simulado", tools_usadas
-        else:
-            res = obtener_planes_y_precios.invoke({})
-            tools_usadas.append('obtener_planes_y_precios')
-            return f"¡Hola! ✦ Te comparto nuestros planes vigentes:\n\n{res}", "agente_finanzas_simulado", tools_usadas
+            try:
+                from plugins.membresias.backend.models import Suscripcion
+                sub = Suscripcion.objects.filter(
+                    usuario_id=usuario_id,
+                    estado__in=['ACTIVO', 'AGOTADO']
+                ).select_related('plan').order_by('-fecha_inicio').first()
+            except Exception:
+                sub = None
 
-    # 3. Consulta de precios / transferencias
-    if any(k in msg_low for k in ['precio', 'cuanto sale', 'costo', 'pagar', 'transfer', 'alias', 'cbu', 'datos']):
+            if sub:
+                tools_usadas.append('consultar_estado_plan_alumna')
+                venc_str = sub.fecha_vencimiento.strftime('%d/%m/%Y')
+                
+                if sub.clases_restantes == 0:
+                    return (
+                        f"{saludo_base}Estuve mirando en tu cuenta y veo que tenés el {sub.plan.nombre}, "
+                        f"pero ya tenés todas las clases de este mes agendadas, por lo que no te quedan créditos libres para reservar otro turno por ahora.\n\n"
+                        f"Si querés sumar alguna clase extra o renovar tu abono para el próximo mes, avisame y lo vemos juntas con mucho gusto 🌸.",
+                        "agente_finanzas_simulado",
+                        tools_usadas
+                    )
+                else:
+                    return (
+                        f"{saludo_base}Te cuento que tenés disponibles {sub.clases_restantes} clase(s) "
+                        f"de tu {sub.plan.nombre} para aprovechar hasta el {venc_str} ✦.\n\n"
+                        f"¿Te gustaría que te busque lugar en algún día y horario para agendar tu clase?",
+                        "agente_finanzas_simulado",
+                        tools_usadas
+                    )
+
+        # Si no está identificada o no tiene plan
+        planes = obtener_planes_y_precios.invoke({})
+        tools_usadas.append('obtener_planes_y_precios')
+        return (
+            f"{saludo_base}Por el momento no veo ningún abono activo a tu nombre en el sistema. "
+            f"Te comparto los planes que tenemos disponibles para sumarte:\n\n{planes}\n\n"
+            f"¿Te gustaría que te cuente cómo es la primera clase o querés consultar horarios?",
+            "agente_finanzas_simulado",
+            tools_usadas
+        )
+
+    # 4. Consulta de precios / valores / transferencias
+    if any(k in msg_low for k in ['precio', 'cuanto sale', 'cuánto sale', 'costo', 'pagar', 'transfer', 'alias', 'cbu', 'datos']):
         planes = obtener_planes_y_precios.invoke({})
         datos = obtener_datos_transferencia_estudio.invoke({})
         tools_usadas.extend(['obtener_planes_y_precios', 'obtener_datos_transferencia_estudio'])
-        return f"¡Hola! ✦ Con gusto te paso la información de valores y medios de pago:\n\n{planes}\n\n{datos}", "agente_finanzas_simulado", tools_usadas
+        return (
+            f"{saludo_base}Con mucho gusto te paso la información de nuestros planes y los datos para transferir:\n\n"
+            f"{planes}\n\n{datos}\n\n"
+            f"El plan más elegido por nuestras alumnas es el de 8 clases mensuales (2 veces por semana) para mantener la constancia y sentir la espalda liviana 🌸. "
+            f"¿Querés que te guarde lugar en algún horario para empezar?",
+            "agente_finanzas_simulado",
+            tools_usadas
+        )
 
-    # 4. Saludo o consulta general
-    saludo = f"¡Hola {nombre_user}! ✦ " if nombre_user else "¡Hola! ✦ "
-    return f"{saludo}Bienvenida a Violett Pilates. Soy la asistente del estudio. Puedo ayudarte a consultar turnos disponibles en Reformer, reservar tu camilla, consultar el estado de tu plan o brindarte información de los abonos. ¿En qué puedo acompañarte hoy?", "asistente_recepcionista", tools_usadas
+    # 5. Dudas sobre la ubicación / dirección del estudio
+    if any(k in msg_low for k in ['donde estan', 'dónde están', 'donde queda', 'dónde queda', 'direccion', 'dirección', 'ubicacion', 'ubicación']):
+        return (
+            f"{saludo_base}Nuestro estudio boutique está ubicado en Gral. Guido 1573, Ramos Mejía ✦.\n\n"
+            f"Es un espacio íntimo y cálido con grupos reducidos de hasta 3 camillas Reformer por turno, para que tengas una práctica guiada y súper cuidada.\n\n"
+            f"¿Querías pasar a conocer el lugar o te gustaría ver turnos disponibles?",
+            "asistente_recepcionista",
+            []
+        )
+
+    # 6. Dudas sobre el método / principiantes / dolor de espalda / edad
+    if any(k in msg_low for k in ['duele', 'espalda', 'edad', 'principiante', 'nunca hice', 'como son las clases', 'cómo son las clases']):
+        return (
+            f"{saludo_base}¡No te preocupes en absoluto! En Violett las clases son súper personalizadas (máximo 3 alumnas por turno) y nuestras profesoras están formadas en anatomía y cuidado postural 🌸.\n\n"
+            f"Cada clase dura 60 minutos: 55 minutos de trabajo suave y controlado en Reformer para aliviar tensiones, y 5 minutos finales de masajes de descompresión asistido.\n\n"
+            f"Nos adaptamos al ritmo de tu cuerpo desde la primera clase. ¿Te gustaría que nos fijemos algún horario para que vengas a probar?",
+            "asistente_recepcionista",
+            []
+        )
+
+    # 7. Agradecimientos, confirmaciones amables o despedidas
+    if any(k in msg_low for k in ['gracias', 'muchas gracias', 'genial', 'buenisimo', 'buenísimo', 'perfecto', 'dale gracias', 'chau', 'hasta luego']):
+        return (
+            f"¡Por nada, {nombre_display}! ✦ Cualquier otra consulta que tengas sobre tus clases o el estudio, escribime cuando quieras que acá estoy para acompañarte.\n\n"
+            f"¡Que tengas un hermoso día! 🌸",
+            "asistente_recepcionista",
+            []
+        )
+
+    # 8. Saludos o mensajes breves de seguimiento
+    if ya_saludo_reciente:
+        return (
+            f"¡Hola de nuevo, {nombre_display}! ✦ Decime, ¿querías consultar algún horario en especial para sumarte, o tenías alguna duda sobre los planes?",
+            "asistente_recepcionista",
+            []
+        )
+
+    # 9. Saludo inicial por primera vez
+    return (
+        f"{saludo_base}Bienvenida a Violett Pilates ✦. Soy la asistente del estudio.\n\n"
+        f"Puedo ayudarte a consultar turnos disponibles en Reformer, reservar tu camilla o brindarte información de nuestros abonos mensuales.\n\n"
+        f"¿En qué te puedo acompañar hoy?",
+        "asistente_recepcionista",
+        tools_usadas
+    )
