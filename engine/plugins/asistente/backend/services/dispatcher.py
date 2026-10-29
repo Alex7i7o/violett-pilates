@@ -39,9 +39,9 @@ def _ejecutar_ciclo_agente(data: dict):
         if usuario:
             conversacion.usuario = usuario
 
-    # 3. Detectar rol (con coincidencia robusta para celular argentino de la dueña)
-    ultimos_duena = telefono_duena[-8:] if len(telefono_duena) >= 8 else telefono_duena
-    if clean_phone and ultimos_duena and clean_phone.endswith(ultimos_duena):
+    # 3. Detectar rol (con coincidencia robusta y criptográfica por número de WhatsApp de la dueña)
+    ultimos_duena = telefono_duena[-8:] if len(telefono_duena) >= 8 else None
+    if clean_phone and ultimos_duena and len(ultimos_duena) >= 8 and clean_phone.endswith(ultimos_duena):
         conversacion.rol_detectado = 'DUENA'
     elif conversacion.usuario:
         is_profesor = getattr(conversacion.usuario, 'is_profesor', False) or str(getattr(conversacion.usuario, 'rol', '')).upper() == 'PROFESOR'

@@ -33,11 +33,12 @@ def consultar_estado_plan_alumna(usuario_id: str) -> str:
     vencido = sub.fecha_vencimiento < timezone.localdate()
     estado_str = "Vencido" if vencido else ("Agotado (Clases ya agendadas)" if sub.clases_restantes == 0 else "Activo")
 
-    return f"""✦ Estado de tu Plan:
+    return f"""✦ Información de la membresía:
 • Plan: {sub.plan.nombre}
-• Créditos disponibles para reservar: {sub.clases_restantes}
-• Vencimiento: {sub.fecha_vencimiento.strftime('%d/%m/%Y')}
-• Estado: {estado_str}"""
+• Créditos disponibles para reservar turnos: {sub.clases_restantes}
+• Vencimiento del abono: {sub.fecha_vencimiento.strftime('%d/%m/%Y')}
+• Estado: {estado_str}
+(Nota: Si tiene 0 créditos disponibles, ya tiene todas sus clases agendadas o consumidas de este mes, por lo que no puede reservar otra clase sin sumar una clase extra o renovar)."""
 
 
 @tool

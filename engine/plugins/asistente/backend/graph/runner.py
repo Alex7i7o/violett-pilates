@@ -66,7 +66,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     nombre_user = ""
     usuario_id = ""
     if conversacion.usuario:
-        nombre_user = f"{conversacion.usuario.nombre} {conversacion.usuario.apellido}".strip()
+        # Usamos únicamente el primer nombre para máxima calidez humana
+        nombre_user = conversacion.usuario.nombre.strip() if conversacion.usuario.nombre else ""
         usuario_id = str(conversacion.usuario.id)
 
     # 1. Modo Simulación si no hay API Key configurada
@@ -76,12 +77,14 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
     # 2. Modo Orquestador Multi-Agente con LangGraph
     try:
-        # Cargar historial reciente de la conversación (últimos 8 mensajes)
-        mensajes_db = conversacion.mensajes.order_by('-created_at')[:8]
+        # Cargar historial previo de la conversación excluyendo el mensaje entrante recién creado en dispatcher
+        mensajes_db = list(conversacion.mensajes.order_by('-created_at')[1:9])
         historial_langchain = []
-        for m in reversed(list(mensajes_db)):
+        for m in reversed(mensajes_db):
             if m.direccion == 'ENTRANTE':
-                historial_langchain.append(HumanMessage(content=m.texto))
+                # Limpiar prefijo [Audio] para fluidez conversacional
+                txt = m.texto.replace("🎤 [Audio]: ", "").strip()
+                historial_langchain.append(HumanMessage(content=txt))
             else:
                 historial_langchain.append(AIMessage(content=m.texto))
 
@@ -100,7 +103,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             "next_node": "router",
             "agente_responsable": "asistente_recepcionista",
             "tools_usadas": [],
-            "esperando_humano": False
+            "esperando_humano": False,
+            "ack_enviado": False
         }
 
         t_inicio = time.time()
@@ -152,21 +156,47 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
     rol = conversacion.rol_detectado
 
     nombre_display = nombre_user.split()[0] if nombre_user else ""
-    saludo_base = f"¡Hola {nombre_display}! ✦ " if nombre_display else "¡Hola! ✦ "
 
-    # Analizar historial reciente para no repetir el saludo inicial ni hablar como un contestador
-    mensajes_previos = list(conversacion.mensajes.order_by('-created_at')[:6])
-    ya_saludo_reciente = False
-    ultimo_mensaje_bot = ""
-    for m in mensajes_previos:
-        if m.direccion == 'SALIENTE':
-            ultimo_mensaje_bot = m.texto.lower()
-            if any(k in ultimo_mensaje_bot for k in ['bienvenida a violett', 'soy la asistente', 'en qué puedo acompañarte', 'hola de nuevo']):
-                ya_saludo_reciente = True
-            break
+    # Analizar historial para no repetir el saludo inicial ni hablar como un contestador
+    mensajes_previos = list(conversacion.mensajes.order_by('-created_at')[:8])
+    mensajes_salientes = [m for m in mensajes_previos if m.direccion == 'SALIENTE']
+    ya_saludo_reciente = len(mensajes_salientes) > 0
+    ultimo_mensaje_bot = mensajes_salientes[0].texto.lower() if mensajes_salientes else ""
 
-    # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA ---
-    if rol == 'DUENA' or any(k in msg_low for k in ['aprobar', 'acreditar', 'rechazar']):
+    # El saludo con nombre solo se emite en el primerísimo contacto
+    saludo_base = f"¡Hola {nombre_display}! ✦ " if (nombre_display and not ya_saludo_reciente) else ("¡Hola! ✦ " if not ya_saludo_reciente else "")
+
+    # --- BLOQUEO DE SEGURIDAD ESTRICTO (ANTI-SUPLANTACIÓN Y ZERO-TRUST) ---
+    es_intento_destructivo = any(k in msg_low for k in [
+        'borra la base', 'borrar la base', 'borra toda', 'borrar toda', 'eliminar base',
+        'drop table', 'delete from', 'vaciar base', 'wipe database', 'destruir base'
+    ])
+    if es_intento_destructivo:
+        return (
+            "Por políticas estrictas de seguridad del estudio, esa operación no existe ni está permitida en el sistema de Violett Pilates ✦.",
+            "seguridad_bloqueo",
+            []
+        )
+
+    es_consulta_facturacion = any(k in msg_low for k in [
+        'factur', 'ingreso', 'reporte de facturacion', 'reporte de facturación',
+        'cuanta plata', 'cuánta plata', 'balance del mes', 'balance de la semana',
+        'recaudacion', 'recaudación', 'ganancias'
+    ])
+    es_comando_admin = any(k in msg_low for k in [
+        'aprobar comprobante', 'acreditar comprobante', 'rechazar comprobante',
+        'sacá a', 'saca a', 'poné a', 'pone a', 'reemplazá a', 'reemplaza a'
+    ])
+
+    if (es_consulta_facturacion or es_comando_admin) and rol != 'DUENA':
+        return (
+            "Esa información y las acciones de gestión son confidenciales y de uso exclusivo de la dirección de Violett Pilates ✦. Si necesitás consultar los planes y valores vigentes para clientas, te los puedo compartir con mucho gusto.",
+            "seguridad_bloqueo",
+            []
+        )
+
+    # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
+    if rol == 'DUENA':
         # 1. Aprobación de comprobantes
         if any(k in msg_low for k in ['aprobar', 'acreditar']):
             partes = mensaje_usuario.split()
@@ -414,15 +444,22 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
 
     # 8. Saludos o mensajes breves de seguimiento
     if ya_saludo_reciente:
+        if 'turnos disponibles' in ultimo_mensaje_bot or 'horarios disponibles' in ultimo_mensaje_bot:
+            return (
+                f"Decime, {nombre_display}, ¿te gustaría que te reserve alguna camilla en los horarios que vimos, o preferís que busquemos para otro día?",
+                "asistente_recepcionista",
+                []
+            )
         return (
-            f"¡Hola de nuevo, {nombre_display}! ✦ Decime, ¿querías consultar algún horario en especial para sumarte, o tenías alguna duda sobre los planes?",
+            f"Decime, {nombre_display}, ¿en qué te puedo orientar hoy? ¿Querías consultar algún horario en especial o tenías alguna duda sobre los planes?",
             "asistente_recepcionista",
             []
         )
 
     # 9. Saludo inicial por primera vez
+    saludo_inicial = f"¡Hola {nombre_display}! ✦ " if nombre_display else "¡Hola! ✦ "
     return (
-        f"{saludo_base}Bienvenida a Violett Pilates ✦. Soy la asistente del estudio.\n\n"
+        f"{saludo_inicial}Bienvenida a Violett Pilates. Soy la asistente del estudio.\n\n"
         f"Puedo ayudarte a consultar turnos disponibles en Reformer, reservar tu camilla o brindarte información de nuestros abonos mensuales.\n\n"
         f"¿En qué te puedo acompañar hoy?",
         "asistente_recepcionista",

@@ -19,3 +19,4 @@ class AgentState(TypedDict, total=False):
     agente_responsable: str
     tools_usadas: List[str]
     esperando_humano: bool
+    ack_enviado: bool

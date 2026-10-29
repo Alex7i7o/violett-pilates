@@ -42,11 +42,10 @@ def build_asistente_graph():
 
     # 2. Registrar nodo de herramientas con Espera Activa desacoplada
     raw_tool_node = ToolNode(ALL_ACTIVE_TOOLS)
-    ack_enviado = [False]
 
     def tools_wrapper_node(state: AgentState):
-        if not ack_enviado[0]:
-            ack_enviado[0] = True
+        ya_notificado = state.get("ack_enviado", False)
+        if not ya_notificado:
             phone = state.get("phone")
             rol_user = state.get("rol", "")
             if phone:
@@ -73,7 +72,11 @@ def build_asistente_graph():
 
                 threading.Thread(target=_enviar_ack, daemon=True).start()
 
-        return raw_tool_node.invoke(state)
+        tool_result = raw_tool_node.invoke(state)
+        if isinstance(tool_result, dict):
+            tool_result["ack_enviado"] = True
+            return tool_result
+        return {"messages": tool_result, "ack_enviado": True}
 
     workflow.add_node("tools", tools_wrapper_node)
 
