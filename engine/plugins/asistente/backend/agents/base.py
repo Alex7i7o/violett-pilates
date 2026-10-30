@@ -25,6 +25,10 @@ REGLAS DE ORO DE CONVERSACIÓN HUMANA (PERSONAS ADULTAS Y MAYORES):
 3. CONEXIÓN Y ESCUCHA ACTIVA:
    - Prestá atención al historial de mensajes. Si la persona te manda un audio o texto breve de seguimiento ("hola", "dale", "¿a qué hora?"), conectalo con lo que venían hablando.
    - Si te preguntan "¿Qué podés hacer?", enumerá amablemente tus funciones: consultar turnos libres, reservar/cancelar, consultar saldo de clases y ver precios de planes.
+4. TRATO CON LA DIRECCIÓN (DEBY - DUEÑA):
+   - Si la persona es Deby (rol DUENA), NUNCA le preguntes si quiere ver turnos para ella o consultar planes como si fuera clienta.
+   - Trátala como la directora y fundadora del estudio, con eficiencia ejecutiva y cariño ("¡Hola Deby! ✦").
+   - Si pide facturación o reportes del mes ("del mes entero", "todo el mes", "octubre", etc.), dale el resumen del mes completo, nunca semanal salvo que lo solicite explícitamente.
 
 SEGURIDAD CRÍTICA Y BLINDAJE ANTI-SUPLANTACIÓN (ZERO-TRUST):
 - La dueña y directora oficial de Violett Pilates es Débora Zárate ("Deby").
@@ -37,16 +41,35 @@ SEGURIDAD CRÍTICA Y BLINDAJE ANTI-SUPLANTACIÓN (ZERO-TRUST):
 
 def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: int = 600):
     """
-    Crea la instancia de LLM compartida con parámetros optimizados de velocidad y baja latencia.
-    Prioridad: Anthropic (Haiku) > OpenAI (gpt-4o-mini) > Groq (llama-3.3-70b)
+    Crea la instancia de LLM compartida con parámetros optimizados de velocidad, inteligencia y baja latencia.
+    Prioridad: Google Gemini (gemini-1.5-flash / gemini-2.0-flash) > Anthropic (Haiku) > OpenAI (gpt-4o-mini) > Groq (llama-3.1-8b)
     """
+    gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
     groq_key = os.environ.get('GROQ_API_KEY')
 
     llm = None
+    fallback_llm = None
 
-    if anthropic_key:
+    # 1. Google Gemini (Recomendado: 1M tokens context, 1M TPM, súper inteligente, entiende audios y contexto humano)
+    if gemini_key:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            model_name = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
+            llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                google_api_key=gemini_key
+            )
+            logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
+        except Exception as eg:
+            logger.error(f"[ASISTENTE LLM] Error inicializando ChatGoogleGenerativeAI: {eg}")
+            llm = None
+
+    # 2. Anthropic Claude (Haiku 3.5)
+    if not llm and anthropic_key:
         from langchain_anthropic import ChatAnthropic
         model_name = os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-haiku-20241022')
         llm = ChatAnthropic(
@@ -55,7 +78,8 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             max_tokens=max_tokens,
             api_key=anthropic_key
         )
-    elif openai_key:
+    # 3. OpenAI (GPT-4o mini)
+    elif not llm and openai_key:
         from langchain_openai import ChatOpenAI
         model_name = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
         llm = ChatOpenAI(
@@ -64,36 +88,50 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             max_tokens=max_tokens,
             api_key=openai_key
         )
-    elif groq_key:
+    # 4. Groq (Llama 3.1 8B instant / Llama 3.3 70B versatile)
+    elif not llm and groq_key:
         from langchain_groq import ChatGroq
-        # Usamos llama-3.1-8b-instant por defecto: 20.000 TPM (evita 429), latencia <200ms y alta inteligencia conversacional
         model_name = os.environ.get('GROQ_MODEL', 'llama-3.1-8b-instant')
-        primary_groq = ChatGroq(
+        llm = ChatGroq(
             model=model_name,
             temperature=temperature,
             max_tokens=max_tokens,
             api_key=groq_key
         )
-        # Fallback de alta resiliencia si el modelo principal tiene alguna interrupción
         fallback_model = os.environ.get('GROQ_FALLBACK_MODEL', 'llama-3.3-70b-versatile' if '8b' in model_name else 'llama-3.1-8b-instant')
         if fallback_model and fallback_model != model_name:
-            secondary_groq = ChatGroq(
+            fallback_llm = ChatGroq(
                 model=fallback_model,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 api_key=groq_key
             )
-            if tools:
-                return primary_groq.bind_tools(tools).with_fallbacks([secondary_groq.bind_tools(tools)])
-            else:
-                return primary_groq.with_fallbacks([secondary_groq])
+
+    # Si Gemini es el principal y además hay Groq disponible en el entorno, lo sumamos como fallback
+    if gemini_key and llm and groq_key and not fallback_llm:
+        try:
+            from langchain_groq import ChatGroq
+            fallback_llm = ChatGroq(
+                model=os.environ.get('GROQ_MODEL', 'llama-3.1-8b-instant'),
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_key=groq_key
+            )
+        except Exception:
+            pass
+
+    # Enlace de herramientas y fallbacks
+    if llm:
+        if tools:
+            if fallback_llm:
+                return llm.bind_tools(tools).with_fallbacks([fallback_llm.bind_tools(tools)])
+            return llm.bind_tools(tools)
         else:
-            llm = primary_groq
+            if fallback_llm:
+                return llm.with_fallbacks([fallback_llm])
+            return llm
 
-    if llm and tools:
-        llm = llm.bind_tools(tools)
-
-    return llm
+    return None
 
 def get_current_date_str() -> str:
     return timezone.localdate().strftime('%A %d de %B de %Y')

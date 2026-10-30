@@ -29,7 +29,13 @@ KEYWORDS_DIRECCION = [
     r'\baprobar\b', r'\brechazar\b', r'\breporte\b', r'\bfacturaci[oó]n\b',
     r'\bocupaci[oó]n\b', r'\boptimizar\b', r'\bfusionar\b', r'\bmadre e hija\b',
     r'\binseparables?\b', r'\bprospectos?\b', r'\bm[eé]tricas?\b', r'\bpon[eé] a\b',
-    r'\bsac[aá] a\b'
+    r'\bsac[aá] a\b',
+    r'\bmes entero\b', r'\btodo el mes\b', r'\bdel mes\b', r'\bde este mes\b',
+    r'\bde la semana\b', r'\bingresos?\b', r'\brecaudaci[oó]n\b', r'\bbalance\b',
+    r'\bcu[aá]nto (se factur[oó]|entr[oó]|ingres[oó]|se cobr[oó]|ganamos)\b',
+    r'\bno de una semana\b', r'\bplata\b', r'\bdinero\b',
+    r'\benero\b', r'\bfebrero\b', r'\bmarzo\b', r'\babril\b', r'\bmayo\b', r'\bjunio\b',
+    r'\bjulio\b', r'\bagosto\b', r'\bseptiembre\b', r'\boctubre\b', r'\bnoviembre\b', r'\bdiciembre\b'
 ]
 
 def clasificar_intencion_fast(texto: str, rol: str) -> str:
@@ -38,7 +44,7 @@ def clasificar_intencion_fast(texto: str, rol: str) -> str:
     """
     t = texto.lower().strip()
 
-    # Si es la dueña
+    # Si es la dueña (Deby)
     if rol == 'DUENA':
         for pattern in KEYWORDS_DIRECCION:
             if re.search(pattern, t):
@@ -84,6 +90,18 @@ def router_node(state):
     
     # 1. Fast-path determinístico (<1ms)
     target = clasificar_intencion_fast(last_user_msg, rol)
+
+    # 1b. Memoria conversacional para la dueña (Deby)
+    # Si Deby venía conversando sobre reportes/dirección y su nuevo mensaje es un seguimiento
+    # (ej: "del mes entero", "no de una semana", "y de octubre?", "pasame el resumen")
+    if rol == 'DUENA' and target == 'agente_recepcionista' and len(messages) > 1:
+        mensajes_previos = messages[:-1]
+        for m in reversed(mensajes_previos[-4:]):
+            prev_txt = getattr(m, 'content', '').lower()
+            if any(k in prev_txt for k in ['facturaci', 'resumen ejecutivo', 'ingresos', 'ocupaci', 'reporte']):
+                if any(k in last_user_msg.lower() for k in ['mes', 'semana', 'octubre', 'noviembre', 'todo', 'entero', 'no de', 'resumen', 'dame', 'pasame']):
+                    target = 'agente_direccion'
+                    break
     
     # 2. Si es recepcionista y el mensaje es complejo (>80 caracteres), evaluamos con LLM rápido
     if target == 'agente_recepcionista' and len(last_user_msg) > 80:
@@ -93,9 +111,10 @@ def router_node(state):
                 from langchain_core.messages import SystemMessage, HumanMessage
                 prompt_triaje = (
                     "Sos el clasificador de intenciones de Violett Pilates. "
-                    "Respondé con UNA SOLA PALABRA entre: turnos, finanzas, recepcionista. "
+                    "Respondé con UNA SOLA PALABRA entre: turnos, finanzas, direccion, recepcionista. "
                     "Si pide disponibilidad/cancelar/reservar -> turnos. "
                     "Si pide precios/pagos/alias/planes -> finanzas. "
+                    "Si es la dueña consultando balance, facturación o gestión -> direccion. "
                     "Si saluda o pregunta en general -> recepcionista."
                 )
                 resp = llm.invoke([SystemMessage(content=prompt_triaje), HumanMessage(content=last_user_msg)])
@@ -104,6 +123,8 @@ def router_node(state):
                     target = "agente_turnos"
                 elif "finanza" in decision or "precio" in decision or "pago" in decision:
                     target = "agente_finanzas"
+                elif "direccion" in decision or "reporte" in decision:
+                    target = "agente_direccion"
             except Exception as e:
                 logger.warning(f"Error en triaje LLM: {e}")
 

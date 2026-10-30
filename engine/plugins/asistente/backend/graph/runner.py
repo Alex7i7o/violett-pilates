@@ -35,6 +35,7 @@ from ..tools.optimizacion_tools import (
     consultar_preferencias_o_vinculos
 )
 from ..tools.reportes_tools import (
+    obtener_reporte_facturacion,
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
     contactar_prospectos_desde_lista
@@ -59,6 +60,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     Ejecuta el ciclo de atención multi-agente con arquitectura de legos orquestada por LangGraph.
     Retorna: (texto_respuesta, agente_responsable, tools_ejecutadas)
     """
+    gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
     groq_key = os.environ.get('GROQ_API_KEY')
@@ -69,12 +71,13 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         nombre_user = "Deby"
     elif conversacion.usuario:
         # Usamos únicamente el primer nombre para máxima calidez humana
-        nombre_user = conversacion.usuario.nombre.strip() if conversacion.usuario.nombre else ""
+        full_name = conversacion.usuario.nombre.strip() if conversacion.usuario.nombre else ""
+        nombre_user = full_name.split()[0] if full_name else ""
         usuario_id = str(conversacion.usuario.id)
 
     # 1. Modo Simulación si no hay API Key configurada
-    if not anthropic_key and not openai_key and not groq_key:
-        logger.info("[ASISTENTE SIMULADOR] Ni ANTHROPIC_API_KEY, ni OPENAI_API_KEY ni GROQ_API_KEY configuradas. Ejecutando respuesta conversacional inteligente basada en reglas.")
+    if not gemini_key and not anthropic_key and not openai_key and not groq_key:
+        logger.info("[ASISTENTE SIMULADOR] Ninguna API Key configurada (GEMINI, GROQ, OPENAI, ANTHROPIC). Ejecutando respuesta conversacional inteligente basada en reglas.")
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
     # 2. Modo Orquestador Multi-Agente con LangGraph
@@ -211,7 +214,9 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
             'como funciona', 'cómo funciona', 'para que servis', 'para qué servís',
             'en que me ayudas', 'en qué me ayudás', 'en q me ayudas', 'en q me ayudás',
             'que opciones hay', 'qué opciones hay', 'q opciones hay',
-            'ayuda', 'como me ayudas', 'cómo me ayudás', 'como me podes ayudar', 'cómo me podés ayudar'
+            'ayuda', 'como me ayudas', 'cómo me ayudás', 'como me podes ayudar', 'cómo me podés ayudar',
+            'saber que podes hacer', 'saber q podes hacer', 'saber qué podés hacer', 'saber q podés hacer',
+            'que sabes hacer', 'qué sabés hacer', 'q sabes hacer'
         ])
     )
     if es_consulta_capacidades:
@@ -230,6 +235,9 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
     es_consulta_facturacion = any(k in msg_low for k in [
         'factur', 'ingreso', 'reporte de facturacion', 'reporte de facturación',
         'cuanta plata', 'cuánta plata', 'balance del mes', 'balance de la semana',
+        'recaudacion', 'recaudación', 'ganancias', 'mes entero', 'todo el mes', 'del mes',
+        'no de una semana'
+    ])
         'recaudacion', 'recaudación', 'ganancias'
     ])
     es_comando_admin = any(k in msg_low for k in [
@@ -333,11 +341,18 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
                 tools_usadas.append('vincular_alumnas_inseparables')
                 return res, "asistente_preferencias", tools_usadas
 
-        # 7. Reportes de facturación / métricas
-        if any(k in msg_low for k in ['factur', 'ingreso', 'reporte', 'dinero', 'plata']):
-            res = obtener_reporte_facturacion_semanal.invoke({})
-            tools_usadas.append('obtener_reporte_facturacion_semanal')
-            return res, "agente_reportes", tools_usadas
+        # 7. Reportes de facturación / métricas de la dueña
+        if any(k in msg_low for k in ['factur', 'ingreso', 'reporte', 'dinero', 'plata', 'mes entero', 'todo el mes', 'del mes', 'balance', 'recaudac', 'no de una semana']):
+            es_semanal = ('semana' in msg_low) and not any(m in msg_low for m in ['mes', 'octubre', 'septiembre', 'noviembre', 'no de una semana', 'del mes entero', 'todo el mes'])
+            periodo = "semana" if es_semanal else "mes"
+            mes_match = ""
+            for m in ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']:
+                if m in msg_low:
+                    mes_match = m
+                    break
+            res = obtener_reporte_facturacion.invoke({"periodo": periodo, "mes_o_fecha": mes_match})
+            tools_usadas.append('obtener_reporte_facturacion')
+            return res, "agente_direccion", tools_usadas
 
     # --- CONSULTAS DE PROFESORAS ---
     if rol == 'PROFESOR':
@@ -493,9 +508,21 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
 
     # 8. Saludos o mensajes breves de seguimiento
     if ya_saludo_reciente:
+        if rol == 'DUENA':
+            return (
+                f"Decime, Deby ✦, ¿en qué te puedo ayudar hoy con el estudio? Puedo pasarte el reporte de facturación (mensual o semanal), ver la ocupación de camillas de hoy o ayudarte con los horarios y comprobantes.",
+                "agente_direccion",
+                []
+            )
         if 'turnos disponibles' in ultimo_mensaje_bot or 'horarios disponibles' in ultimo_mensaje_bot:
             return (
                 f"Decime, {nombre_display}, ¿te gustaría que te reserve alguna camilla en los horarios que vimos, o preferís que busquemos para otro día?",
+                "asistente_recepcionista",
+                []
+            )
+        if 'en qué te puedo orientar hoy' in ultimo_mensaje_bot:
+            return (
+                f"Decime {nombre_display}, ¿en qué puedo ayudarte hoy? Si querés consultar turnos libres, el estado de tu abono o precios de los planes, avisame con confianza 🌸.",
                 "asistente_recepcionista",
                 []
             )
@@ -506,6 +533,13 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
         )
 
     # 9. Saludo inicial por primera vez
+    if rol == 'DUENA':
+        return (
+            f"¡Hola Deby! ✦ ¿En qué te puedo ayudar hoy con la gestión del estudio? Puedo prepararte el reporte de facturación (mensual o semanal), el estado de ocupación de las camillas para hoy, o asistirte con la grilla y comprobantes.",
+            "agente_direccion",
+            []
+        )
+
     saludo_inicial = f"¡Hola {nombre_display}! ✦ " if nombre_display else "¡Hola! ✦ "
     return (
         f"{saludo_inicial}Bienvenida a Violett Pilates. Soy la asistente del estudio.\n\n"
