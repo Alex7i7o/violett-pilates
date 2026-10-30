@@ -88,7 +88,7 @@ def obtener_datos_transferencia_estudio() -> str:
                 )
             except Exception:
                 pass
-        return "Actualmente no tengo registrado el alias bancario oficial en el sistema. Ya le dejé un aviso a Débora (dueña del estudio) para que te lo facilitemos a la brevedad ✦."
+        return "Actualmente no tengo registrado el alias bancario oficial en el sistema. Ya le dejé un aviso a Deby (dueña del estudio) para que te lo facilitemos a la brevedad ✦."
 
     lineas = ["✦ Datos oficiales para transferencia bancaria:"]
     lineas.append(f"• Alias: {alias}")

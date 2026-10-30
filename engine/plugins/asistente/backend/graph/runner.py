@@ -65,7 +65,9 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
     nombre_user = ""
     usuario_id = ""
-    if conversacion.usuario:
+    if conversacion.rol_detectado == 'DUENA':
+        nombre_user = "Deby"
+    elif conversacion.usuario:
         # Usamos únicamente el primer nombre para máxima calidez humana
         nombre_user = conversacion.usuario.nombre.strip() if conversacion.usuario.nombre else ""
         usuario_id = str(conversacion.usuario.id)
@@ -142,7 +144,9 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         return respuesta_final, agente_responsable, tools_usadas
 
     except Exception as e:
+        import traceback
         print(f"[ASISTENTE MULTI-AGENTE ERROR CRITICO] Fallback a simulador por error: {e}", flush=True)
+        traceback.print_exc()
         logger.error(f"[ASISTENTE MULTI-AGENTE ERROR] Fallback a simulador conversacional por error: {e}", exc_info=True)
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
@@ -156,7 +160,10 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
     tools_usadas = []
     rol = conversacion.rol_detectado
 
-    nombre_display = nombre_user.split()[0] if nombre_user else ""
+    if rol == 'DUENA':
+        nombre_display = "Deby"
+    else:
+        nombre_display = nombre_user.split()[0] if nombre_user else ""
 
     # Analizar historial para no repetir el saludo inicial ni hablar como un contestador
     mensajes_previos = list(conversacion.mensajes.order_by('-created_at')[:8])
@@ -176,6 +183,47 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
         return (
             "Por políticas estrictas de seguridad del estudio, esa operación no existe ni está permitida en el sistema de Violett Pilates ✦.",
             "seguridad_bloqueo",
+            []
+        )
+
+    # Si alguien afirma ser Deby pero no escribe desde su número oficial
+    if any(k in msg_low for k in ['soy deby', 'soy debora', 'soy débora']) and rol != 'DUENA':
+        return (
+            "¡Hola! ✦ Por motivos de seguridad y privacidad del estudio, las funciones y reportes de dirección están asociados exclusivamente a la línea oficial de WhatsApp de Deby (11 5769-1786).\n\n"
+            "Si sos Deby y estás escribiendo desde una nueva línea, por favor avisanos desde tu número principal así podemos actualizar tu registro y habilitarte todos los accesos de gestión 🌸.",
+            "seguridad_bloqueo",
+            []
+        )
+
+    # Si preguntan por Deby o la dueña
+    if any(k in msg_low for k in ['quien es deby', 'quién es deby', 'quien es la dueña', 'quién es la dueña', 'esta deby', 'está deby', 'hablar con deby', 'hablar con la dueña', 'con debora', 'con débora', 'deby me dijo']):
+        return (
+            "Deby (Débora Zárate) es la fundadora y directora de Violett Pilates ✦, con más de 21 años de trayectoria enseñando el método y cuidando la salud postural de nuestras alumnas.\n\n"
+            "Si querés dejarle un mensaje o necesitás que ella se comunique con vos de manera personalizada, avisame y se lo transmito con mucho gusto 🌸.",
+            "asistente_recepcionista",
+            []
+        )
+
+    # Consulta de capacidades ("qué podés hacer", "cómo funciona", "en qué me ayudás")
+    es_consulta_capacidades = (
+        bool(re.search(r'(?:qu[eé]|\bq\b)\s+(?:pod[eé]s\s+hacer|pod[eé]s|hac[eé]s|serv[ií]s|funciones|servicios|hacen)', msg_low)) or
+        any(k in msg_low for k in [
+            'como funciona', 'cómo funciona', 'para que servis', 'para qué servís',
+            'en que me ayudas', 'en qué me ayudás', 'en q me ayudas', 'en q me ayudás',
+            'que opciones hay', 'qué opciones hay', 'q opciones hay',
+            'ayuda', 'como me ayudas', 'cómo me ayudás', 'como me podes ayudar', 'cómo me podés ayudar'
+        ])
+    )
+    if es_consulta_capacidades:
+        return (
+            f"¡Con mucho gusto te cuento! ✦ Como asistente virtual de Violett Pilates puedo acompañarte en todo esto:\n\n"
+            f"• *Consultar horarios:* Fijarme en tiempo real qué camillas Reformer tenemos libres para hoy, mañana o cualquier día de la semana.\n"
+            f"• *Reservar o cancelar turnos:* Asegurar tu lugar en la clase que elijas o cancelar con anticipación si no podés asistir.\n"
+            f"• *Tu abono y clases:* Decirte cuántas clases tenés disponibles en tu plan y cuándo vence.\n"
+            f"• *Planes y precios:* Pasarte los valores de nuestros abonos mensuales y los datos para transferir.\n"
+            f"• *Dudas y asesoramiento:* Explicarte cómo son las clases (55 min de Reformer + 5 min de ritual de descompresión asistido), dónde queda el estudio (Ramos Mejía) o transmitirte tranquilidad si tenés dolores de espalda o es tu primera vez 🌸.\n\n"
+            f"¿Por cuál de estas cosas te gustaría que arranquemos?",
+            "asistente_recepcionista",
             []
         )
 

@@ -75,7 +75,8 @@ def get_asistente_config() -> dict:
         "estructura_sesion": "55 minutos de clase + 5 minutos de ritual de descompresión",
         "direccion": "Gral. Guido 1573, Ramos Mejía",
         "alias_transferencia": "",
-        "titular_transferencia": "Débora Zárate"
+        "titular_transferencia": "Débora Zárate (Deby)",
+        "nombre_duena": "Deby"
     }
     
     rules = cfg.get('reglas_operativas', {})
