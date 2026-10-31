@@ -56,23 +56,36 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     if gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            model_name = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+            # Modelos oficiales estándar de Google Gemini API: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash
+            model_name = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
             gemini_kwargs = dict(
                 model=model_name,
-                temperature=temperature,
-                # En Gemini 3.x el límite de salida incluye los tokens de razonamiento:
-                # dejamos margen para que nunca devuelva respuestas vacías o cortadas.
-                max_output_tokens=max(max_tokens, 2048),
+                temperature=0.1, # Muy baja temperatura para evitar alucinaciones
+                max_output_tokens=max(max_tokens, 1024),
                 google_api_key=gemini_key,
                 max_retries=2,
-                timeout=30,
+                timeout=25,
             )
-            if model_name.startswith('gemini-3') or model_name.startswith('gemini-4'):
-                gemini_kwargs['thinking_config'] = {
-                    'thinking_level': os.environ.get('GEMINI_THINKING_LEVEL', 'low')
-                }
             llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
+
+            # Modelos alternativos de Gemini en cascada de resiliencia
+            gemini_fallbacks = []
+            for alt in ['gemini-2.0-flash', 'gemini-1.5-flash']:
+                if alt != model_name:
+                    try:
+                        gemini_fallbacks.append(ChatGoogleGenerativeAI(
+                            model=alt,
+                            temperature=0.1,
+                            max_output_tokens=max(max_tokens, 1024),
+                            google_api_key=gemini_key,
+                            max_retries=1,
+                            timeout=20
+                        ))
+                    except Exception:
+                        pass
+            if gemini_fallbacks:
+                fallback_llm = gemini_fallbacks[0]
         except Exception as eg:
             logger.error(f"[ASISTENTE LLM] Error inicializando ChatGoogleGenerativeAI: {eg}")
             llm = None

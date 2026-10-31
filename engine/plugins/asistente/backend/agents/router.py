@@ -30,6 +30,10 @@ KEYWORDS_DIRECCION = [
     r'\bocupaci[oó]n\b', r'\boptimizar\b', r'\bfusionar\b', r'\bmadre e hija\b',
     r'\binseparables?\b', r'\bprospectos?\b', r'\bm[eé]tricas?\b', r'\bpon[eé] a\b',
     r'\bsac[aá] a\b',
+    r'\brenov\w+', r'\bcargale\b', r'\basignale\b', r'\bagregale\b',
+    r'\banot[aá]\b', r'\banotale\b', r'\binscrib[ií]\b', r'\bcancelale\b',
+    r'\babon[oó]\b', r'\bpag[oó]\b', r'\bplan nuevo\b', r'\bcu[aá]ntas clases le quedan\b',
+    r'\bagenda\b', r'\bqui[eé]nes vienen\b', r'\bficha\b', r'\balumna\b', r'\balumnas\b',
     r'\bmes entero\b', r'\btodo el mes\b', r'\bdel mes\b', r'\bde este mes\b',
     r'\bde la semana\b', r'\bingresos?\b', r'\brecaudaci[oó]n\b', r'\bbalance\b',
     r'\bcu[aá]nto (se factur[oó]|entr[oó]|ingres[oó]|se cobr[oó]|ganamos)\b',
@@ -44,9 +48,12 @@ def clasificar_intencion_fast(texto: str, rol: str) -> str:
     """
     t = texto.lower().strip()
 
-    # Si es la dueña (Deby)
+    # Si es la dueña (Deby): toda orden operativa de gestión, turnos o planes va a DIRECCIÓN
     if rol == 'DUENA':
         for pattern in KEYWORDS_DIRECCION:
+            if re.search(pattern, t):
+                return 'agente_direccion'
+        for pattern in KEYWORDS_TURNOS + KEYWORDS_FINANZAS:
             if re.search(pattern, t):
                 return 'agente_direccion'
 
@@ -56,12 +63,12 @@ def clasificar_intencion_fast(texto: str, rol: str) -> str:
             if re.search(pattern, t):
                 return 'agente_profesores'
 
-    # Turnos & Reservas
+    # Turnos & Reservas (Alumnas y prospectos)
     for pattern in KEYWORDS_TURNOS:
         if re.search(pattern, t):
             return 'agente_turnos'
 
-    # Finanzas & Pagos
+    # Finanzas & Pagos (Alumnas y prospectos)
     for pattern in KEYWORDS_FINANZAS:
         if re.search(pattern, t):
             return 'agente_finanzas'

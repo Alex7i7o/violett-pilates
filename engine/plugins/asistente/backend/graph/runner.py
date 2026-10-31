@@ -41,6 +41,13 @@ from ..tools.reportes_tools import (
     obtener_reporte_ocupacion_hoy,
     contactar_prospectos_desde_lista
 )
+from ..tools.gestion_tools import (
+    renovar_o_asignar_plan_alumna,
+    consultar_alumna_detalle,
+    agendar_alumna_en_turno_duena,
+    cancelar_reserva_alumna_duena,
+    consultar_agenda_completa_dia
+)
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +282,71 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
 
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
     if rol == 'DUENA':
+        # 0. Renovación o asignación de plan a una alumna
+        if any(k in msg_low for k in ['renov', 'cargale', 'asignale', 'arrancó un plan', 'arranco un plan', 'abonó hoy', 'abono hoy', 'pagó hoy', 'pago hoy', 'plan nuevo', 'ya abonó', 'ya abono']):
+            nombre_target = ""
+            m_renov = re.search(r'(?:renov[aá](?:le)?(?:\s+el\s+plan)?(?:\s+a)?|cargale(?:\s+el\s+plan)?(?:\s+a)?|asignale(?:\s+el\s+plan)?(?:\s+a)?)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|el|con|de|\$|\d)|$)', mensaje_usuario, re.IGNORECASE)
+            if m_renov and m_renov.group(1).strip().lower() not in ['su', 'su plan', 'el plan', 'un plan']:
+                nombre_target = m_renov.group(1).strip()
+            elif any(k in msg_low for k in ['arrancó', 'arranco', 'abonó', 'abono', 'pagó', 'pago']):
+                m_arranco = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)\s+(?:hoy|arranc|abon|pag)', mensaje_usuario, re.IGNORECASE)
+                if m_arranco:
+                    nombre_target = m_arranco.group(1).strip()
+
+            # Si en este mensaje no está el nombre pero dijo "Renovale su plan", inspeccionar el mensaje anterior
+            if not nombre_target or nombre_target.lower() in ['su', 'su plan', 'el plan']:
+                for m_prev in mensajes_previos:
+                    if m_prev.direccion == 'ENTRANTE' and m_prev.texto != mensaje_usuario:
+                        m_arranco = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)\s+(?:hoy|arranc|abon|pag|es)', m_prev.texto, re.IGNORECASE)
+                        if m_arranco:
+                            nombre_target = m_arranco.group(1).strip()
+                            break
+
+            res = renovar_o_asignar_plan_alumna.invoke({
+                "nombre_o_tel_alumna": nombre_target or mensaje_usuario,
+                "nombre_o_clases_plan": ""
+            })
+            tools_usadas.append('renovar_o_asignar_plan_alumna')
+            return res, "agente_direccion", tools_usadas
+
+        # 0b. Consulta de ficha o situación de una alumna
+        if any(k in msg_low for k in ['ficha de', 'datos de', 'cómo viene', 'como viene', 'cuántas clases le quedan a', 'cuantas clases le quedan a', 'alumna ']):
+            m_alumna = re.search(r'(?:ficha de|datos de|cómo viene|como viene|clases le quedan a|alumna)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)', mensaje_usuario, re.IGNORECASE)
+            nom = m_alumna.group(1).strip() if m_alumna else mensaje_usuario
+            res = consultar_alumna_detalle.invoke({"nombre_o_tel": nom})
+            tools_usadas.append('consultar_alumna_detalle')
+            return res, "agente_direccion", tools_usadas
+
+        # 0c. Anotar alumna manualmente en una camilla
+        if any(k in msg_low for k in ['anotá a', 'anota a', 'inscribí a', 'inscribi a', 'anotale a']):
+            m_anota = re.search(r'(?:anot[aá]|inscrib[ií])(?:le)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|mañana|el|a\s+las|\d)|$)', mensaje_usuario, re.IGNORECASE)
+            nom = m_anota.group(1).strip() if m_anota else ""
+            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_str = hora_match.group(1) if hora_match else "18:00"
+            fecha_str = "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'mañana', 'hoy']:
+                if d in msg_low:
+                    fecha_str = d
+                    break
+            res = agendar_alumna_en_turno_duena.invoke({
+                "nombre_o_tel_alumna": nom,
+                "fecha_o_dia": fecha_str,
+                "hora_str": hora_str
+            })
+            tools_usadas.append('agendar_alumna_en_turno_duena')
+            return res, "agente_direccion", tools_usadas
+
+        # 0d. Ver agenda completa de clases del día
+        if any(k in msg_low for k in ['agenda', 'quiénes vienen', 'quienes vienen', 'grilla de hoy', 'turnos de hoy']):
+            fecha_str = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
+                if d in msg_low:
+                    fecha_str = d
+                    break
+            res = consultar_agenda_completa_dia.invoke({"fecha_o_dia": fecha_str})
+            tools_usadas.append('consultar_agenda_completa_dia')
+            return res, "agente_direccion", tools_usadas
+
         # 1. Aprobación de comprobantes
         if any(k in msg_low for k in ['aprobar', 'acreditar']):
             partes = mensaje_usuario.split()
