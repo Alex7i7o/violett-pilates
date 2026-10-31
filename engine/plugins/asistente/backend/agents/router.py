@@ -1,6 +1,6 @@
 import re
 import logging
-from .base import get_llm
+from .base import get_llm, extraer_texto
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ def router_node(state):
     last_user_msg = ""
     for m in reversed(messages):
         if getattr(m, 'type', '') in ['human', 'user']:
-            last_user_msg = m.content if hasattr(m, 'content') else str(m)
+            last_user_msg = extraer_texto(m.content) if hasattr(m, 'content') else str(m)
             break
 
     rol = state.get("rol", "PROSPECTO")
@@ -97,7 +97,7 @@ def router_node(state):
     if rol == 'DUENA' and target == 'agente_recepcionista' and len(messages) > 1:
         mensajes_previos = messages[:-1]
         for m in reversed(mensajes_previos[-4:]):
-            prev_txt = getattr(m, 'content', '').lower()
+            prev_txt = extraer_texto(getattr(m, 'content', '')).lower()
             if any(k in prev_txt for k in ['facturaci', 'resumen ejecutivo', 'ingresos', 'ocupaci', 'reporte']):
                 if any(k in last_user_msg.lower() for k in ['mes', 'semana', 'octubre', 'noviembre', 'todo', 'entero', 'no de', 'resumen', 'dame', 'pasame']):
                     target = 'agente_direccion'
@@ -118,7 +118,7 @@ def router_node(state):
                     "Si saluda o pregunta en general -> recepcionista."
                 )
                 resp = llm.invoke([SystemMessage(content=prompt_triaje), HumanMessage(content=last_user_msg)])
-                decision = resp.content.strip().lower()
+                decision = extraer_texto(resp.content).strip().lower()
                 if "turno" in decision:
                     target = "agente_turnos"
                 elif "finanza" in decision or "precio" in decision or "pago" in decision:

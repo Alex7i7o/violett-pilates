@@ -56,13 +56,22 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     if gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            model_name = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
-            llm = ChatGoogleGenerativeAI(
+            model_name = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+            gemini_kwargs = dict(
                 model=model_name,
                 temperature=temperature,
-                max_output_tokens=max_tokens,
-                google_api_key=gemini_key
+                # En Gemini 3.x el límite de salida incluye los tokens de razonamiento:
+                # dejamos margen para que nunca devuelva respuestas vacías o cortadas.
+                max_output_tokens=max(max_tokens, 2048),
+                google_api_key=gemini_key,
+                max_retries=2,
+                timeout=30,
             )
+            if model_name.startswith('gemini-3') or model_name.startswith('gemini-4'):
+                gemini_kwargs['thinking_config'] = {
+                    'thinking_level': os.environ.get('GEMINI_THINKING_LEVEL', 'low')
+                }
+            llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
         except Exception as eg:
             logger.error(f"[ASISTENTE LLM] Error inicializando ChatGoogleGenerativeAI: {eg}")
@@ -133,5 +142,29 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
 
     return None
 
+def extraer_texto(content) -> str:
+    """
+    Normaliza el contenido de un mensaje LLM a texto plano.
+    Gemini 3.x / Anthropic pueden devolver una lista de bloques
+    ([{'type': 'text', 'text': ...}, {'type': 'thinking', ...}]) en vez de un string.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        partes = []
+        for bloque in content:
+            if isinstance(bloque, str):
+                partes.append(bloque)
+            elif isinstance(bloque, dict) and bloque.get('type', 'text') == 'text':
+                partes.append(str(bloque.get('text', '')))
+        return "".join(partes).strip()
+    return str(content)
+
 def get_current_date_str() -> str:
-    return timezone.localdate().strftime('%A %d de %B de %Y')
+    dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+             'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    hoy = timezone.localdate()
+    return f"{dias[hoy.weekday()]} {hoy.day} de {meses[hoy.month - 1]} de {hoy.year}"

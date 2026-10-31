@@ -7,6 +7,7 @@ from typing import Tuple, List
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 from .state import AgentState
+from ..agents.base import extraer_texto
 from .builder import build_asistente_graph, ALL_ACTIVE_TOOLS
 from ..tools.turnos_tools import (
     consultar_turnos_disponibles,
@@ -83,17 +84,36 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     # 2. Modo Orquestador Multi-Agente con LangGraph
     try:
         # Cargar historial previo de la conversación excluyendo el mensaje entrante recién creado en dispatcher
-        mensajes_db = list(conversacion.mensajes.order_by('-created_at')[1:9])
+        mensajes_db = list(conversacion.mensajes.order_by('-created_at')[1:11])
         historial_langchain = []
         for m in reversed(mensajes_db):
+            # Los avisos de espera ("Aguardame un segundito...") y errores técnicos no aportan contexto
+            if m.agente_responsable in ('asistente_espera_activa', 'fallback_error'):
+                continue
             if m.direccion == 'ENTRANTE':
                 # Limpiar prefijo [Audio] para fluidez conversacional
                 txt = m.texto.replace("🎤 [Audio]: ", "").strip()
-                historial_langchain.append(HumanMessage(content=txt))
+                nuevo = HumanMessage(content=txt)
             else:
-                historial_langchain.append(AIMessage(content=m.texto))
+                nuevo = AIMessage(content=m.texto)
+            if not nuevo.content:
+                continue
+            # Gemini exige turnos alternados: fusionamos mensajes consecutivos del mismo rol
+            if historial_langchain and type(historial_langchain[-1]) is type(nuevo):
+                historial_langchain[-1] = type(nuevo)(content=f"{historial_langchain[-1].content}\n{nuevo.content}")
+            else:
+                historial_langchain.append(nuevo)
 
-        current_messages = historial_langchain + [HumanMessage(content=mensaje_usuario)]
+        # El historial debe comenzar con un turno del usuario
+        while historial_langchain and isinstance(historial_langchain[0], AIMessage):
+            historial_langchain.pop(0)
+
+        if historial_langchain and isinstance(historial_langchain[-1], HumanMessage):
+            current_messages = historial_langchain[:-1] + [
+                HumanMessage(content=f"{historial_langchain[-1].content}\n{mensaje_usuario}")
+            ]
+        else:
+            current_messages = historial_langchain + [HumanMessage(content=mensaje_usuario)]
 
         app = get_compiled_graph()
 
@@ -129,11 +149,14 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             if isinstance(m, ToolMessage):
                 tools_usadas.append(getattr(m, 'name', 'tool'))
             elif isinstance(m, AIMessage) and not getattr(m, 'tool_calls', None):
-                respuesta_final = m.content
+                texto = extraer_texto(m.content)
+                if texto:
+                    respuesta_final = texto
 
-        if not respuesta_final and final_output.get("messages"):
-            last_msg = final_output["messages"][-1]
-            respuesta_final = last_msg.content if hasattr(last_msg, 'content') else "¡Hola! ✦ ¿En qué puedo acompañarte hoy?"
+        if not respuesta_final.strip():
+            # El modelo no devolvió texto (respuesta vacía/bloqueada): usamos el simulador para no dejar a la persona sin respuesta
+            logger.warning("[ASISTENTE] El LLM devolvió una respuesta vacía. Usando respuesta de respaldo.")
+            return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
         try:
             from ..services.formatter import sanitizar_para_whatsapp
@@ -237,8 +260,6 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
         'cuanta plata', 'cuánta plata', 'balance del mes', 'balance de la semana',
         'recaudacion', 'recaudación', 'ganancias', 'mes entero', 'todo el mes', 'del mes',
         'no de una semana'
-    ])
-        'recaudacion', 'recaudación', 'ganancias'
     ])
     es_comando_admin = any(k in msg_low for k in [
         'aprobar comprobante', 'acreditar comprobante', 'rechazar comprobante',
