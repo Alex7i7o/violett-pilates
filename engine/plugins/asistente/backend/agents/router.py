@@ -33,6 +33,8 @@ KEYWORDS_DIRECCION = [
     r'\brenov\w+', r'\bcargale\b', r'\basignale\b', r'\bagregale\b',
     r'\banot[aá]\b', r'\banotale\b', r'\binscrib[ií]\b', r'\bcancelale\b',
     r'\babon[oó]\b', r'\bpag[oó]\b', r'\bplan nuevo\b', r'\bcu[aá]ntas clases le quedan\b',
+    r'\bcrear\b', r'\bcre[aá]\b', r'\babrir\b', r'\babr[ií]\b', r'\bnueva clase\b', r'\bnuevo turno\b',
+    r'\bagregar una clase\b', r'\bagreg[aá] una clase\b',
     r'\bagenda\b', r'\bqui[eé]nes vienen\b', r'\bficha\b', r'\balumna\b', r'\balumnas\b',
     r'\bmes entero\b', r'\btodo el mes\b', r'\bdel mes\b', r'\bde este mes\b',
     r'\bde la semana\b', r'\bingresos?\b', r'\brecaudaci[oó]n\b', r'\bbalance\b',

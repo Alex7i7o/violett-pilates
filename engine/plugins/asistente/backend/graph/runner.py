@@ -46,7 +46,8 @@ from ..tools.gestion_tools import (
     consultar_alumna_detalle,
     agendar_alumna_en_turno_duena,
     cancelar_reserva_alumna_duena,
-    consultar_agenda_completa_dia
+    consultar_agenda_completa_dia,
+    crear_clase_y_agendar_alumna_duena
 )
 
 logger = logging.getLogger(__name__)
@@ -169,6 +170,14 @@ def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
             "nombre_o_tel": nom_completo
         })
         return res, "agente_direccion", ['consultar_alumna_detalle']
+
+    elif tipo == 'crear_clase_y_agendar':
+        res = crear_clase_y_agendar_alumna_duena.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "fecha_o_dia": params.get('fecha_o_dia', 'hoy'),
+            "hora_str": params.get('hora_str', '18:00')
+        })
+        return res, "agente_direccion", ['crear_clase_y_agendar_alumna_duena']
 
     return None
 
@@ -310,6 +319,8 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
                 tipo_act = 'renovar_plan'
             elif 'consultar_alumna_detalle' in tools_usadas:
                 tipo_act = 'consultar_ficha'
+            elif 'crear_clase_y_agendar_alumna_duena' in tools_usadas:
+                tipo_act = 'crear_clase_y_agendar'
             _guardar_hitl_si_corresponde(conversacion, respuesta_final, tipo_act, {})
 
         print(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}", flush=True)
@@ -435,6 +446,20 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
         ])
     )
     if es_consulta_capacidades:
+        if rol == 'DUENA':
+            return (
+                "¡Hola Deby! ✦ Como tu asistente ejecutiva de Violett Pilates, podés gestionar todo el estudio directamente desde acá:\n\n"
+                "• *Facturación e ingresos:* Consultar la recaudación del mes, suscripciones activas y desglose de abonos vendidos (ej: _\"Dame la facturación del mes\"_).\n"
+                "• *Agenda y ocupación:* Ver la grilla completa de clases del día, quiénes asisten y camillas disponibles (ej: _\"Cómo viene la agenda de hoy\"_).\n"
+                "• *Anotar alumnas en clases:* Inscribir alumnas en clases o moverlas de horario (ej: _\"Agendá a Alex para el sábado a las 17hs\"_).\n"
+                "• *Abrir clases extraordinarias:* Si un horario no existe en la grilla regular, puedo crearlo en el momento y anotar a la alumna (ej: _\"Creá una clase el sábado 17hs y anotá a Alex\"_).\n"
+                "• *Planes y abonos:* Consultar qué plan tiene una alumna o asignarle/renovarle uno (ej: _\"Qué plan tiene Alex\"_ o _\"Agrégale un plan de 4 clases a Alex\"_).\n"
+                "• *Ficha de alumnas:* Ver su historial de asistencia, abono activo y notas (ej: _\"Ficha de Martina Filiel\"_).\n"
+                "• *Comprobantes de pago:* Validar o acreditar transferencias enviadas por las alumnas.\n\n"
+                "¿Qué necesitás revisar o gestionar ahora?",
+                "agente_direccion",
+                []
+            )
         return (
             f"¡Con mucho gusto te cuento! ✦ Como asistente virtual de Violett Pilates puedo acompañarte en todo esto:\n\n"
             f"• *Consultar horarios:* Fijarme en tiempo real qué camillas Reformer tenemos libres para hoy, mañana o cualquier día de la semana.\n"
@@ -468,40 +493,115 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
     if rol == 'DUENA':
         # 0. Renovación o asignación de plan a una alumna
-        if any(k in msg_low for k in ['renov', 'cargale', 'asignale', 'arrancó un plan', 'arranco un plan', 'abonó hoy', 'abono hoy', 'pagó hoy', 'pago hoy', 'plan nuevo', 'ya abonó', 'ya abono']):
+        es_orden_plan = (
+            any(k in msg_low for k in ['renov', 'cargale', 'asignale', 'arrancó un plan', 'arranco un plan', 'abonó hoy', 'abono hoy', 'pagó hoy', 'pago hoy', 'plan nuevo', 'ya abonó', 'ya abono']) or
+            bool(re.search(r'\b(?:agr[eé]g|s[uú]m|c[aá]rg|as[ií]gn|p[oó]n|r[eé]n[oó]v)\w*\s+(?:un\s+plan|el\s+plan|plan)', msg_low)) or
+            ('plan' in msg_low and any(k in msg_low for k in ['agreg', 'agrég', 'sum', 'carg', 'cárg', 'asign', 'asígn', 'pon', 'pón', 'renov', 'ponele', 'ponerle', 'agregale', 'agrégale', 'agregarle', 'sumale', 'sumarle']))
+        )
+        if es_orden_plan:
+            m_clases = re.search(r'\b(1|4|8|12|16)\s*clases?', msg_low)
+            clases_target = m_clases.group(0) if m_clases else ""
+            if not clases_target:
+                m_num = re.search(r'plan\s+(?:de\s+)?(\d{1,2})', msg_low)
+                if m_num:
+                    clases_target = m_num.group(1)
+
             nombre_target = ""
-            m_renov = re.search(r'(?:renov[aá](?:le)?(?:\s+el\s+plan)?(?:\s+a)?|cargale(?:\s+el\s+plan)?(?:\s+a)?|asignale(?:\s+el\s+plan)?(?:\s+a)?)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|el|con|de|\$|\d)|$)', mensaje_usuario, re.IGNORECASE)
-            if m_renov and m_renov.group(1).strip().lower() not in ['su', 'su plan', 'el plan', 'un plan']:
-                nombre_target = m_renov.group(1).strip()
-            elif any(k in msg_low for k in ['arrancó', 'arranco', 'abonó', 'abono', 'pagó', 'pago']):
-                m_arranco = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)\s+(?:hoy|arranc|abon|pag)', mensaje_usuario, re.IGNORECASE)
-                if m_arranco:
-                    nombre_target = m_arranco.group(1).strip()
+            # Buscar nombre tras conectores como "a [Nombre]" o "a la alumna [Nombre]"
+            m_a_nom = re.search(r'(?:(?:plan\s+(?:de\s+)?\d+\s*clases?|el\s+plan|un\s+plan)\s+a\s+|(?:\s+a\s+))([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:hoy|el|con|de|\$|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            if m_a_nom:
+                cand = m_a_nom.group(1).strip()
+                if cand.lower() not in ['un', 'el', 'su', 'la', 'un plan', 'el plan', 'su plan', 'clases']:
+                    nombre_target = cand
+
+            if not nombre_target:
+                m_renov = re.search(r'(?:renov[aá](?:le)?(?:\s+el\s+plan)?(?:\s+a)?|cargale(?:\s+el\s+plan)?(?:\s+a)?|asignale(?:\s+el\s+plan)?(?:\s+a)?|agreg[aá](?:le)?(?:\s+el\s+plan)?(?:\s+a)?)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:hoy|el|con|de|\$|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+                if m_renov and m_renov.group(1).strip().lower() not in ['su', 'su plan', 'el plan', 'un plan']:
+                    nombre_target = m_renov.group(1).strip()
+                elif any(k in msg_low for k in ['arrancó', 'arranco', 'abonó', 'abono', 'pagó', 'pago']):
+                    m_arranco = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)\s+(?:hoy|arranc|abon|pag)', mensaje_usuario, re.IGNORECASE)
+                    if m_arranco:
+                        nombre_target = m_arranco.group(1).strip()
+
+            if nombre_target:
+                nombre_target = re.sub(r'^(?:un|el|su)\s+plan(?:\s+de)?\s*', '', nombre_target, flags=re.IGNORECASE).strip()
+                nombre_target = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta|un|su|hoy|con)$', '', nombre_target, flags=re.IGNORECASE).strip()
 
             # Si en este mensaje no está el nombre pero dijo "Renovale su plan", inspeccionar el mensaje anterior
-            if not nombre_target or nombre_target.lower() in ['su', 'su plan', 'el plan']:
+            if not nombre_target or nombre_target.lower() in ['su', 'su plan', 'el plan', 'un plan']:
                 for m_prev in mensajes_previos:
                     if m_prev.direccion == 'ENTRANTE' and m_prev.texto != mensaje_usuario:
-                        m_arranco = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)\s+(?:hoy|arranc|abon|pag|es)', m_prev.texto, re.IGNORECASE)
+                        m_arranco = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)\s+(?:hoy|arranc|abon|pag|es)', m_prev.texto, re.IGNORECASE)
                         if m_arranco:
                             nombre_target = m_arranco.group(1).strip()
                             break
 
             res = renovar_o_asignar_plan_alumna.invoke({
                 "nombre_o_tel_alumna": nombre_target or mensaje_usuario,
-                "nombre_o_clases_plan": ""
+                "nombre_o_clases_plan": clases_target
             })
-            _guardar_hitl_si_corresponde(conversacion, res, 'renovar_plan', {'nombre_o_clases_plan': ''})
+            _guardar_hitl_si_corresponde(conversacion, res, 'renovar_plan', {'nombre_o_clases_plan': clases_target})
             tools_usadas.append('renovar_o_asignar_plan_alumna')
             return res, "agente_direccion", tools_usadas
 
         # 0b. Consulta de ficha o situación de una alumna
-        if any(k in msg_low for k in ['ficha de', 'datos de', 'cómo viene', 'como viene', 'cuántas clases le quedan a', 'cuantas clases le quedan a', 'alumna ']):
-            m_alumna = re.search(r'(?:ficha de|datos de|cómo viene|como viene|clases le quedan a|alumna)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)', mensaje_usuario, re.IGNORECASE)
+        es_consulta_ficha = (
+            any(k in msg_low for k in [
+                'ficha de', 'datos de', 'cómo viene', 'como viene',
+                'cuántas clases le quedan a', 'cuantas clases le quedan a', 'alumna ',
+                'plan tiene', 'qué plan tiene', 'que plan tiene', 'q plan tiene', 'abono tiene',
+                'qué abono tiene', 'que abono tiene', 'q abono tiene'
+            ]) or
+            re.search(r'\b(?:plan|abono)\s+de\s+[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]', msg_low)
+        )
+        if es_consulta_ficha:
+            m_alumna = re.search(
+                r'(?:ficha de|datos de|cómo viene|como viene|clases le quedan a|alumna|(?:qu[eé]|\bq\b)?\s*(?:plan|abono)\s+(?:tiene|de)|plan de|abono de)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:hoy|el|este|esta)|$|[?.,!])',
+                mensaje_usuario,
+                re.IGNORECASE
+            )
             nom = m_alumna.group(1).strip() if m_alumna else mensaje_usuario
+            nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
             res = consultar_alumna_detalle.invoke({"nombre_o_tel": nom})
             _guardar_hitl_si_corresponde(conversacion, res, 'consultar_ficha', {})
             tools_usadas.append('consultar_alumna_detalle')
+            return res, "agente_direccion", tools_usadas
+
+        # 0f. Abrir / crear clase nueva extraordinaria y agendar alumna
+        if any(k in msg_low for k in [
+            'agregar una clase', 'agrega una clase', 'agregá una clase',
+            'crear una clase', 'crea una clase', 'creá una clase',
+            'abrir una clase', 'abrí una clase', 'abrir clase', 'abrí clase',
+            'abrir un turno', 'abrí un turno', 'crear un turno', 'creá un turno',
+            'nueva clase', 'nuevo turno'
+        ]):
+            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_str = hora_match.group(1) if hora_match else "18:00"
+            fecha_str = "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'mañana', 'hoy']:
+                if d in msg_low:
+                    fecha_str = d
+                    break
+            
+            nom = ""
+            m_nom_clase = re.search(
+                r'(?:(?:est[eé]\s+)?anotad[oa]\s+(?:a\s+)?|anot(?:ar|[aá]|ale|alo|ala)?\s+a\s+|anotando\s+a\s+|para\s+)([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:el|a\s+las|\d)|$|[?.,!])',
+                mensaje_usuario,
+                re.IGNORECASE
+            )
+            if m_nom_clase:
+                nom = m_nom_clase.group(1).strip()
+                nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
+                if nom.lower() in ['que', 'q', 'este', 'esté']:
+                    nom = ""
+
+            res = crear_clase_y_agendar_alumna_duena.invoke({
+                "fecha_o_dia": fecha_str,
+                "hora_str": hora_str,
+                "nombre_o_tel_alumna": nom
+            })
+            _guardar_hitl_si_corresponde(conversacion, res, 'crear_clase_y_agendar', {'fecha_o_dia': fecha_str, 'hora_str': hora_str})
+            tools_usadas.append('crear_clase_y_agendar_alumna_duena')
             return res, "agente_direccion", tools_usadas
 
         # 0c. Anotar / agendar / agregar alumna manualmente en una camilla
@@ -510,9 +610,14 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             'anotar a', 'anotá a', 'anota a', 'anotale a', 'anotala a', 'anotalo a',
             'inscribir a', 'inscribí a', 'inscribi a', 'inscribile a', 'anotame a', 'anotáme a',
             'agregá a', 'agrega a', 'agregar a', 'sumá a', 'suma a', 'sumar a'
-        ]):
-            m_anota = re.search(r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií])|agreg(?:ar|[aá])|sum(?:ar|[aá]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+        ]) and not ('plan' in msg_low):
+            m_anota = re.search(
+                r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií])|agreg(?:ar|[aá])|sum(?:ar|[aá]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:para\s+el|para\s+la|para|en\s+el|en\s+la|en|el|la|este|esta|hoy|mañana|a\s+las|\d)|$|[?.,!])',
+                mensaje_usuario,
+                re.IGNORECASE
+            )
             nom = m_anota.group(1).strip() if m_anota else ""
+            nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
             hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
             hora_str = hora_match.group(1) if hora_match else "18:00"
             fecha_str = "hoy"
@@ -547,8 +652,9 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             'bajá a', 'baja a', 'bajar a', 'bajala a',
             'cancelale la clase a', 'cancelale el turno a', 'cancelar la clase de', 'cancelale a'
         ]) and not any(k in msg_low for k in [' y poné a', ' y pone a', ' por ']):
-            m_saca = re.search(r'(?:sac[aá]|desanot[aá]|baj[aá]|cancel[aá](?:le)?(?:\s+la\s+clase)?)(?:le|la|lo)?\s+(?:a\s+)?([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:de\s+la\s+clase|del\s+turno|hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            m_saca = re.search(r'(?:sac[aá]|desanot[aá]|baj[aá]|cancel[aá](?:le)?(?:\s+la\s+clase)?)(?:le|la|lo)?\s+(?:a\s+)?([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:de\s+la\s+clase|del\s+turno|para\s+el|para|hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
             nom = m_saca.group(1).strip() if m_saca else ""
+            nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
             hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
             hora_str = hora_match.group(1) if hora_match else ""
             fecha_str = "hoy"

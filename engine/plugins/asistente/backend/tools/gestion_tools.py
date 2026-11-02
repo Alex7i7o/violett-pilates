@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db.models import Q
 from langchain_core.tools import tool
 
-from core.models import Usuario, Turno, Reserva
+from core.models import Usuario, Turno, Reserva, Clase
 from .profesores_tools import resolver_fecha, obtener_profesor_de_turno
 
 logger = logging.getLogger(__name__)
@@ -472,3 +472,116 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy") -> str:
         lineas.append(f"• {t.hora_inicio.strftime('%H:%M')} hs ({cant}/3 ocupadas){profe}\n  Alumnas: {nombres_str} ({libres} camilla(s) libre(s))")
 
     return "\n\n".join(lineas)
+
+
+@tool
+def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o_tel_alumna: str = "") -> str:
+    """
+    Comando exclusivo de la dueña (Deby) para ABRIR o CREAR una clase/turno nuevo fuera de la grilla habitual
+    en una fecha y horario puntual, y opcionalmente dejar anotada a una alumna en el mismo paso.
+    Parámetros:
+    - fecha_o_dia: Día de la semana o fecha (ej: 'sábado', 'mañana', 'hoy', '07/11/2026').
+    - hora_str: Hora de inicio de la clase (ej: '17:00', '17hs', '17').
+    - nombre_o_tel_alumna: Nombre o teléfono de la alumna a inscribir (ej: 'Alex Agüero', 'Martina'). Opcional.
+    """
+    target_date = resolver_fecha(fecha_o_dia)
+    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
+    if ':' not in hora_clean:
+        try:
+            hora_clean = f"{int(hora_clean):02d}:00"
+        except ValueError:
+            hora_clean = "18:00"
+
+    clase_obj = Clase.objects.filter(is_active=True).first()
+    if not clase_obj:
+        return "No hay una disciplina activa en el sistema para asociar la nueva clase."
+
+    h, m = map(int, hora_clean.split(':'))
+    h_fin = (h + 1) % 24
+
+    turno = Turno.objects.filter(
+        fecha=target_date,
+        hora_inicio__startswith=hora_clean,
+        estado='PROGRAMADO'
+    ).first()
+
+    es_nueva = False
+    if not turno:
+        turno = Turno.objects.create(
+            clase=clase_obj,
+            fecha=target_date,
+            hora_inicio=datetime.time(h, m),
+            hora_fin=datetime.time(h_fin, m),
+            cupo_actual=clase_obj.cupo_maximo,
+            estado='PROGRAMADO'
+        )
+        es_nueva = True
+
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nom = dias_es[target_date.weekday()]
+
+    if not nombre_o_tel_alumna or not nombre_o_tel_alumna.strip():
+        accion_str = "Creé la nueva clase" if es_nueva else "Ya existía la clase"
+        return f"✦ ¡Listo Deby! {accion_str} de {clase_obj.nombre} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ({turno.cupo_actual} camillas disponibles)."
+
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(
+            nombre_o_tel_alumna,
+            matches,
+            f"anotarla para la clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs"
+        )
+
+    # Validar si ya está anotada
+    if alumna:
+        ya_anotada = Reserva.objects.filter(
+            turno=turno,
+            usuario=alumna,
+            estado__in=['CONFIRMADA', 'TOMADA']
+        ).exists()
+        if ya_anotada:
+            return f"✦ Deby, {alumna.nombre} {alumna.apellido} ya está inscripta en la clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs."
+
+        if turno.cupo_actual <= 0:
+            return f"✦ La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
+
+        Reserva.objects.create(
+            turno=turno,
+            usuario=alumna,
+            estado='CONFIRMADA'
+        )
+        turno.cupo_actual = max(0, turno.cupo_actual - 1)
+        turno.save()
+
+        # Descontar crédito de suscripción activa si tiene
+        creditos_msg = ""
+        try:
+            from plugins.membresias.backend.models import Suscripcion
+            sub = Suscripcion.objects.filter(usuario=alumna, estado='ACTIVO').order_by('-fecha_inicio').first()
+            if sub and sub.clases_restantes > 0:
+                sub.clases_restantes = max(0, sub.clases_restantes - 1)
+                if sub.clases_restantes == 0:
+                    sub.estado = 'AGOTADO'
+                sub.save()
+                creditos_msg = f" (Le quedan {sub.clases_restantes} clases en su {sub.plan.nombre})"
+        except Exception:
+            pass
+
+        accion_str = "Creé la nueva clase" if es_nueva else "En la clase"
+        return f"✦ ¡Listo Deby! {accion_str} de {clase_obj.nombre} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs y ya dejé anotado/a a {alumna.nombre} {alumna.apellido}{creditos_msg}. Quedan {turno.cupo_actual} camillas libres."
+    else:
+        # Reserva puntual manual sin cuenta
+        if turno.cupo_actual <= 0:
+            return f"✦ La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
+
+        Reserva.objects.create(
+            turno=turno,
+            usuario=None,
+            nombre_temporal=nombre_o_tel_alumna,
+            estado='CONFIRMADA'
+        )
+        turno.cupo_actual = max(0, turno.cupo_actual - 1)
+        turno.save()
+
+        accion_str = "Creé la nueva clase" if es_nueva else "En la clase"
+        return f"✦ ¡Listo Deby! {accion_str} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs y aparté una camilla a nombre de '{nombre_o_tel_alumna}'. Quedan {turno.cupo_actual} camillas libres."
