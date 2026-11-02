@@ -634,14 +634,25 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             tools_usadas.append('agendar_alumna_en_turno_duena')
             return res, "agente_direccion", tools_usadas
 
-        # 0d. Ver agenda completa de clases del día
-        if any(k in msg_low for k in ['ver agenda', 'la agenda', 'quiénes vienen', 'quienes vienen', 'grilla de hoy', 'turnos de hoy', 'cómo viene el día', 'como viene el dia']) or re.search(r'\bagenda\b', msg_low):
+        # 0d. Ver agenda o consultar qué alumnas hay en cada clase
+        es_consulta_agenda = (
+            any(k in msg_low for k in [
+                'ver agenda', 'la agenda', 'quiénes vienen', 'quienes vienen',
+                'quiénes están', 'quienes estan', 'quiénes asisten', 'quienes asisten',
+                'grilla de hoy', 'turnos de hoy', 'cómo viene el día', 'como viene el dia',
+                'alumnas hay', 'alumnos hay', 'qué alumnas', 'que alumnas', 'qué alumnos', 'que alumnos'
+            ]) or
+            re.search(r'\bagenda\b', msg_low)
+        )
+        if es_consulta_agenda:
             fecha_str = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
             for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
                 if d in msg_low:
                     fecha_str = d
                     break
-            res = consultar_agenda_completa_dia.invoke({"fecha_o_dia": fecha_str})
+            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_str = hora_match.group(1) if hora_match else ""
+            res = consultar_agenda_completa_dia.invoke({"fecha_o_dia": fecha_str, "hora_str": hora_str})
             tools_usadas.append('consultar_agenda_completa_dia')
             return res, "agente_direccion", tools_usadas
 

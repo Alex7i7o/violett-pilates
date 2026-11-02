@@ -50,14 +50,12 @@ def clasificar_intencion_fast(texto: str, rol: str) -> str:
     """
     t = texto.lower().strip()
 
-    # Si es la dueña (Deby): toda orden operativa de gestión, turnos o planes va a DIRECCIÓN
+    # Si es la dueña (Deby): SIEMPRE a DIRECCIÓN ejecutiva (salvo saludo puramente social)
     if rol == 'DUENA':
-        for pattern in KEYWORDS_DIRECCION:
-            if re.search(pattern, t):
-                return 'agente_direccion'
-        for pattern in KEYWORDS_TURNOS + KEYWORDS_FINANZAS:
-            if re.search(pattern, t):
-                return 'agente_direccion'
+        es_solo_saludo = any(t == s for s in ['hola', 'buenas', 'buen dia', 'buen día', 'buenas tardes', 'buenas noches', 'que tal', 'qué tal', 'hola!'])
+        if es_solo_saludo:
+            return 'agente_recepcionista'
+        return 'agente_direccion'
 
     # Si es profesor
     if rol == 'PROFESOR':
@@ -112,8 +110,9 @@ def router_node(state):
                     target = 'agente_direccion'
                     break
     
-    # 2. Si es recepcionista y el mensaje es complejo (>80 caracteres), evaluamos con LLM rápido
-    if target == 'agente_recepcionista' and len(last_user_msg) > 80:
+    # 2. Si es recepcionista pero el mensaje tiene contenido analizable, evaluamos con LLM para triaje inteligente
+    es_saludo_puro = any(last_user_msg.lower().strip() == s for s in ['hola', 'buenas', 'buen dia', 'buen día', 'buenas tardes', 'chau', 'gracias', 'dale', 'ok'])
+    if target == 'agente_recepcionista' and not es_saludo_puro and len(last_user_msg.strip().split()) >= 2:
         llm = get_llm(tools=None, max_tokens=15, temperature=0.0)
         if llm:
             try:
@@ -121,10 +120,10 @@ def router_node(state):
                 prompt_triaje = (
                     "Sos el clasificador de intenciones de Violett Pilates. "
                     "Respondé con UNA SOLA PALABRA entre: turnos, finanzas, direccion, recepcionista. "
-                    "Si pide disponibilidad/cancelar/reservar -> turnos. "
-                    "Si pide precios/pagos/alias/planes -> finanzas. "
-                    "Si es la dueña consultando balance, facturación o gestión -> direccion. "
-                    "Si saluda o pregunta en general -> recepcionista."
+                    "Si pide disponibilidad/cancelar/reservar/horarios/días -> turnos. "
+                    "Si pide precios/pagos/alias/cbu/costo/planes -> finanzas. "
+                    "Si es la dueña consultando balance, facturación, agregar clases o gestión de alumnas -> direccion. "
+                    "Si sólo saluda o pregunta en general sobre el método -> recepcionista."
                 )
                 resp = llm.invoke([SystemMessage(content=prompt_triaje), HumanMessage(content=last_user_msg)])
                 decision = extraer_texto(resp.content).strip().lower()

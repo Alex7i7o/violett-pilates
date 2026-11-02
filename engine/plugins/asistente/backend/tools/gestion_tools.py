@@ -443,10 +443,11 @@ def cancelar_reserva_alumna_duena(nombre_o_tel_alumna: str, fecha_o_dia: str = "
 
 
 @tool
-def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy") -> str:
+def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy", hora_str: str = "") -> str:
     """
     Comando para la dueña: muestra la grilla completa de clases del día con los nombres de las alumnas
     anotadas en cada camilla, profesoras a cargo y camillas vacías.
+    Si se especifica 'hora_str' (ej: '18:00', '18hs', '15:30', '15'), detalla puntualmente quiénes asisten a esa clase.
     """
     target_date = resolver_fecha(fecha_o_dia)
     dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -457,8 +458,25 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy") -> str:
         estado='PROGRAMADO'
     ).prefetch_related('reservas__usuario').order_by('hora_inicio')
 
+    if hora_str:
+        h_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
+        turnos = turnos.filter(hora_inicio__startswith=h_clean)
+
     if not turnos.exists():
+        if hora_str:
+            return f"✦ Deby, no encontré una clase programada a las {hora_str} para el {dia_nom} {target_date.strftime('%d/%m/%Y')}."
         return f"No hay turnos programados en la agenda para el {dia_nom} {target_date.strftime('%d/%m/%Y')}."
+
+    if hora_str and turnos.count() == 1:
+        t = turnos.first()
+        prof_obj = obtener_profesor_de_turno(t)
+        profe = f" | Profe: {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+        reservas = [r for r in t.reservas.all() if r.estado == 'CONFIRMADA']
+        cant = len(reservas)
+        nombres = [(f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna puntual")) for r in reservas]
+        nombres_str = ", ".join(nombres) if nombres else "Ninguna (todas las camillas libres)"
+        libres = 3 - cant
+        return f"✦ Clase de las {t.hora_inicio.strftime('%H:%M')} hs ({dia_nom} {target_date.strftime('%d/%m/%Y')}):\n• Alumnas inscriptas ({cant}/3): {nombres_str}\n• Camillas libres: {libres}\n• Profesora a cargo:{profe or ' Sin asignar'}"
 
     lineas = [f"✦ Agenda de Violett Pilates - {dia_nom} {target_date.strftime('%d/%m/%Y')}:"]
     for t in turnos:
@@ -466,7 +484,7 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy") -> str:
         profe = f" | Profe: {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
         reservas = [r for r in t.reservas.all() if r.estado == 'CONFIRMADA']
         cant = len(reservas)
-        nombres = [f"{r.usuario.nombre} {r.usuario.apellido}".strip() for r in reservas]
+        nombres = [(f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna puntual")) for r in reservas]
         nombres_str = ", ".join(nombres) if nombres else "Sin alumnas aún"
         libres = 3 - cant
         lineas.append(f"• {t.hora_inicio.strftime('%H:%M')} hs ({cant}/3 ocupadas){profe}\n  Alumnas: {nombres_str} ({libres} camilla(s) libre(s))")
