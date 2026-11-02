@@ -27,7 +27,9 @@ from ..tools.gestion_tools import (
     agendar_alumna_en_turno_duena,
     cancelar_reserva_alumna_duena,
     consultar_agenda_completa_dia,
-    crear_clase_y_agendar_alumna_duena
+    crear_clase_y_agendar_alumna_duena,
+    obtener_metricas_alumnas_duena,
+    ajustar_creditos_alumna_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -40,6 +42,8 @@ DIRECCION_TOOLS = [
     crear_clase_y_agendar_alumna_duena,
     cancelar_reserva_alumna_duena,
     consultar_agenda_completa_dia,
+    obtener_metricas_alumnas_duena,
+    ajustar_creditos_alumna_duena,
     obtener_reporte_facturacion,
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
@@ -72,6 +76,10 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
      -> Usá 'renovar_o_asignar_plan_alumna'.
    * Si Deby consulta la ficha, abono o situación de una alumna (ej: "¿Qué plan tiene Alex?", "¿Cómo viene Laila?", "¿Cuántas clases le quedan?", "¿Cuándo vence el abono de...?"):
      -> Usá 'consultar_alumna_detalle'.
+   * Si Deby consulta por la cantidad total o estado de alumnas del estudio (ej: "Quiero la cantidad de alumnas que tenemos", "¿Cuántas alumnas tenemos?", "Cuántas clientas activas hay"):
+     -> Usá 'obtener_metricas_alumnas_duena'.
+   * Si Deby pide sumarle o restarle clases sueltas o créditos a una alumna puntual (ej: "Sumale 1 clase a Marcela", "Cargale 2 clases de regalo a Alex"):
+     -> Usá 'ajustar_creditos_alumna_duena'.
 
 2. GESTIÓN DE AGENDA Y RESERVAS (AGREGAR, CREAR O SACAR ALUMNAS):
    * Si Deby pide agregar, anotar o inscribir a una alumna en una clase puntual existente (ej: "Agregá a Martina Filiel a la clase de las 18 hs", "Anotá a Marcela hoy a las 18 hs", "Inscribí a Alejandra Rivarola en el turno de mañana a las 15:30", "Agenda a Alex para el sábado 17hs"):

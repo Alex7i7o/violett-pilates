@@ -603,3 +603,85 @@ def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o
 
         accion_str = "Creé la nueva clase" if es_nueva else "En la clase"
         return f"✦ ¡Listo Deby! {accion_str} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs y aparté una camilla a nombre de '{nombre_o_tel_alumna}'. Quedan {turno.cupo_actual} camillas libres."
+
+
+@tool
+def obtener_metricas_alumnas_duena(filtro: str = "") -> str:
+    """
+    Comando exclusivo para la dueña (Deby): informa la cantidad total de alumnas del estudio,
+    cuántas tienen abono activo vigente, cuántas tienen el abono agotado, cuántas están inactivas
+    y cuántas alumnas nuevas se registraron este mes.
+    Parámetro:
+    - filtro: Puede ser 'activas', 'agotadas', 'inactivas', 'nuevas' o vacío para el resumen completo.
+    """
+    today = timezone.localdate()
+    total_alumnas = Usuario.objects.filter(rol='CLIENTE', is_active=True).count()
+
+    try:
+        from plugins.membresias.backend.models import Suscripcion
+        subs_activas = Suscripcion.objects.filter(
+            usuario__rol='CLIENTE',
+            estado='ACTIVO',
+            fecha_vencimiento__gte=today
+        ).values('usuario').distinct().count()
+
+        subs_agotadas = Suscripcion.objects.filter(
+            usuario__rol='CLIENTE',
+            estado='AGOTADO',
+            fecha_vencimiento__gte=today
+        ).values('usuario').distinct().count()
+    except Exception:
+        subs_activas = 0
+        subs_agotadas = 0
+
+    sin_abono = max(0, total_alumnas - subs_activas - subs_agotadas)
+
+    nuevas_mes = Usuario.objects.filter(
+        rol='CLIENTE',
+        created_at__year=today.year,
+        created_at__month=today.month
+    ).count()
+
+    return f"""✦ Estado Poblacional de Alumnas (Violett Pilates):
+• Total de alumnas registradas: {total_alumnas}
+• Con membresía activa vigente: {subs_activas} alumnas
+• Con abono agotado (pendientes de renovar): {subs_agotadas} alumnas
+• Sin abono activo o inactivas: {sin_abono} alumnas
+• Nuevas alumnas sumadas este mes: {nuevas_mes}
+
+¿Te gustaría que te pase la lista de alumnas para renovar o consultar la ficha de alguna en particular?"""
+
+
+@tool
+def ajustar_creditos_alumna_duena(nombre_o_tel_alumna: str, cantidad_creditos: int = 1, motivo: str = "Ajuste manual de la dueña") -> str:
+    """
+    Comando exclusivo para la dueña (Deby): suma o resta clases individuales al abono de una alumna puntual
+    (ej: para regalarle una clase de cortesía, compensación, o descontar una clase).
+    Parámetros:
+    - nombre_o_tel_alumna: Nombre, apellido o teléfono de la alumna.
+    - cantidad_creditos: Número positivo para sumar clases (ej: 1, 2) o negativo para restar (ej: -1).
+    - motivo: Razón del ajuste (opcional).
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        accion_desc = f"sumarle {cantidad_creditos} clase(s)" if cantidad_creditos > 0 else f"restarle {abs(cantidad_creditos)} clase(s)"
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, accion_desc)
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada con '{nombre_o_tel_alumna}' en Violett Pilates."
+
+    try:
+        from plugins.membresias.backend.models import Suscripcion
+        sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+        if not sub:
+            return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún abono activo en este momento para ajustarle clases."
+
+        sub.clases_restantes = max(0, sub.clases_restantes + cantidad_creditos)
+        if sub.clases_restantes > 0 and sub.estado == 'AGOTADO':
+            sub.estado = 'ACTIVO'
+        sub.save()
+
+        nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
+        operacion = f"sumé {cantidad_creditos}" if cantidad_creditos > 0 else f"resté {abs(cantidad_creditos)}"
+        return f"✦ ¡Listo Deby! Le {operacion} clase(s) a {nombre_completo}. Ahora tiene {sub.clases_restantes} clase(s) disponibles en su {sub.plan.nombre} (Vence el {sub.fecha_vencimiento.strftime('%d/%m/%Y')})."
+    except Exception as e:
+        return f"✦ Ocurrió un error al actualizar los créditos: {e}"

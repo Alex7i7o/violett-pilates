@@ -47,7 +47,9 @@ from ..tools.gestion_tools import (
     agendar_alumna_en_turno_duena,
     cancelar_reserva_alumna_duena,
     consultar_agenda_completa_dia,
-    crear_clase_y_agendar_alumna_duena
+    crear_clase_y_agendar_alumna_duena,
+    obtener_metricas_alumnas_duena,
+    ajustar_creditos_alumna_duena
 )
 
 logger = logging.getLogger(__name__)
@@ -492,6 +494,36 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
 
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
     if rol == 'DUENA':
+        # 0g. Consulta de cantidad y métricas de alumnas
+        es_consulta_cantidad_alumnas = (
+            any(k in msg_low for k in [
+                'cantidad de alumnas', 'cantidad de clientas', 'cuántas alumnas', 'cuantas alumnas',
+                'cuántas clientas', 'cuantas clientas', 'alumnas que tenemos', 'alumnas tenemos',
+                'alumnas activas', 'total de alumnas', 'total alumnas', 'alumnas anotadas en total',
+                'población de alumnas', 'poblacion de alumnas', 'alumnas inscriptas en total'
+            ]) or
+            bool(re.search(r'\b(?:la\s+)?cantidad\s+(?:de\s+)?alumnas?\b', msg_low)) or
+            bool(re.search(r'\bcu[aá]ntas?\s+(?:alumnas?|clientas?)\b', msg_low))
+        )
+        if es_consulta_cantidad_alumnas:
+            res = obtener_metricas_alumnas_duena.invoke({})
+            tools_usadas.append('obtener_metricas_alumnas_duena')
+            return res, "agente_direccion", tools_usadas
+
+        # 0h. Ajustar créditos sueltos a una alumna
+        if any(k in msg_low for k in ['sumale una clase', 'sumale 1 clase', 'sumale 2 clases', 'restale una clase', 'restale 1 clase', 'clase de regalo', 'clase de cortesía', 'clase de cortesia']) or (('sumale' in msg_low or 'restale' in msg_low) and 'clase' in msg_low):
+            m_cant = re.search(r'(\d+)\s*clases?', msg_low)
+            cant = int(m_cant.group(1)) if m_cant else 1
+            if 'rest' in msg_low:
+                cant = -cant
+            m_nom = re.search(r'(?:a|para)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:hoy|el|con|por)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            nom = m_nom.group(1).strip() if m_nom else ""
+            nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
+            res = ajustar_creditos_alumna_duena.invoke({"nombre_o_tel_alumna": nom, "cantidad_creditos": cant})
+            _guardar_hitl_si_corresponde(conversacion, res, 'ajustar_creditos', {'cantidad_creditos': cant})
+            tools_usadas.append('ajustar_creditos_alumna_duena')
+            return res, "agente_direccion", tools_usadas
+
         # 0. Renovación o asignación de plan a una alumna
         es_orden_plan = (
             any(k in msg_low for k in ['renov', 'cargale', 'asignale', 'arrancó un plan', 'arranco un plan', 'abonó hoy', 'abono hoy', 'pagó hoy', 'pago hoy', 'plan nuevo', 'ya abonó', 'ya abono']) or
@@ -550,9 +582,12 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                 'ficha de', 'datos de', 'cómo viene', 'como viene',
                 'cuántas clases le quedan a', 'cuantas clases le quedan a', 'alumna ',
                 'plan tiene', 'qué plan tiene', 'que plan tiene', 'q plan tiene', 'abono tiene',
-                'qué abono tiene', 'que abono tiene', 'q abono tiene'
+                'qué abono tiene', 'que abono tiene', 'q abono tiene', 'plan de', 'abono de'
             ]) or
-            re.search(r'\b(?:plan|abono)\s+de\s+[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]', msg_low)
+            ('plan' in msg_low and any(k in msg_low for k in ['tiene', 'de', 'quién', 'quien', 'consultar', 'fijate', 'decime'])) or
+            ('abono' in msg_low and any(k in msg_low for k in ['tiene', 'de', 'quién', 'quien', 'consultar', 'fijate', 'decime'])) or
+            bool(re.search(r'\b(?:qu[eé]|\bq\b)\s+(?:plan|abono)\b', msg_low)) or
+            bool(re.search(r'\b(?:plan|abono)\s+(?:tiene|de)\s+[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]', msg_low))
         )
         if es_consulta_ficha:
             m_alumna = re.search(
@@ -560,7 +595,13 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                 mensaje_usuario,
                 re.IGNORECASE
             )
-            nom = m_alumna.group(1).strip() if m_alumna else mensaje_usuario
+            nom = m_alumna.group(1).strip() if m_alumna else ""
+            if not nom:
+                m_nom_pre = re.search(r'^([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)\s+(?:qu[eé]|\bq\b)?\s*(?:plan|abono)\s+tiene', mensaje_usuario, re.IGNORECASE)
+                if m_nom_pre:
+                    nom = m_nom_pre.group(1).strip()
+            nom = nom or mensaje_usuario
+            nom = re.sub(r'^(?:decime|fijate|consultame|porfa|por favor)\s+', '', nom, flags=re.IGNORECASE).strip()
             nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
             res = consultar_alumna_detalle.invoke({"nombre_o_tel": nom})
             _guardar_hitl_si_corresponde(conversacion, res, 'consultar_ficha', {})
@@ -787,6 +828,13 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             res = obtener_reporte_facturacion.invoke({"periodo": periodo, "mes_o_fecha": mes_match})
             tools_usadas.append('obtener_reporte_facturacion')
             return res, "agente_direccion", tools_usadas
+
+        # Fallback exclusivo para la Dueña: NUNCA caer en la lógica de clientas ni ofrecerle planes a ella
+        return (
+            "Decime Deby ✦, ¿en qué te puedo ayudar hoy con el estudio? Puedo pasarte el reporte de facturación (mensual o semanal), la cantidad de alumnas, la ocupación de camillas, consultar el plan de una alumna o gestionar turnos y abonos.",
+            "agente_direccion",
+            []
+        )
 
     # --- CONSULTAS DE PROFESORAS ---
     if rol == 'PROFESOR':
