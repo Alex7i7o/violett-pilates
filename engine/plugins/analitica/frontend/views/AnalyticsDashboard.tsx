@@ -293,25 +293,85 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      {/* OPERATIVIDAD */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <div className="bg-neutral-900 text-white p-6 rounded-3xl shadow-lg flex flex-col justify-center items-center">
-          <div className="text-4xl sm:text-5xl font-bold mb-2">{operatividad.promedio_ocupacion}%</div>
-          <div className="text-sm text-neutral-400">Ocupación Promedio de Clases</div>
+      {/* OPERATIVIDAD Y EFICIENCIA DE CLASES */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
+        {/* CARD 1: % CLASES LLENAS EN EL MES (100% CAPACIDAD) */}
+        <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white p-6 rounded-3xl shadow-lg flex flex-col justify-between relative overflow-hidden border border-emerald-500/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold tracking-wider uppercase text-emerald-400 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-400" /> Clases Llenas
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+              {operatividad.clases_llenas || 0} de {operatividad.clases_dictadas || 0}
+            </span>
+          </div>
+          <div className="my-3">
+            <div className="text-4xl sm:text-5xl font-bold font-laluxes tracking-tight text-white flex items-baseline gap-1">
+              {operatividad.porcentaje_clases_llenas || 0}%
+            </div>
+            <p className="text-xs text-emerald-200/80 mt-1">
+              Clases que llenaron el 100% de sus camillas en el mes
+            </p>
+          </div>
+          <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-emerald-400 h-full rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, operatividad.porcentaje_clases_llenas || 0)}%` }}
+            />
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-xs col-span-1 md:col-span-2">
-          <h3 className="font-semibold text-neutral-700 mb-4 flex items-center gap-2"><AlertCircle size={18}/> Dinámica de Clases</h3>
-          <div className="flex gap-8">
-            <div>
-              <div className="text-3xl font-bold text-neutral-800">{operatividad.clases_dictadas}</div>
-              <div className="text-sm text-neutral-500">Clases dictadas</div>
+        {/* CARD 2: OCUPACIÓN PROMEDIO */}
+        <div className="bg-neutral-900 text-white p-6 rounded-3xl shadow-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold tracking-wider uppercase text-neutral-400">
+              Ocupación Promedio
+            </span>
+            <span className="text-xs text-neutral-400 font-mono">General</span>
+          </div>
+          <div className="my-3">
+            <div className="text-4xl sm:text-5xl font-bold mb-1 text-white">
+              {operatividad.promedio_ocupacion}%
             </div>
-            <div>
-              <div className="text-3xl font-bold text-red-500">{operatividad.clases_canceladas}</div>
-              <div className="text-sm text-neutral-500">Clases canceladas</div>
+            <p className="text-xs text-neutral-400">Promedio de camillas ocupadas por clase</p>
+          </div>
+          <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-primary-main h-full rounded-full transition-all duration-500" 
+              style={{ width: `${Math.min(100, operatividad.promedio_ocupacion || 0)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* CARD 3: DINÁMICA DE CLASES (2 COLUMNAS) */}
+        <div className="bg-white p-6 rounded-3xl border border-neutral-100 shadow-xs col-span-1 md:col-span-2 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-neutral-700 flex items-center gap-2 text-sm">
+              <AlertCircle size={18} className="text-primary-main" /> Dinámica Operativa de Clases
+            </h3>
+            <span className="text-xs text-neutral-400">
+              {new Date(year, month - 1).toLocaleString('es', { month: 'long' })} {year}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 my-2 text-center">
+            <div className="p-3 rounded-2xl bg-neutral-50 border border-neutral-100">
+              <div className="text-2xl sm:text-3xl font-bold text-neutral-800">{operatividad.clases_dictadas}</div>
+              <div className="text-xs text-neutral-500 font-medium mt-0.5">Clases dictadas</div>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
+              <div className="text-2xl sm:text-3xl font-bold text-emerald-700">{operatividad.clases_llenas || 0}</div>
+              <div className="text-xs text-emerald-800 font-medium mt-0.5">Al 100% de cupo</div>
+            </div>
+            <div className="p-3 rounded-2xl bg-red-50 border border-red-100">
+              <div className="text-2xl sm:text-3xl font-bold text-red-600">{operatividad.clases_canceladas}</div>
+              <div className="text-xs text-red-700 font-medium mt-0.5">Canceladas</div>
             </div>
           </div>
+          <p className="text-[11px] text-neutral-500 text-center mt-1">
+            {operatividad.clases_dictadas > 0 
+              ? `De las ${operatividad.clases_dictadas} clases, ${operatividad.clases_dictadas - (operatividad.clases_llenas || 0)} tuvieron al menos una camilla disponible.`
+              : 'Sin clases registradas en el período seleccionado.'}
+          </p>
         </div>
       </div>
 

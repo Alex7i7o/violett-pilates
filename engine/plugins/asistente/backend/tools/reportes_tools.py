@@ -145,6 +145,55 @@ def obtener_reporte_ocupacion_hoy() -> str:
 
 
 @tool
+def obtener_reporte_ocupacion_mes(mes_o_fecha: str = "") -> str:
+    """
+    Retorna a la dueña (Deby) la métrica mensual de ocupación: cantidad de clases dictadas,
+    cantidad y porcentaje de clases 100% llenas (con todas las camillas cubiertas),
+    y el promedio general de ocupación del mes.
+    """
+    today = timezone.localdate()
+    mes = today.month
+    year = today.year
+    nombre_mes = "mes actual"
+    for k, v in MESES_MAP.items():
+        if k in mes_o_fecha.lower():
+            mes = v
+            nombre_mes = k.capitalize()
+            break
+
+    turnos_mes = Turno.objects.filter(
+        fecha__month=mes,
+        fecha__year=year,
+        estado__in=['PROGRAMADO', 'COMPLETADO', 'REALIZADO']
+    ).select_related('clase').prefetch_related('reservas')
+
+    total_clases = turnos_mes.count()
+    if total_clases == 0:
+        return f"No hay registros de clases dictadas en {nombre_mes}."
+
+    clases_llenas = 0
+    ocupacion_acumulada = 0
+    for t in turnos_mes:
+        cap = t.clase.cupo_maximo
+        res_activas = sum(1 for r in t.reservas.all() if r.estado in ['CONFIRMADA', 'TOMADA', 'AUSENTE'])
+        ocupados = max(cap - t.cupo_actual, res_activas)
+        if cap > 0:
+            ocupacion_acumulada += min(1.0, ocupados / cap)
+            if t.cupo_actual <= 0 or ocupados >= cap:
+                clases_llenas += 1
+
+    pct_llenas = round((clases_llenas / total_clases) * 100) if total_clases > 0 else 0
+    pct_promedio = round((ocupacion_acumulada / total_clases) * 100) if total_clases > 0 else 0
+
+    return (
+        f"✦ Métricas de Ocupación ({nombre_mes} {year}):\n"
+        f"• Clases 100% llenas: {clases_llenas} de {total_clases} ({pct_llenas}% de clases al máximo)\n"
+        f"• Ocupación promedio de camillas: {pct_promedio}%\n"
+        f"• Clases con camillas libres: {total_clases - clases_llenas} clases"
+    )
+
+
+@tool
 def contactar_prospectos_desde_lista(texto_con_contactos: str) -> str:
     """
     Permite a la dueña pasar una lista o texto con números de teléfono de interesadas

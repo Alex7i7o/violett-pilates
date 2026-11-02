@@ -177,17 +177,22 @@ class AnaliticaDashboardView(APIView):
         promedio_edad = round(suma_edades / count_edades) if count_edades > 0 else 0
 
         # 4. SALUD OPERATIVA
-        turnos_mes = in_month(Turno.objects, 'fecha')
+        turnos_mes = in_month(Turno.objects, 'fecha').select_related('clase').prefetch_related('reservas')
         turnos_realizados = turnos_mes.filter(estado__in=['PROGRAMADO', 'COMPLETADO', 'REALIZADO'])
         turnos_cancelados = turnos_mes.filter(estado='CANCELADO').count()
         
         ocupacion = 0
+        clases_llenas_count = 0
         heatmap = {}
         for t in turnos_realizados:
             capacidad = t.clase.cupo_maximo
-            ocupados = capacidad - t.cupo_actual
+            reservas_activas = sum(1 for r in t.reservas.all() if r.estado in ['CONFIRMADA', 'TOMADA', 'AUSENTE'])
+            ocupados = max(capacidad - t.cupo_actual, reservas_activas)
+            
             if capacidad > 0:
-                ocupacion += (ocupados / capacidad)
+                ocupacion += min(1.0, ocupados / capacidad)
+                if t.cupo_actual <= 0 or ocupados >= capacidad:
+                    clases_llenas_count += 1
                 
             dia = t.fecha.isoweekday() # 1=Lunes, 7=Domingo
             hora = t.hora_inicio.strftime('%H:%M')
@@ -195,9 +200,11 @@ class AnaliticaDashboardView(APIView):
             if key not in heatmap:
                 heatmap[key] = {'dia': dia, 'hora': hora, 'clases': 0, 'ocupacion': 0}
             heatmap[key]['clases'] += 1
-            heatmap[key]['ocupacion'] += (ocupados / capacidad) if capacidad > 0 else 0
+            heatmap[key]['ocupacion'] += min(1.0, (ocupados / capacidad)) if capacidad > 0 else 0
             
-        promedio_ocupacion = round((ocupacion / turnos_realizados.count()) * 100) if turnos_realizados.count() > 0 else 0
+        total_clases_dictadas = turnos_realizados.count()
+        promedio_ocupacion = round((ocupacion / total_clases_dictadas) * 100) if total_clases_dictadas > 0 else 0
+        porcentaje_clases_llenas = round((clases_llenas_count / total_clases_dictadas) * 100) if total_clases_dictadas > 0 else 0
         
         # Formatear heatmap
         heatmap_data = []
@@ -231,7 +238,9 @@ class AnaliticaDashboardView(APIView):
             },
             'operatividad': {
                 'promedio_ocupacion': promedio_ocupacion,
-                'clases_dictadas': turnos_realizados.count(),
+                'clases_dictadas': total_clases_dictadas,
+                'clases_llenas': clases_llenas_count,
+                'porcentaje_clases_llenas': porcentaje_clases_llenas,
                 'clases_canceladas': turnos_cancelados,
                 'heatmap': heatmap_data
             }

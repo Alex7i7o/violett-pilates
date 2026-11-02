@@ -4,6 +4,7 @@ from ..tools.reportes_tools import (
     obtener_reporte_facturacion,
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
+    obtener_reporte_ocupacion_mes,
     contactar_prospectos_desde_lista
 )
 from ..tools.optimizacion_tools import (
@@ -40,6 +41,7 @@ DIRECCION_TOOLS = [
     obtener_reporte_facturacion,
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
+    obtener_reporte_ocupacion_mes,
     analizar_optimizacion_turnos_proximos,
     reasignar_profesora_directo,
     buscar_reemplazo_orden_duena,

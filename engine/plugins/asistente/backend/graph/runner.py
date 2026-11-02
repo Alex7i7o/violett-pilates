@@ -632,7 +632,13 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             tools_usadas.append('buscar_reemplazo_orden_duena')
             return res, "agente_profesores_cobertura", tools_usadas
 
-        # 5. Análisis de ocupación y consolidación de horarios
+        # 5. Análisis de ocupación y clases llenas del mes
+        if any(k in msg_low for k in ['clases llenas', 'clase llena', 'porcentaje de clases', 'ocupación del mes', 'ocupacion del mes', 'ocupación mensual', 'ocupacion mensual']):
+            from ..tools.reportes_tools import obtener_reporte_ocupacion_mes
+            res = obtener_reporte_ocupacion_mes.invoke({"mes_o_fecha": msg_low})
+            tools_usadas.append('obtener_reporte_ocupacion_mes')
+            return res, "agente_reportes", tools_usadas
+
         if any(k in msg_low for k in ['ocupacion', 'ocupación', 'consolidar', 'optimizar', 'clases solas', 'poca gente']):
             fecha_str = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
             res = analizar_optimizacion_turnos_proximos.invoke({"fecha_str": fecha_str})
