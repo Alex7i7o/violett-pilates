@@ -38,7 +38,9 @@ import {
   Clock, 
   Eye, 
   Sparkles,
-  Phone
+  Phone,
+  Copy,
+  Download
 } from 'lucide-react';
 
 export function ComunicacionesAdmin() {
@@ -60,6 +62,11 @@ export function ComunicacionesAdmin() {
   const [isTogglingPausa, setIsTogglingPausa] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottomRef = useRef<boolean>(true);
+  const shouldForceScrollRef = useRef<boolean>(false);
+  const prevConvIdRef = useRef<string | null>(null);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
   // ==========================================
   // ESTADOS HISTORIAL DE EMAILS
@@ -104,7 +111,17 @@ export function ComunicacionesAdmin() {
     if (!silent) setLoadingMsgs(true);
     try {
       const res = await getMensajes(convId);
-      setMensajes(res.data);
+      setMensajes(prev => {
+        // En polling silencioso, si los mensajes no cambiaron, preservar la referencia para no alterar el scroll del usuario
+        if (silent && prev.length === res.data.length && prev.length > 0) {
+          const lastPrev = prev[prev.length - 1];
+          const lastNew = res.data[res.data.length - 1];
+          if (lastPrev.id === lastNew.id && lastPrev.texto === lastNew.texto) {
+            return prev;
+          }
+        }
+        return res.data;
+      });
     } catch (e) {
       console.error(e);
       if (!silent) toast.error('Error al cargar mensajes');
@@ -186,12 +203,46 @@ export function ComunicacionesAdmin() {
     return () => clearInterval(interval);
   }, [activeTab, selectedConvId]);
 
-  // Auto-scroll al final del chat
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  // Control inteligente de scroll en el chat
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // Si la distancia al fondo es menor a 120px, el usuario está al final
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 120;
+    isUserNearBottomRef.current = isNearBottom;
+    setShowScrollBottomBtn(!isNearBottom);
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+      isUserNearBottomRef.current = true;
+      setShowScrollBottomBtn(false);
     }
-  }, [mensajes]);
+  };
+
+  // Auto-scroll que respeta la lectura del usuario (NUNCA lo devuelve abajo si scrolleó para leer)
+  useEffect(() => {
+    const isDifferentConv = prevConvIdRef.current !== selectedConvId;
+    prevConvIdRef.current = selectedConvId;
+
+    if (isDifferentConv) {
+      // Cambio de conversación: scrollear al final inmediatamente
+      setTimeout(() => scrollToBottom(false), 50);
+      isUserNearBottomRef.current = true;
+      setShowScrollBottomBtn(false);
+      return;
+    }
+
+    // Misma conversación: SOLO scrollear abajo si el usuario ya estaba abajo o forzó un envío
+    if (shouldForceScrollRef.current || isUserNearBottomRef.current) {
+      scrollToBottom(true);
+      shouldForceScrollRef.current = false;
+    }
+  }, [mensajes, selectedConvId]);
 
   // Handler para buscar conversaciones con enter o botón
   const handleSearchConvSubmit = (e: React.FormEvent) => {
@@ -220,8 +271,93 @@ export function ComunicacionesAdmin() {
     }
   };
 
+  // Handler para exportar o copiar el chat de la conversación activa
+  const handleCopiarChat = () => {
+    if (!selectedConv || mensajes.length === 0) {
+      toast.error('No hay mensajes en esta conversación para copiar.');
+      return;
+    }
+
+    const header = [
+      `==================================================`,
+      `CONVERSACIÓN WHATSAPP - VIOLETT PILATES`,
+      `Contacto: ${selectedConv.nombre} (${selectedConv.telefono})`,
+      `Rol: ${selectedConv.rol_detectado} | Estado: ${selectedConv.estado === 'ESPERANDO_HUMANO' ? 'Atención Humana' : 'IA Activa'}`,
+      `Total Mensajes: ${mensajes.length}`,
+      `Exportado el: ${new Date().toLocaleString('es-AR')}`,
+      `==================================================\n`
+    ].join('\n');
+
+    const lines = mensajes.map((m) => {
+      const remitente = m.direccion === 'ENTRANTE' 
+        ? `[${selectedConv.nombre || 'Clienta'}]` 
+        : m.agente_responsable === 'humano_admin' 
+        ? `[Administración (Manual)]` 
+        : `[IA (${m.agente_responsable || 'asistente'})]`;
+      const tools = m.tools_ejecutadas && m.tools_ejecutadas.length > 0 
+        ? ` (Tools: ${m.tools_ejecutadas.join(', ')})` 
+        : '';
+      return `${m.created_at} ${remitente}${tools}:\n${m.texto}\n`;
+    });
+
+    const fullTranscript = `${header}\n${lines.join('\n')}`;
+
+    navigator.clipboard.writeText(fullTranscript).then(() => {
+      toast.success('¡Conversación copiada al portapapeles! 📋 Pegala directamente acá en el chat.');
+    }).catch(() => {
+      toast.error('No se pudo copiar automáticamente.');
+    });
+  };
+
+  const handleDescargarChat = () => {
+    if (!selectedConv || mensajes.length === 0) {
+      toast.error('No hay mensajes para descargar.');
+      return;
+    }
+
+    const header = [
+      `==================================================`,
+      `CONVERSACIÓN WHATSAPP - VIOLETT PILATES`,
+      `Contacto: ${selectedConv.nombre} (${selectedConv.telefono})`,
+      `Rol: ${selectedConv.rol_detectado} | Estado: ${selectedConv.estado === 'ESPERANDO_HUMANO' ? 'Atención Humana' : 'IA Activa'}`,
+      `Total Mensajes: ${mensajes.length}`,
+      `Exportado el: ${new Date().toLocaleString('es-AR')}`,
+      `==================================================\n`
+    ].join('\n');
+
+    const lines = mensajes.map((m) => {
+      const remitente = m.direccion === 'ENTRANTE' 
+        ? `[${selectedConv.nombre || 'Clienta'}]` 
+        : m.agente_responsable === 'humano_admin' 
+        ? `[Administración (Manual)]` 
+        : `[IA (${m.agente_responsable || 'asistente'})]`;
+      const tools = m.tools_ejecutadas && m.tools_ejecutadas.length > 0 
+        ? ` (Tools: ${m.tools_ejecutadas.join(', ')})` 
+        : '';
+      return `${m.created_at} ${remitente}${tools}:\n${m.texto}\n`;
+    });
+
+    const fullTranscript = `${header}\n${lines.join('\n')}`;
+    const cleanPhone = selectedConv.telefono.replace(/[^0-9]/g, '');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const fileName = `chat_${selectedConv.nombre.replace(/\s+/g, '_')}_${cleanPhone}_${dateStr}.txt`;
+
+    const blob = new Blob([fullTranscript], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Chat descargado como ${fileName} 📥`);
+  };
+
   // Handler para enviar mensaje manual por WhatsApp
   const handleEnviarMensaje = async (e: React.FormEvent) => {
+    shouldForceScrollRef.current = true;
     e.preventDefault();
     if (!selectedConvId || !nuevoMensajeTexto.trim()) return;
 
@@ -473,6 +609,27 @@ export function ComunicacionesAdmin() {
 
                       {/* Acciones del Chat */}
                       <div className="flex items-center gap-2 shrink-0">
+                        {/* Botón Copiar Chat para soporte o análisis rápido */}
+                        <button
+                          type="button"
+                          onClick={handleCopiarChat}
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-primary-main hover:border-primary-main/40 hover:bg-slate-50 transition-all flex items-center gap-1.5 text-xs font-bold shadow-2xs"
+                          title="Copiar toda la conversación al portapapeles para pegarla donde quieras"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-primary-main" />
+                          <span className="hidden sm:inline">Copiar Chat</span>
+                        </button>
+
+                        {/* Botón Exportar archivo .txt */}
+                        <button
+                          type="button"
+                          onClick={handleDescargarChat}
+                          className="p-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/50 transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
+                          title="Descargar conversación en archivo de texto (.txt)"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-600" />
+                        </button>
+
                         <button
                           onClick={handleTogglePausa}
                           disabled={isTogglingPausa}
@@ -509,7 +666,11 @@ export function ComunicacionesAdmin() {
                     </div>
 
                     {/* Mensajes Container */}
-                    <div className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar">
+                    <div 
+                      ref={chatContainerRef}
+                      onScroll={handleChatScroll}
+                      className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar relative"
+                    >
                       {loadingMsgs ? (
                         <div className="p-8 text-center text-xs text-muted">
                           <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-primary-main" />
@@ -572,6 +733,17 @@ export function ComunicacionesAdmin() {
                             </div>
                           );
                         })
+                      )}
+                      {showScrollBottomBtn && (
+                        <button
+                          type="button"
+                          onClick={() => scrollToBottom(true)}
+                          className="sticky bottom-3 float-right mr-2 bg-slate-900/90 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg hover:bg-slate-900 transition-all flex items-center gap-1.5 z-20 backdrop-blur-xs border border-white/20 animate-fade-in cursor-pointer"
+                          title="Ir a los mensajes más recientes"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          <span>Ir al final</span>
+                        </button>
                       )}
                       <div ref={messagesEndRef} />
                     </div>
