@@ -48,6 +48,28 @@ def process_booking(turno_id, user, is_recurring=False, request=None):
     
     return True, "Reserva confirmada exitosamente."
 
+def actualizar_reservas_pasadas_a_tomadas(usuario=None):
+    """
+    Actualiza automaticamente a estado TOMADA todas las reservas con estado CONFIRMADA
+    cuyo turno ya haya concluido en el tiempo.
+    Regla de negocio: Si la fecha es vieja, se computa como clase ya tomada por la alumna,
+    aun si el profesorado no paso lista manualmente.
+    """
+    from django.db.models import Q
+    now = timezone.localtime()
+    today = now.date()
+    now_time = now.time()
+
+    qs = Reserva.objects.filter(estado='CONFIRMADA')
+    if usuario:
+        qs = qs.filter(usuario=usuario)
+
+    pasadas = qs.filter(
+        Q(turno__fecha__lt=today) |
+        Q(turno__fecha=today, turno__hora_fin__lte=now_time)
+    )
+    return pasadas.update(estado='TOMADA')
+
 @transaction.atomic
 def cancelar_reserva(turno_id, usuario):
     import datetime

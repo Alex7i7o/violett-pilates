@@ -460,6 +460,8 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def clases(self, request, pk=None):
         usuario = self.get_object()
+        from core.services import actualizar_reservas_pasadas_a_tomadas
+        actualizar_reservas_pasadas_a_tomadas(usuario=usuario)
         from core.models import Reserva
         month = request.query_params.get('month')
         year = request.query_params.get('year')

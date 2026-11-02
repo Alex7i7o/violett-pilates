@@ -13,15 +13,33 @@ def on_profile_data(data, request=None, user=None):
         days_until_expiration = (expiration_date - timezone.localdate()).days
         
         from core.models import Reserva
+        from core.services import actualizar_reservas_pasadas_a_tomadas
+        from django.db.models import Q
+        actualizar_reservas_pasadas_a_tomadas(usuario=user)
+
+        now = timezone.localtime()
+        today = now.date()
+        now_time = now.time()
+
+        # Solo turnos estrictamente a futuro se computan como pendientes por tomar
         clases_pendientes = Reserva.objects.filter(
             usuario=user,
             estado='CONFIRMADA'
+        ).filter(
+            Q(turno__fecha__gt=today) |
+            Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
+        ).count()
+
+        clases_tomadas = Reserva.objects.filter(
+            usuario=user,
+            estado='TOMADA'
         ).count()
 
         data.update({
             "activePlan": suscripcion.plan.nombre,
             "remainingClasses": suscripcion.clases_restantes,
             "pendingClasses": clases_pendientes,
+            "takenClasses": clases_tomadas,
             "totalClasses": suscripcion.plan.cantidad_clases,
             "expirationDate": expiration_date.strftime("%d/%m/%Y"),
             "daysUntilExpiration": max(0, days_until_expiration)
@@ -36,9 +54,27 @@ def on_enrich_admin_usuario(data, instance=None, **kwargs):
         suscripcion = Suscripcion.objects.filter(usuario=instance, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
         if suscripcion:
             from core.models import Reserva
+            from core.services import actualizar_reservas_pasadas_a_tomadas
+            from django.db.models import Q
+            actualizar_reservas_pasadas_a_tomadas(usuario=instance)
+
+            now = timezone.localtime()
+            today = now.date()
+            now_time = now.time()
+
+            # Clases agendadas que aun no ocurrieron
             clases_pendientes = Reserva.objects.filter(
                 usuario=instance,
                 estado='CONFIRMADA'
+            ).filter(
+                Q(turno__fecha__gt=today) |
+                Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
+            ).count()
+
+            # Clases ya ocurridas o tomadas
+            clases_tomadas = Reserva.objects.filter(
+                usuario=instance,
+                estado='TOMADA'
             ).count()
 
             data['plan_activo'] = {
@@ -48,6 +84,7 @@ def on_enrich_admin_usuario(data, instance=None, **kwargs):
                 'clases_totales': suscripcion.plan.cantidad_clases,
                 'clases_restantes': suscripcion.clases_restantes,
                 'clases_pendientes': clases_pendientes,
+                'clases_tomadas': clases_tomadas,
                 'fecha_vencimiento': suscripcion.fecha_vencimiento.strftime("%Y-%m-%d"),
                 'estado': suscripcion.estado
             }

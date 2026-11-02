@@ -212,11 +212,15 @@ export function AlumnosAdmin() {
                               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
                                 <p className="text-sm font-bold text-emerald-800">{plan.plan_nombre}</p>
                                 <p className="text-sm text-emerald-700 mt-1">{plan.clases_restantes} créditos disponibles</p>
-                                {plan.clases_pendientes !== undefined && (
+                                {Boolean(plan.clases_pendientes && plan.clases_pendientes > 0) ? (
                                   <p className="text-xs font-semibold text-emerald-900 mt-1.5 bg-emerald-100/70 px-2 py-0.5 rounded-md inline-block">
                                     ✦ {plan.clases_pendientes} {plan.clases_pendientes === 1 ? 'clase agendada por tomar' : 'clases agendadas por tomar'}
                                   </p>
-                                )}
+                                ) : Boolean(plan.clases_tomadas && plan.clases_tomadas > 0) ? (
+                                  <p className="text-xs font-medium text-emerald-700 mt-1.5">
+                                    ✓ {plan.clases_tomadas} {plan.clases_tomadas === 1 ? 'clase tomada' : 'clases tomadas'}
+                                  </p>
+                                ) : null}
                                 <p className="text-xs text-emerald-600 mt-1.5">Vence: {plan.fecha_vencimiento}</p>
                               </div>
                             );
@@ -227,11 +231,15 @@ export function AlumnosAdmin() {
                               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                                 <p className="text-sm font-bold text-amber-800">{plan.plan_nombre}</p>
                                 <p className="text-sm text-amber-700 mt-1">0 créditos libres (Plan agendado)</p>
-                                {plan.clases_pendientes !== undefined && (
+                                {Boolean(plan.clases_pendientes && plan.clases_pendientes > 0) ? (
                                   <p className="text-xs font-semibold text-amber-900 mt-1.5 bg-amber-100/70 px-2 py-0.5 rounded-md inline-block">
                                     ✦ {plan.clases_pendientes} {plan.clases_pendientes === 1 ? 'clase agendada por tomar' : 'clases agendadas por tomar'}
                                   </p>
-                                )}
+                                ) : Boolean(plan.clases_tomadas && plan.clases_tomadas > 0) ? (
+                                  <p className="text-xs font-medium text-amber-800 mt-1.5">
+                                    ✓ Todas las clases tomadas ({plan.clases_tomadas}/{plan.clases_totales})
+                                  </p>
+                                ) : null}
                                 <p className="text-xs text-amber-600 mt-1.5">Vence: {plan.fecha_vencimiento}</p>
                               </div>
                             );
