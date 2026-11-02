@@ -1,6 +1,8 @@
 import datetime
 import logging
 import re
+import difflib
+import unicodedata
 from django.utils import timezone
 from django.db.models import Q
 from langchain_core.tools import tool
@@ -10,26 +12,69 @@ from .profesores_tools import resolver_fecha, obtener_profesor_de_turno
 
 logger = logging.getLogger(__name__)
 
+# Almacén en memoria de las últimas coincidencias para Human-in-the-loop
+_ULTIMAS_COINCIDENCIAS_ALUMNAS = []
+
+def get_ultimas_coincidencias_alumnas():
+    global _ULTIMAS_COINCIDENCIAS_ALUMNAS
+    return list(_ULTIMAS_COINCIDENCIAS_ALUMNAS)
+
+def normalizar_texto_fonetico(texto: str) -> str:
+    """Elimina acentos, diacríticos y reduce repeticiones para tolerar audios y ortografía"""
+    if not texto:
+        return ""
+    nfkd = unicodedata.normalize('NFKD', str(texto).lower())
+    sin_tildes = "".join([c for c in nfkd if not unicodedata.combining(c)])
+    # Reducir repetición de letras consecutivas (ej: marzzuck -> marzuk, laaaaila -> laila)
+    sin_rep = re.sub(r'(.)\1+', r'\1', sin_tildes)
+    return sin_rep.strip()
+
+def formatear_opciones_human_in_the_loop(query: str, candidatas: list, accion_desc: str = "") -> str:
+    """Genera una respuesta profesional con lista numerada para que Deby elija la alumna correcta"""
+    lineas = [f"✦ Deby, encontré estas posibles coincidencias para '*{query}*':\n"]
+    for idx, u in enumerate(candidatas, 1):
+        tel_str = f" • Tel: ...{u.telefono[-4:]}" if u.telefono and len(u.telefono) >= 4 else ""
+        abono_str = ""
+        try:
+            from plugins.membresias.backend.models import Suscripcion
+            sub = Suscripcion.objects.filter(usuario=u, estado__in=['ACTIVO', 'AGOTADO']).first()
+            if sub and sub.plan:
+                abono_str = f" • Abono: {sub.plan.nombre} ({sub.clases_restantes} clases)"
+        except Exception:
+            pass
+        lineas.append(f"{idx}. *{u.nombre} {u.apellido}*{tel_str}{abono_str}")
+    
+    accion_txt = f" para {accion_desc}" if accion_desc else ""
+    lineas.append(f"\n¿Te referías a alguna de ellas? Podés indicarme el número (ej: *\"la 1\"*) o el nombre completo y continúo{accion_txt}.")
+    return "\n".join(lineas)
+
 def buscar_alumna_flexible(query: str):
     """
-    Busca una alumna por nombre, apellido o teléfono de manera tolerante a mayúsculas y acentos.
+    Busca una alumna por nombre, apellido o teléfono de manera tolerante a mayúsculas, acentos
+    y errores de tipeo o transcripción de audios (Fuzzy Matching).
     Retorna (alumna_encontrada, lista_coincidencias, error_str).
     """
+    global _ULTIMAS_COINCIDENCIAS_ALUMNAS
+    _ULTIMAS_COINCIDENCIAS_ALUMNAS = []
+
     q_clean = query.strip()
     if not q_clean:
         return None, [], "No se especificó el nombre o teléfono de la alumna."
 
-    # Si es teléfono numérico
+    # 1. Si es búsqueda por número de teléfono
     solo_num = re.sub(r'\D', '', q_clean)
     if len(solo_num) >= 6:
         ultimos = solo_num[-8:]
         qs = Usuario.objects.filter(telefono__icontains=ultimos)
         if qs.count() == 1:
-            return qs.first(), [qs.first()], None
+            u = qs.first()
+            _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
+            return u, [u], None
         elif qs.count() > 1:
+            _ULTIMAS_COINCIDENCIAS_ALUMNAS = list(qs)
             return None, list(qs), "multiples"
 
-    # Buscar por palabras del nombre / apellido
+    # 2. Búsqueda exacta / subcadena en base de datos
     palabras = [p for p in q_clean.split() if len(p) >= 2 and p.lower() not in ['alumna', 'la', 'el', 'a', 'de']]
     if not palabras:
         palabras = [q_clean]
@@ -38,26 +83,67 @@ def buscar_alumna_flexible(query: str):
     for p in palabras:
         filtro |= Q(nombre__icontains=p) | Q(apellido__icontains=p) | Q(email__icontains=p)
 
-    qs = Usuario.objects.filter(filtro).exclude(rol='PROFESOR').distinct()
-    
-    # Si no hubo resultado con OR amplio, probar si coinciden nombre y apellido juntos
-    if not qs.exists():
-        qs = Usuario.objects.filter(
-            Q(nombre__icontains=q_clean) | Q(apellido__icontains=q_clean)
-        ).distinct()
+    qs = list(Usuario.objects.filter(filtro).exclude(rol='PROFESOR').distinct())
 
-    cant = qs.count()
-    if cant == 0:
-        return None, [], f"No encontré ninguna alumna registrada con '{q_clean}' en el sistema."
-    elif cant == 1:
-        return qs.first(), list(qs), None
-    else:
-        # Si una de las coincidencias tiene el nombre completo exacto, priorizarla
+    # Coincidencia directa
+    if len(qs) == 1:
+        _ULTIMAS_COINCIDENCIAS_ALUMNAS = qs
+        return qs[0], qs, None
+    elif len(qs) > 1:
+        # Priorizar si una tiene el nombre completo exacto
         for u in qs:
             nom_comp = f"{u.nombre} {u.apellido}".lower()
-            if q_clean.lower() in nom_comp or nom_comp in q_clean.lower():
+            if q_clean.lower() == nom_comp or (q_clean.lower() in nom_comp and len(palabras) > 1):
+                _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
                 return u, [u], None
-        return None, list(qs), "multiples"
+        _ULTIMAS_COINCIDENCIAS_ALUMNAS = qs
+        return None, qs, "multiples"
+
+    # 3. Fuzzy Matching fonético / ortográfico (difflib SequenceMatcher)
+    # Especial para audios mal transcriptos o errores tipográficos (ej: 'marzuk' -> 'Marzzuck')
+    q_norm = normalizar_texto_fonetico(q_clean)
+    todos_usuarios = list(Usuario.objects.exclude(rol='PROFESOR'))
+    candidatos_con_score = []
+
+    for u in todos_usuarios:
+        nombre_u = u.nombre or ""
+        apellido_u = u.apellido or ""
+        full_u = f"{nombre_u} {apellido_u}".strip()
+        
+        fn = normalizar_texto_fonetico(full_u)
+        an = normalizar_texto_fonetico(apellido_u)
+        nn = normalizar_texto_fonetico(nombre_u)
+
+        s_full = difflib.SequenceMatcher(None, q_norm, fn).ratio()
+        s_ape = difflib.SequenceMatcher(None, q_norm, an).ratio()
+        s_nom = difflib.SequenceMatcher(None, q_norm, nn).ratio()
+
+        s_palabras = 0
+        if len(palabras) > 1:
+            for p in palabras:
+                p_norm = normalizar_texto_fonetico(p)
+                s_p = max(
+                    difflib.SequenceMatcher(None, p_norm, an).ratio(),
+                    difflib.SequenceMatcher(None, p_norm, nn).ratio()
+                )
+                if s_p > s_palabras:
+                    s_palabras = s_p
+
+        best_score = max(s_full, s_ape, s_nom, s_palabras)
+
+        if best_score >= 0.58:
+            candidatos_con_score.append((best_score, u))
+
+    candidatos_con_score.sort(key=lambda x: x[0], reverse=True)
+
+    if not candidatos_con_score:
+        return None, [], f"No encontré ninguna alumna registrada con '{q_clean}' en el sistema."
+
+    # Al ser coincidencia difusa (fuzzy/fonética por error de tipeo o transcripción de audio),
+    # devolvemos las candidatas encontradas (hasta 4) para pedir confirmación profesional (Human-in-the-loop)
+    top_candidatos = [u for score, u in candidatos_con_score[:4]]
+    _ULTIMAS_COINCIDENCIAS_ALUMNAS = top_candidatos
+    return None, top_candidatos, "multiples"
 
 
 @tool
@@ -76,8 +162,7 @@ def renovar_o_asignar_plan_alumna(nombre_o_tel_alumna: str, nombre_o_clases_plan
 
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
     if err == "multiples":
-        nombres = [f"• {u.nombre} {u.apellido} (Tel: {u.telefono or 'Sin tel'})" for u in matches[:4]]
-        return f"✦ Encontré más de una alumna con ese nombre:\n" + "\n".join(nombres) + "\n\n¿A cuál de ellas querés que le renueve el abono?"
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "renovarle el abono")
     elif not alumna:
         return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates. Verificá cómo figura su nombre o pasame su número de teléfono."
 
@@ -157,8 +242,7 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
     """
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel)
     if err == "multiples":
-        nombres = [f"• {u.nombre} {u.apellido} ({u.telefono or 'Sin tel'})" for u in matches[:5]]
-        return f"✦ Encontré más de una alumna con ese criterio:\n" + "\n".join(nombres) + "\n\n¿De cuál querés ver los datos?"
+        return formatear_opciones_human_in_the_loop(nombre_o_tel, matches, "ver su ficha y abono")
     elif not alumna:
         return f"✦ No encontré a ninguna alumna registrada con '{nombre_o_tel}' en la base de datos."
 
@@ -211,10 +295,6 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
     - fecha_o_dia: 'hoy', 'mañana' o nombre del día (ej: 'lunes', 'martes', 'miércoles', 'jueves', 'viernes').
     - hora_str: Hora de inicio (ej: '15:30', '18:00', '19', '20').
     """
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
-    if err == "multiples":
-        return f"Encontré varias alumnas con ese nombre. Por favor especificá el apellido completo o teléfono."
-
     target_date = resolver_fecha(fecha_o_dia)
     hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
     if ':' not in hora_clean:
@@ -222,6 +302,14 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
             hora_clean = f"{int(hora_clean):02d}:00"
         except ValueError:
             hora_clean = "18:00"
+
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(
+            nombre_o_tel_alumna, 
+            matches, 
+            f"anotarla para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs"
+        )
 
     turnos = Turno.objects.filter(
         fecha=target_date,
@@ -302,6 +390,12 @@ def cancelar_reserva_alumna_duena(nombre_o_tel_alumna: str, fecha_o_dia: str = "
     """
     target_date = resolver_fecha(fecha_o_dia)
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(
+            nombre_o_tel_alumna,
+            matches,
+            f"darla de baja de la clase del {target_date.strftime('%d/%m/%Y')}" + (f" a las {hora_str}" if hora_str else "")
+        )
 
     qs = Reserva.objects.filter(turno__fecha=target_date, estado='CONFIRMADA').select_related('turno', 'usuario')
 

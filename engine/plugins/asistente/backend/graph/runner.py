@@ -63,11 +63,142 @@ def get_compiled_graph():
     return _COMPILED_GRAPH
 
 
+def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
+    """
+    Verifica si hay una acción pendiente esperando selección de alumna (Human-in-the-loop).
+    Si el mensaje del usuario selecciona una opción ('1', 'la 1', 'laila', etc.), ejecuta la acción y limpia el estado.
+    """
+    if getattr(conversacion, 'rol_detectado', '') != 'DUENA':
+        return None
+
+    metadata = getattr(conversacion, 'metadata', None) or {}
+    accion = metadata.get('accion_pendiente')
+    if not accion:
+        return None
+
+    msg_low = mensaje_usuario.lower().strip()
+    candidatos = accion.get('candidatos', [])
+    if not candidatos:
+        return None
+
+    # Si Deby cancela o rechaza
+    if any(k in msg_low for k in ['no', 'ninguna', 'ninguno', 'ningun', 'cancelar', 'cancelá', 'otra', 'ninguno de esos']):
+        conversacion.metadata.pop('accion_pendiente', None)
+        conversacion.save(update_fields=['metadata'])
+        return (
+            "Entendido Deby ✦. Cancelé la solicitud. Si querés pasame el apellido completo o teléfono de la alumna para buscarla nuevamente.",
+            "agente_direccion",
+            []
+        )
+
+    alumno_elegido = None
+
+    # 1. Por número: '1', 'la 1', 'el 1', 'opción 1', 'primera', '2', 'segunda', etc.
+    num_match = re.search(r'\b(?:la\s+|el\s+|opcion\s+|opción\s+)?([1-4])\b', msg_low)
+    if num_match:
+        idx = int(num_match.group(1)) - 1
+        if 0 <= idx < len(candidatos):
+            c_data = candidatos[idx]
+            from core.models import Usuario
+            alumno_elegido = Usuario.objects.filter(id=c_data['id']).first()
+
+    # 2. Por ordinal en texto
+    if not alumno_elegido:
+        ordinales = {'primera': 0, 'primero': 0, 'segunda': 1, 'segundo': 1, 'tercera': 2, 'tercero': 2, 'cuarta': 3, 'cuarto': 3}
+        for ord_txt, o_idx in ordinales.items():
+            if ord_txt in msg_low and o_idx < len(candidatos):
+                c_data = candidatos[o_idx]
+                from core.models import Usuario
+                alumno_elegido = Usuario.objects.filter(id=c_data['id']).first()
+                break
+
+    # 3. Por coincidencia de nombre o apellido
+    if not alumno_elegido:
+        from ..tools.gestion_tools import normalizar_texto_fonetico
+        from core.models import Usuario
+        for c_data in candidatos:
+            nom_norm = normalizar_texto_fonetico(c_data.get('nombre', ''))
+            palabras_msg = [p for p in normalizar_texto_fonetico(msg_low).split() if len(p) >= 3]
+            if any(p in nom_norm for p in palabras_msg):
+                alumno_elegido = Usuario.objects.filter(id=c_data['id']).first()
+                break
+
+    # 4. Si hay una sola opción y Deby dijo "sí" o "dale" o "esa"
+    if not alumno_elegido and len(candidatos) == 1 and any(k in msg_low for k in ['si', 'sí', 'dale', 'esa', 'correcto', 'exacto', 'confirmado']):
+        from core.models import Usuario
+        alumno_elegido = Usuario.objects.filter(id=candidatos[0]['id']).first()
+
+    if not alumno_elegido:
+        # No coincide con una opción; si Deby preguntó otra cosa (ej: facturación, turnos), se descarta la acción pendiente
+        return None
+
+    # Ejecutar la acción guardada
+    tipo = accion.get('tipo')
+    params = accion.get('params', {})
+    nom_completo = f"{alumno_elegido.nombre} {alumno_elegido.apellido}".strip()
+
+    # Limpiar acción pendiente
+    conversacion.metadata.pop('accion_pendiente', None)
+    conversacion.save(update_fields=['metadata'])
+
+    if tipo == 'agendar':
+        res = agendar_alumna_en_turno_duena.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "fecha_o_dia": params.get('fecha_o_dia', 'hoy'),
+            "hora_str": params.get('hora_str', '18:00')
+        })
+        return res, "agente_direccion", ['agendar_alumna_en_turno_duena']
+
+    elif tipo == 'cancelar':
+        res = cancelar_reserva_alumna_duena.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "fecha_o_dia": params.get('fecha_o_dia', 'hoy'),
+            "hora_str": params.get('hora_str', '')
+        })
+        return res, "agente_direccion", ['cancelar_reserva_alumna_duena']
+
+    elif tipo == 'renovar_plan':
+        res = renovar_o_asignar_plan_alumna.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "nombre_o_clases_plan": params.get('nombre_o_clases_plan', '')
+        })
+        return res, "agente_direccion", ['renovar_o_asignar_plan_alumna']
+
+    elif tipo == 'consultar_ficha':
+        res = consultar_alumna_detalle.invoke({
+            "nombre_o_tel": nom_completo
+        })
+        return res, "agente_direccion", ['consultar_alumna_detalle']
+
+    return None
+
+
+def _guardar_hitl_si_corresponde(conversacion, texto_respuesta: str, tipo_accion: str, params: dict):
+    """Si la respuesta le ofrece opciones de candidatas a Deby, guarda la acción pendiente para el próximo turno"""
+    if not conversacion or getattr(conversacion, 'rol_detectado', '') != 'DUENA':
+        return
+    if "encontré estas posibles coincidencias" in texto_respuesta.lower() or "te referías a alguna" in texto_respuesta.lower():
+        from ..tools.gestion_tools import get_ultimas_coincidencias_alumnas
+        cands = get_ultimas_coincidencias_alumnas()
+        if cands:
+            conversacion.metadata['accion_pendiente'] = {
+                'tipo': tipo_accion,
+                'candidatos': [{'id': str(u.id), 'nombre': f"{u.nombre} {u.apellido}".strip(), 'telefono': getattr(u, 'telefono', '')} for u in cands],
+                'params': params
+            }
+            conversacion.save(update_fields=['metadata'])
+
+
 def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, str, List[str]]:
     """
     Ejecuta el ciclo de atención multi-agente con arquitectura de legos orquestada por LangGraph.
     Retorna: (texto_respuesta, agente_responsable, tools_ejecutadas)
     """
+    # 0. Interceptar Human-in-the-loop si hay una selección de alumna pendiente
+    res_hitl = _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario)
+    if res_hitl:
+        return res_hitl
+
     gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
@@ -170,6 +301,16 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             respuesta_final = sanitizar_para_whatsapp(respuesta_final)
         except Exception:
             pass
+
+        if "encontré estas posibles coincidencias" in respuesta_final.lower() or "te referías a alguna" in respuesta_final.lower():
+            tipo_act = 'agendar'
+            if 'cancelar_reserva_alumna_duena' in tools_usadas:
+                tipo_act = 'cancelar'
+            elif 'renovar_o_asignar_plan_alumna' in tools_usadas:
+                tipo_act = 'renovar_plan'
+            elif 'consultar_alumna_detalle' in tools_usadas:
+                tipo_act = 'consultar_ficha'
+            _guardar_hitl_si_corresponde(conversacion, respuesta_final, tipo_act, {})
 
         print(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}", flush=True)
         logger.info(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}")
@@ -328,6 +469,7 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                 "nombre_o_tel_alumna": nombre_target or mensaje_usuario,
                 "nombre_o_clases_plan": ""
             })
+            _guardar_hitl_si_corresponde(conversacion, res, 'renovar_plan', {'nombre_o_clases_plan': ''})
             tools_usadas.append('renovar_o_asignar_plan_alumna')
             return res, "agente_direccion", tools_usadas
 
@@ -336,6 +478,7 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             m_alumna = re.search(r'(?:ficha de|datos de|cómo viene|como viene|clases le quedan a|alumna)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)', mensaje_usuario, re.IGNORECASE)
             nom = m_alumna.group(1).strip() if m_alumna else mensaje_usuario
             res = consultar_alumna_detalle.invoke({"nombre_o_tel": nom})
+            _guardar_hitl_si_corresponde(conversacion, res, 'consultar_ficha', {})
             tools_usadas.append('consultar_alumna_detalle')
             return res, "agente_direccion", tools_usadas
 
@@ -360,6 +503,7 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                 "fecha_o_dia": fecha_str,
                 "hora_str": hora_str
             })
+            _guardar_hitl_si_corresponde(conversacion, res, 'agendar', {'fecha_o_dia': fecha_str, 'hora_str': hora_str})
             tools_usadas.append('agendar_alumna_en_turno_duena')
             return res, "agente_direccion", tools_usadas
 
@@ -395,6 +539,7 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                 "fecha_o_dia": fecha_str,
                 "hora_str": hora_str
             })
+            _guardar_hitl_si_corresponde(conversacion, res, 'cancelar', {'fecha_o_dia': fecha_str, 'hora_str': hora_str})
             tools_usadas.append('cancelar_reserva_alumna_duena')
             return res, "agente_direccion", tools_usadas
 
