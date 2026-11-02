@@ -14,10 +14,36 @@ logger = logging.getLogger(__name__)
 
 # Almacén en memoria de las últimas coincidencias para Human-in-the-loop
 _ULTIMAS_COINCIDENCIAS_ALUMNAS = []
+_ULTIMA_ALUMNA_ACTIVA = None
+
+def registrar_alumna_activa(alumna):
+    global _ULTIMA_ALUMNA_ACTIVA
+    if alumna:
+        _ULTIMA_ALUMNA_ACTIVA = alumna
+
+def get_ultima_alumna_activa():
+    global _ULTIMA_ALUMNA_ACTIVA
+    return _ULTIMA_ALUMNA_ACTIVA
 
 def get_ultimas_coincidencias_alumnas():
     global _ULTIMAS_COINCIDENCIAS_ALUMNAS
     return list(_ULTIMAS_COINCIDENCIAS_ALUMNAS)
+
+VERBOS_Y_STOPWORDS_GESTION = {
+    'agregale', 'agregále', 'agrégale', 'agregarle', 'agrega', 'agregá', 'agregar',
+    'sumale', 'súmale', 'sumarle', 'suma', 'sumá', 'sumar',
+    'cargale', 'cárgale', 'cargarle', 'carga', 'cargá', 'cargar',
+    'asignale', 'asígnale', 'asignarle', 'asigna', 'asigná', 'asignar',
+    'renovale', 'renóvale', 'renovarle', 'renova', 'renová', 'renovar',
+    'anotale', 'anótale', 'anotarle', 'anota', 'anotá', 'anotar',
+    'agendale', 'agéndale', 'agendarle', 'agenda', 'agendá', 'agendar',
+    'sacale', 'sácale', 'sacarle', 'saca', 'sacá', 'sacar',
+    'desanota', 'desanotá', 'desanotale',
+    'plan', 'planes', 'abono', 'abonos', 'clase', 'clases', 'credito', 'creditos', 'crédito', 'créditos',
+    'su', 'sus', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'al', 'del', 'a', 'de', 'para', 'en', 'por', 'con',
+    'hoy', 'mañana', 'sabado', 'sábado', 'lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes',
+    'hs', 'horas'
+}
 
 def normalizar_texto_fonetico(texto: str) -> str:
     """Elimina acentos, diacríticos y reduce repeticiones para tolerar audios y ortografía"""
@@ -59,6 +85,10 @@ def buscar_alumna_flexible(query: str):
 
     q_clean = query.strip()
     if not q_clean:
+        activa = get_ultima_alumna_activa()
+        if activa:
+            _ULTIMAS_COINCIDENCIAS_ALUMNAS = [activa]
+            return activa, [activa], None
         return None, [], "No se especificó el nombre o teléfono de la alumna."
 
     # 1. Si es búsqueda por número de teléfono
@@ -68,17 +98,30 @@ def buscar_alumna_flexible(query: str):
         qs = Usuario.objects.filter(telefono__icontains=ultimos)
         if qs.count() == 1:
             u = qs.first()
+            registrar_alumna_activa(u)
             _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
             return u, [u], None
         elif qs.count() > 1:
             _ULTIMAS_COINCIDENCIAS_ALUMNAS = list(qs)
             return None, list(qs), "multiples"
 
-    # 2. Búsqueda exacta / subcadena en base de datos
-    palabras = [p for p in q_clean.split() if len(p) >= 2 and p.lower() not in ['alumna', 'la', 'el', 'a', 'de']]
-    if not palabras:
-        palabras = [q_clean]
+    # 2. Descartar verbos de orden, números y stopwords para aislar nombres propios
+    tokens_reales = [
+        p for p in re.findall(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+', q_clean)
+        if p.lower() not in VERBOS_Y_STOPWORDS_GESTION and len(p) >= 2
+    ]
 
+    # Si no hay tokens reales de nombre (ej: "Agrégale a su plan 4 clases", "su plan", "a su plan", "renovale")
+    if not tokens_reales:
+        activa = get_ultima_alumna_activa()
+        if activa:
+            logger.info(f"[ASISTENTE CONTEXTO] Usando alumna activa en contexto: {activa.nombre} {activa.apellido}")
+            _ULTIMAS_COINCIDENCIAS_ALUMNAS = [activa]
+            return activa, [activa], None
+        return None, [], "No identifiqué a qué alumna te referís. ¿Me pasás su nombre o apellido?"
+
+    # 3. Búsqueda exacta / subcadena en base de datos usando tokens limpios
+    palabras = tokens_reales
     filtro = Q()
     for p in palabras:
         filtro |= Q(nombre__icontains=p) | Q(apellido__icontains=p) | Q(email__icontains=p)
@@ -87,21 +130,25 @@ def buscar_alumna_flexible(query: str):
 
     # Coincidencia directa
     if len(qs) == 1:
-        _ULTIMAS_COINCIDENCIAS_ALUMNAS = qs
-        return qs[0], qs, None
+        u = qs[0]
+        registrar_alumna_activa(u)
+        _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
+        return u, [u], None
     elif len(qs) > 1:
         # Priorizar si una tiene el nombre completo exacto
+        nombre_buscado_clean = " ".join(tokens_reales).lower()
         for u in qs:
             nom_comp = f"{u.nombre} {u.apellido}".lower()
-            if q_clean.lower() == nom_comp or (q_clean.lower() in nom_comp and len(palabras) > 1):
+            if nombre_buscado_clean == nom_comp or (nombre_buscado_clean in nom_comp and len(palabras) > 1):
+                registrar_alumna_activa(u)
                 _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
                 return u, [u], None
         _ULTIMAS_COINCIDENCIAS_ALUMNAS = qs
         return None, qs, "multiples"
 
-    # 3. Fuzzy Matching fonético / ortográfico (difflib SequenceMatcher)
+    # 4. Fuzzy Matching fonético / ortográfico (difflib SequenceMatcher)
     # Especial para audios mal transcriptos o errores tipográficos (ej: 'marzuk' -> 'Marzzuck')
-    q_norm = normalizar_texto_fonetico(q_clean)
+    q_norm = normalizar_texto_fonetico(" ".join(tokens_reales))
     todos_usuarios = list(Usuario.objects.exclude(rol='PROFESOR'))
     candidatos_con_score = []
 
@@ -139,8 +186,14 @@ def buscar_alumna_flexible(query: str):
     if not candidatos_con_score:
         return None, [], f"No encontré ninguna alumna registrada con '{q_clean}' en el sistema."
 
-    # Al ser coincidencia difusa (fuzzy/fonética por error de tipeo o transcripción de audio),
-    # devolvemos las candidatas encontradas (hasta 4) para pedir confirmación profesional (Human-in-the-loop)
+    # Si hay un match con score muy alto (>= 0.88), tomarlo directo
+    if candidatos_con_score[0][0] >= 0.88:
+        u = candidatos_con_score[0][1]
+        registrar_alumna_activa(u)
+        _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
+        return u, [u], None
+
+    # Al ser coincidencia difusa, devolvemos hasta 4 candidatas para Human-in-the-loop
     top_candidatos = [u for score, u in candidatos_con_score[:4]]
     _ULTIMAS_COINCIDENCIAS_ALUMNAS = top_candidatos
     return None, top_candidatos, "multiples"
@@ -165,6 +218,14 @@ def renovar_o_asignar_plan_alumna(nombre_o_tel_alumna: str, nombre_o_clases_plan
         return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "renovarle el abono")
     elif not alumna:
         return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates. Verificá cómo figura su nombre o pasame su número de teléfono."
+
+    # Identificar cantidad de clases si vino pegada en el parámetro
+    if not nombre_o_clases_plan:
+        m_num = re.search(r'\b(1|4|8|12|16)\s*clases?\b', nombre_o_tel_alumna, re.IGNORECASE)
+        if not m_num:
+            m_num = re.search(r'\b(1|4|8|12|16)\b', nombre_o_tel_alumna)
+        if m_num:
+            nombre_o_clases_plan = m_num.group(1)
 
     # Identificar el Plan a asignar
     plan_seleccionado = None

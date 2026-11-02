@@ -139,6 +139,12 @@ def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
     tipo = accion.get('tipo')
     params = accion.get('params', {})
     nom_completo = f"{alumno_elegido.nombre} {alumno_elegido.apellido}".strip()
+    from ..tools.gestion_tools import registrar_alumna_activa
+    registrar_alumna_activa(alumno_elegido)
+    conversacion.metadata['alumna_activa'] = {
+        'id': str(alumno_elegido.id),
+        'nombre': nom_completo
+    }
 
     # Limpiar acción pendiente
     conversacion.metadata.pop('accion_pendiente', None)
