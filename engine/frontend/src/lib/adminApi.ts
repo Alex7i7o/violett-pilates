@@ -88,6 +88,12 @@ export const deleteAdminTurno = (id: string, future?: boolean) => api.delete(`/a
 export const apartarCamillaManual = (turnoId: string, nombre: string, telefono?: string) =>
     api.post(`/admin/turnos/${turnoId}/apartar-manual/`, { nombre, telefono });
 
+export const agregarAlumnaTurno = (turnoId: string, data: { usuario_id?: string; nombre?: string; telefono?: string }) =>
+    api.post(`/admin/turnos/${turnoId}/agregar-alumna/`, data);
+
+export const sacarAlumnaTurno = (reservaId: string, devolverCredito: boolean = true) =>
+    api.delete(`/admin/reservas/${reservaId}/?devolver_credito=${devolverCredito}`);
+
 export const vincularReservaUsuario = (reservaId: string, usuarioId: string) =>
     api.post(`/admin/reservas/${reservaId}/vincular-usuario/`, { usuario_id: usuarioId });
 

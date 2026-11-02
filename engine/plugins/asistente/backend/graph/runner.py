@@ -339,13 +339,14 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             tools_usadas.append('consultar_alumna_detalle')
             return res, "agente_direccion", tools_usadas
 
-        # 0c. Anotar / agendar alumna manualmente en una camilla
+        # 0c. Anotar / agendar / agregar alumna manualmente en una camilla
         if any(k in msg_low for k in [
             'agendar a', 'agendá a', 'agenda a', 'agendale a', 'agendala a', 'agendalo a',
             'anotar a', 'anotá a', 'anota a', 'anotale a', 'anotala a', 'anotalo a',
-            'inscribir a', 'inscribí a', 'inscribi a', 'inscribile a', 'anotame a', 'anotáme a'
+            'inscribir a', 'inscribí a', 'inscribi a', 'inscribile a', 'anotame a', 'anotáme a',
+            'agregá a', 'agrega a', 'agregar a', 'sumá a', 'suma a', 'sumar a'
         ]):
-            m_anota = re.search(r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            m_anota = re.search(r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií])|agreg(?:ar|[aá])|sum(?:ar|[aá]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
             nom = m_anota.group(1).strip() if m_anota else ""
             hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
             hora_str = hora_match.group(1) if hora_match else "18:00"
@@ -371,6 +372,30 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                     break
             res = consultar_agenda_completa_dia.invoke({"fecha_o_dia": fecha_str})
             tools_usadas.append('consultar_agenda_completa_dia')
+            return res, "agente_direccion", tools_usadas
+
+        # 0e. Sacar / desanotar / cancelar clase puntual a una alumna
+        if any(k in msg_low for k in [
+            'sacá a', 'saca a', 'sacar a', 'sacala a', 'sacale a',
+            'desanotá a', 'desanota a', 'desanotar a', 'desanotale a',
+            'bajá a', 'baja a', 'bajar a', 'bajala a',
+            'cancelale la clase a', 'cancelale el turno a', 'cancelar la clase de', 'cancelale a'
+        ]) and not any(k in msg_low for k in [' y poné a', ' y pone a', ' por ']):
+            m_saca = re.search(r'(?:sac[aá]|desanot[aá]|baj[aá]|cancel[aá](?:le)?(?:\s+la\s+clase)?)(?:le|la|lo)?\s+(?:a\s+)?([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:de\s+la\s+clase|del\s+turno|hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            nom = m_saca.group(1).strip() if m_saca else ""
+            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_str = hora_match.group(1) if hora_match else ""
+            fecha_str = "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'mañana', 'hoy']:
+                if d in msg_low:
+                    fecha_str = d
+                    break
+            res = cancelar_reserva_alumna_duena.invoke({
+                "nombre_o_tel_alumna": nom,
+                "fecha_o_dia": fecha_str,
+                "hora_str": hora_str
+            })
+            tools_usadas.append('cancelar_reserva_alumna_duena')
             return res, "agente_direccion", tools_usadas
 
         # 1. Aprobación de comprobantes

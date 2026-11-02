@@ -214,8 +214,6 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
     if err == "multiples":
         return f"Encontré varias alumnas con ese nombre. Por favor especificá el apellido completo o teléfono."
-    elif not alumna:
-        return f"No encontré a la alumna '{nombre_o_tel_alumna}' en el sistema. Verificá si está registrada con otro apellido o pasame su número de teléfono."
 
     target_date = resolver_fecha(fecha_o_dia)
     hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
@@ -240,18 +238,36 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
                 p_item = obtener_profesor_de_turno(t_item)
                 p_str = f" (Profe: {p_item.nombre})" if p_item and hasattr(p_item, 'nombre') else ""
                 lista_horarios.append(f"• {t_item.hora_inicio.strftime('%H:%M')} hs: {t_item.cupo_actual} camilla(s) libre(s){p_str}")
-            return f"✦ No encontré una clase programada exactamente a las {hora_clean} hs para el {target_date.strftime('%d/%m/%Y')}.\n\nLos horarios con camillas disponibles para ese día son:\n" + "\n".join(lista_horarios) + f"\n\n¿En cuál de estos querés que anote a {alumna.nombre}?"
+            return f"✦ No encontré una clase programada exactamente a las {hora_clean} hs para el {target_date.strftime('%d/%m/%Y')}.\n\nLos horarios con camillas disponibles para ese día son:\n" + "\n".join(lista_horarios) + f"\n\n¿En cuál de estos querés que anote a {nombre_o_tel_alumna}?"
         else:
             return f"✦ No encontré ninguna clase programada para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs, y para esa fecha todas las camillas están completas o no hay grilla."
 
     turno = turnos.first()
+
+    # Si la alumna no está registrada en el sistema, la anotamos como reserva puntual/manual
+    if not alumna:
+        if turno.cupo_actual <= 0:
+            return f"La clase del {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
+        reserva = Reserva.objects.create(
+            turno=turno,
+            usuario=None,
+            nombre_temporal=nombre_o_tel_alumna.strip(),
+            tipo_reserva='MANUAL_TEMPORAL',
+            es_recurrente=False,
+            estado='CONFIRMADA'
+        )
+        turno.cupo_actual = max(0, turno.cupo_actual - 1)
+        turno.save()
+        prof_obj = obtener_profesor_de_turno(turno)
+        profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+        return f"✦ ¡Listo Deby! Anoté a {nombre_o_tel_alumna.strip()} para el {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs{profe_str} (como alumna invitada). Quedan {turno.cupo_actual} camilla(s) libre(s) en ese bloque."
 
     # Verificar si ya está anotada
     if Reserva.objects.filter(turno=turno, usuario=alumna, estado='CONFIRMADA').exists():
         return f"{alumna.nombre} ya tiene una camilla reservada en ese horario ({target_date.strftime('%d/%m')} a las {hora_clean} hs)."
 
     if turno.cupo_actual <= 0:
-        return f"La clase del {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene sus 3 camillas completas."
+        return f"La clase del {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
 
     # Verificar membresía
     from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
@@ -282,45 +298,54 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
 @tool
 def cancelar_reserva_alumna_duena(nombre_o_tel_alumna: str, fecha_o_dia: str = "hoy", hora_str: str = "") -> str:
     """
-    Comando para la dueña: cancela la reserva de una alumna en una clase específica y libera la camilla.
+    Comando para la dueña: cancela la reserva de una alumna en una clase puntual y libera la camilla (sacar alumna de la clase).
     """
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
-    if not alumna:
-        return f"No encontré a la alumna '{nombre_o_tel_alumna}' en el sistema."
-
     target_date = resolver_fecha(fecha_o_dia)
-    qs = Reserva.objects.filter(
-        usuario=alumna,
-        turno__fecha=target_date,
-        estado='CONFIRMADA'
-    ).select_related('turno')
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+
+    qs = Reserva.objects.filter(turno__fecha=target_date, estado='CONFIRMADA').select_related('turno', 'usuario')
+
+    if alumna:
+        qs = qs.filter(usuario=alumna)
+    else:
+        # Si no existe como usuario, buscar por nombre temporal (alumna manual)
+        qs = qs.filter(nombre_temporal__icontains=nombre_o_tel_alumna.strip())
 
     if hora_str:
-        h = hora_str.replace('hs', '').strip()
+        h = hora_str.lower().replace('hs', '').replace('h', '').strip()
         qs = qs.filter(turno__hora_inicio__startswith=h)
 
     if not qs.exists():
-        return f"No encontré ninguna reserva confirmada de {alumna.nombre} para el {target_date.strftime('%d/%m/%Y')}."
+        nom_ref = alumna.nombre if alumna else nombre_o_tel_alumna
+        return f"✦ No encontré ninguna reserva activa de {nom_ref} para el {target_date.strftime('%d/%m/%Y')}."
 
     reserva = qs.first()
     turno = reserva.turno
     reserva.estado = 'CANCELADA_TIEMPO'
     reserva.save()
 
-    turno.cupo_actual = min(3, turno.cupo_actual + 1)
+    max_c = turno.clase.cupo_maximo if turno.clase else 3
+    turno.cupo_actual = min(max_c, turno.cupo_actual + 1)
     turno.save()
 
-    # Reintegrar crédito a la alumna
-    from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
-    ReservaMembresia.objects.filter(reserva=reserva).delete()
-    sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).first()
-    if sub:
-        sub.clases_restantes += 1
-        sub.estado = 'ACTIVO'
-        sub.save()
+    # Reintegrar crédito si es alumna registrada
+    if reserva.usuario:
+        from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+        ReservaMembresia.objects.filter(reserva=reserva).delete()
+        sub = Suscripcion.objects.filter(usuario=reserva.usuario, estado__in=['ACTIVO', 'AGOTADO']).first()
+        if sub:
+            sub.clases_restantes += 1
+            sub.estado = 'ACTIVO'
+            sub.save()
 
-    nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
-    return f"✦ Cancelé la reserva de {nombre_completo} del {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs. Se liberó la camilla (ahora hay {turno.cupo_actual} libres) y se le reintegró su crédito."
+    from backend_core.hooks import registry
+    try:
+        registry.execute('reserva_cancelada_a_tiempo', reserva)
+    except Exception:
+        pass
+
+    nombre_display = f"{reserva.usuario.nombre} {reserva.usuario.apellido}".strip() if reserva.usuario else (reserva.nombre_temporal or nombre_o_tel_alumna)
+    return f"✦ ¡Listo Deby! Saqué a {nombre_display} de la clase del {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs. Se liberó la camilla (ahora hay {turno.cupo_actual} libres) y se le reintegró el crédito en su abono."
 
 
 @tool

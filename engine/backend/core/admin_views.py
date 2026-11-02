@@ -86,6 +86,76 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
             
         return Response(AdminReservaSerializer(reserva).data, status=201)
 
+    @action(detail=True, methods=['post'], url_path='agregar-alumna')
+    def agregar_alumna(self, request, pk=None):
+        turno = self.get_object()
+        usuario_id = request.data.get('usuario_id')
+        nombre = request.data.get('nombre', '').strip()
+        telefono = request.data.get('telefono', '').strip()
+
+        if turno.cupo_actual <= 0:
+            return Response({'detail': 'No hay cupos disponibles en este turno puntual.'}, status=400)
+
+        with transaction.atomic():
+            if usuario_id:
+                try:
+                    usuario = Usuario.objects.get(id=usuario_id)
+                except Usuario.DoesNotExist:
+                    return Response({'detail': 'Alumna no encontrada.'}, status=404)
+
+                if Reserva.objects.filter(turno=turno, usuario=usuario, estado='CONFIRMADA').exists():
+                    return Response({'detail': f'{usuario.nombre} ya está inscripta en este turno.'}, status=400)
+
+                reserva = Reserva.objects.create(
+                    turno=turno,
+                    usuario=usuario,
+                    tipo_reserva='REGISTRADO',
+                    es_recurrente=False,
+                    estado='CONFIRMADA'
+                )
+
+                try:
+                    from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+                    sub = Suscripcion.objects.filter(
+                        usuario=usuario,
+                        estado='ACTIVO',
+                        clases_restantes__gt=0,
+                        fecha_vencimiento__gte=turno.fecha
+                    ).order_by('fecha_vencimiento').first()
+                    if sub:
+                        ReservaMembresia.objects.create(reserva=reserva, suscripcion=sub)
+                        sub.clases_restantes -= 1
+                        if sub.clases_restantes <= 0:
+                            sub.estado = 'AGOTADO'
+                        sub.save()
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f'Error asociando membresia: {e}')
+
+            elif nombre:
+                reserva = Reserva.objects.create(
+                    turno=turno,
+                    usuario=None,
+                    nombre_temporal=nombre,
+                    telefono_temporal=telefono,
+                    tipo_reserva='MANUAL_TEMPORAL',
+                    es_recurrente=False,
+                    estado='CONFIRMADA'
+                )
+            else:
+                return Response({'detail': 'Debe seleccionar una alumna o ingresar su nombre.'}, status=400)
+
+            turno.cupo_actual = max(0, turno.cupo_actual - 1)
+            turno.save()
+
+            from backend_core.hooks import registry
+            try:
+                registry.execute('reserva_creada', reserva)
+            except Exception:
+                pass
+
+        return Response(AdminReservaSerializer(reserva).data, status=201)
+
     def perform_create(self, serializer):
         instance = serializer.save()
         alumnos = self.request.data.get('alumnos', [])

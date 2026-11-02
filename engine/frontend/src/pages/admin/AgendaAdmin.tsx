@@ -15,7 +15,9 @@ import {
   apartarCamillaManual,
   vincularReservaUsuario,
   liberarCamilla,
-  getAdminAlumnos
+  getAdminAlumnos,
+  agregarAlumnaTurno,
+  sacarAlumnaTurno
 } from '../../lib/adminApi';
 import type { TurnoAdmin, ReservaAdmin, UsuarioAdmin } from '../../lib/adminApi';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -60,6 +62,20 @@ export function AgendaAdmin() {
   // Estados para liberar camilla manual
   const [reservaParaLiberar, setReservaParaLiberar] = useState<{ id: string; nombre: string } | null>(null);
   const [isLiberando, setIsLiberando] = useState(false);
+
+  // Estados para Agregar Alumna a clase puntual
+  const [isAgregarModalOpen, setIsAgregarModalOpen] = useState(false);
+  const [turnoParaAgregar, setTurnoParaAgregar] = useState<TurnoAdmin | null>(null);
+  const [modoAgregar, setModoAgregar] = useState<'REGISTRADA' | 'MANUAL'>('REGISTRADA');
+  const [alumnoSeleccionadoParaTurno, setAlumnoSeleccionadoParaTurno] = useState<UsuarioAdmin | null>(null);
+  const [busquedaAgregarAlumno, setBusquedaAgregarAlumno] = useState('');
+  const [nombreAgregarManual, setNombreAgregarManual] = useState('');
+  const [telefonoAgregarManual, setTelefonoAgregarManual] = useState('');
+  const [isAgregandoAlumna, setIsAgregandoAlumna] = useState(false);
+
+  // Estados para Sacar Alumna de clase puntual
+  const [reservaParaSacar, setReservaParaSacar] = useState<{ reservaId: string; alumnoNombre: string; hora: string } | null>(null);
+  const [isSacandoAlumna, setIsSacandoAlumna] = useState(false);
 
   useEffect(() => {
     if (formData.hora_inicio) {
@@ -267,8 +283,97 @@ export function AgendaAdmin() {
     }
   };
 
+  // Handlers para Agregar Alumna a clase puntual
+  const handleAbrirAgregarAlumna = async (turno: TurnoAdmin) => {
+    setTurnoParaAgregar(turno);
+    setModoAgregar('REGISTRADA');
+    setAlumnoSeleccionadoParaTurno(null);
+    setBusquedaAgregarAlumno('');
+    setNombreAgregarManual('');
+    setTelefonoAgregarManual('');
+    setIsAgregarModalOpen(true);
+    if (alumnosList.length === 0) {
+      try {
+        const res = await getAdminAlumnos();
+        setAlumnosList(res.data);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleConfirmarAgregarAlumna = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!turnoParaAgregar) return;
+    try {
+      setIsAgregandoAlumna(true);
+      if (modoAgregar === 'REGISTRADA') {
+        if (!alumnoSeleccionadoParaTurno) {
+          toast.error('Por favor seleccioná una alumna de la lista');
+          return;
+        }
+        await agregarAlumnaTurno(turnoParaAgregar.id, { usuario_id: alumnoSeleccionadoParaTurno.id });
+        toast.success(`✦ ${alumnoSeleccionadoParaTurno.nombre} fue agregada a la clase de las ${turnoParaAgregar.hora_inicio.slice(0,5)} hs`);
+      } else {
+        const nom = nombreAgregarManual.trim();
+        if (!nom) {
+          toast.error('Por favor ingresá el nombre de la alumna');
+          return;
+        }
+        await agregarAlumnaTurno(turnoParaAgregar.id, { nombre: nom, telefono: telefonoAgregarManual.trim() });
+        toast.success(`✦ ${nom} fue agregada a la clase de las ${turnoParaAgregar.hora_inicio.slice(0,5)} hs`);
+      }
+      setIsAgregarModalOpen(false);
+      setTurnoParaAgregar(null);
+      fetchAgenda();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || 'Error al agregar alumna a la clase');
+    } finally {
+      setIsAgregandoAlumna(false);
+    }
+  };
+
+  // Handlers para Sacar Alumna de clase puntual
+  const handleAbrirSacarAlumna = (reserva: any, turno: TurnoAdmin) => {
+    const nombre = reserva.alumno_nombre || reserva.nombre_temporal || 'la alumna';
+    const apellido = reserva.alumno_apellido || '';
+    setReservaParaSacar({
+      reservaId: reserva.id,
+      alumnoNombre: `${nombre} ${apellido}`.trim(),
+      hora: turno.hora_inicio.slice(0, 5)
+    });
+  };
+
+  const handleConfirmarSacarAlumna = async () => {
+    if (!reservaParaSacar) return;
+    try {
+      setIsSacandoAlumna(true);
+      await sacarAlumnaTurno(reservaParaSacar.reservaId, true);
+      toast.success(`✦ ${reservaParaSacar.alumnoNombre} fue dada de baja de la clase. Se liberó la camilla.`);
+      setReservaParaSacar(null);
+      fetchAgenda();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || 'Error al sacar alumna de la clase');
+    } finally {
+      setIsSacandoAlumna(false);
+    }
+  };
+
   const alumnosFiltrados = alumnosList.filter(a => {
     const q = busquedaAlumno.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (a.nombre || '').toLowerCase().includes(q) ||
+      (a.apellido || '').toLowerCase().includes(q) ||
+      (a.email || '').toLowerCase().includes(q) ||
+      (a.telefono || '').includes(q)
+    );
+  });
+
+  const alumnosAgregarFiltrados = alumnosList.filter(a => {
+    const q = busquedaAgregarAlumno.toLowerCase().trim();
     if (!q) return true;
     return (
       (a.nombre || '').toLowerCase().includes(q) ||
@@ -412,23 +517,27 @@ export function AgendaAdmin() {
                                               )}
                                             </div>
 
+                                            {/* Botón Sacar Alumna de esta clase puntual */}
+                                            {r.estado === 'CONFIRMADA' && (
+                                              <button 
+                                                type="button"
+                                                onClick={() => handleAbrirSacarAlumna(r, turno)}
+                                                className="w-full text-[11px] py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                                                title="Sacar a esta alumna de la clase puntual"
+                                              >
+                                                <span>✕</span> Sacar de la clase
+                                              </button>
+                                            )}
+
                                             {/* Acciones exclusivas para camilla apartada manualmente */}
                                             {isManual && r.estado === 'CONFIRMADA' && (
                                               <div className="flex gap-2 w-full pt-1">
                                                 <button 
                                                   type="button"
                                                   onClick={() => handleAbrirVincular(r)}
-                                                  className="flex-1 text-[11px] py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                                                  className="w-full text-[11px] py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold transition-colors flex items-center justify-center gap-1 shadow-2xs"
                                                 >
                                                   <span>🔗</span> Vincular a cuenta
-                                                </button>
-                                                <button 
-                                                  type="button"
-                                                  onClick={() => setReservaParaLiberar({ id: r.id, nombre: r.alumno_nombre })}
-                                                  className="text-[11px] py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-semibold transition-colors"
-                                                  title="Liberar esta camilla"
-                                                >
-                                                  ✕ Liberar
                                                 </button>
                                               </div>
                                             )}
@@ -449,14 +558,22 @@ export function AgendaAdmin() {
                         
                         {/* Botonera inferior del turno */}
                         <div className="flex flex-col gap-2 mt-auto pt-3 border-t border-primary-light/50">
-                          {tieneCupo && (
+                          {tieneCupo ? (
                             <Button 
                               size="sm" 
-                              variant="outline" 
-                              onClick={() => handleAbrirApartar(turno)}
-                              className="w-full text-xs font-bold text-amber-900 border-amber-300 bg-amber-50 hover:bg-amber-100 shadow-2xs transition-all flex items-center justify-center gap-1.5"
+                              onClick={() => handleAbrirAgregarAlumna(turno)}
+                              className="w-full text-xs font-bold bg-primary-main hover:bg-primary-dark text-white shadow-2xs transition-all flex items-center justify-center gap-1.5"
                             >
-                              <span>✦</span> Apartar Camilla ({cuposLibres} disponible{cuposLibres > 1 ? 's' : ''})
+                              <span>+</span> Agregar Alumna ({cuposLibres} libre{cuposLibres > 1 ? 's' : ''})
+                            </Button>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              disabled
+                              className="w-full text-xs font-semibold text-slate-400 bg-slate-50 border-slate-200"
+                            >
+                              Clase Completa (Lleno)
                             </Button>
                           )}
                           <div className="flex gap-2">
@@ -637,6 +754,141 @@ export function AgendaAdmin() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Agregar Alumna a Clase Puntual */}
+      <Modal 
+        isOpen={isAgregarModalOpen} 
+        onClose={() => setIsAgregarModalOpen(false)} 
+        title={turnoParaAgregar ? `Agregar Alumna - Clase de las ${turnoParaAgregar.hora_inicio.slice(0,5)} hs` : "Agregar Alumna"}
+      >
+        <form onSubmit={handleConfirmarAgregarAlumna} className="space-y-4 text-left">
+          {/* Pestañas modo alumna */}
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setModoAgregar('REGISTRADA')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${modoAgregar === 'REGISTRADA' ? 'bg-white text-primary-main shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              👤 Alumna Registrada
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoAgregar('MANUAL')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${modoAgregar === 'MANUAL' ? 'bg-white text-primary-main shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              🏷️ Alumna Invitada / Sin Cuenta
+            </button>
+          </div>
+
+          {modoAgregar === 'REGISTRADA' ? (
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-foreground">
+                Buscar Alumna
+              </label>
+              <input 
+                type="text" 
+                placeholder="Escribí nombre, apellido, teléfono o email..."
+                value={busquedaAgregarAlumno}
+                onChange={(e) => setBusquedaAgregarAlumno(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white text-sm mb-2"
+                autoFocus
+              />
+              
+              <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-2xs">
+                {alumnosAgregarFiltrados.length === 0 ? (
+                  <p className="text-xs text-muted p-4 text-center">No se encontraron alumnas con ese criterio de búsqueda.</p>
+                ) : (
+                  alumnosAgregarFiltrados.map((a) => (
+                    <label 
+                      key={a.id} 
+                      className={`flex items-center gap-3 p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors ${alumnoSeleccionadoParaTurno?.id === a.id ? 'bg-primary-light/30 font-semibold' : ''}`}
+                    >
+                      <input 
+                        type="radio" 
+                        name="alumno_agregar_turno" 
+                        value={a.id}
+                        checked={alumnoSeleccionadoParaTurno?.id === a.id}
+                        onChange={() => setAlumnoSeleccionadoParaTurno(a)}
+                        className="text-primary-main focus:ring-primary-main"
+                      />
+                      <div className="flex-1">
+                        <p className="text-foreground font-medium text-sm">{a.nombre} {a.apellido}</p>
+                        <p className="text-muted text-[11px]">{a.email} {a.telefono ? `• ${a.telefono}` : ''}</p>
+                      </div>
+                      {a.plan_activo ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                          {a.plan_activo.clases_restantes} clases disp.
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500">
+                          Sin abono activo
+                        </span>
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                Apartá esta camilla para una alumna que todavía no tiene usuario registrado. La camilla quedará reservada a su nombre.
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-foreground">
+                  Nombre de la Alumna *
+                </label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Ej: Laura Gómez"
+                  value={nombreAgregarManual}
+                  onChange={(e) => setNombreAgregarManual(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white text-sm"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-foreground">
+                  Teléfono (WhatsApp)
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: 1123456789"
+                  value={telefonoAgregarManual}
+                  onChange={(e) => setTelefonoAgregarManual(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white text-sm"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" onClick={() => setIsAgregarModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isAgregandoAlumna || (modoAgregar === 'REGISTRADA' && !alumnoSeleccionadoParaTurno)} 
+              className="bg-primary-main hover:bg-primary-dark text-white font-bold"
+            >
+              {isAgregandoAlumna ? 'Inscribiendo...' : 'Inscribir en esta Clase'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Confirmar Sacar Alumna de Clase Puntual */}
+      <ConfirmModal
+        isOpen={!!reservaParaSacar}
+        onClose={() => setReservaParaSacar(null)}
+        onConfirm={handleConfirmarSacarAlumna}
+        title="Sacar Alumna de la Clase"
+        message={`¿Estás segura de que querés sacar a ${reservaParaSacar?.alumnoNombre} de la clase de las ${reservaParaSacar?.hora} hs? Se liberará 1 camilla en la grilla y la alumna recuperará su crédito de membresía si correspondía.`}
+        confirmText={isSacandoAlumna ? "Sacando..." : "Sí, Sacar Alumna"}
+        cancelText="No, Mantener en Clase"
+        isDestructive={true}
+      />
 
       {/* Modal Confirmar Liberar Camilla */}
       <ConfirmModal

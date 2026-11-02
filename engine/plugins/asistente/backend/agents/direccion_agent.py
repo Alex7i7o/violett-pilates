@@ -69,10 +69,10 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si Deby consulta la ficha o situación de una alumna (ej: "¿Cómo viene Laila?", "¿Cuántas clases le quedan?", "¿Cuándo vence el abono de...?"):
      -> Usá 'consultar_alumna_detalle'.
 
-2. GESTIÓN DE AGENDA Y RESERVAS:
-   * Si Deby pide anotar o inscribir a una alumna manualmente en una camilla (ej: "Anotá a Marcela hoy a las 18 hs"):
+2. GESTIÓN DE AGENDA Y RESERVAS (AGREGAR O SACAR ALUMNAS EN CLASES PUNTUALES):
+   * Si Deby pide agregar, anotar o inscribir a una alumna en una clase puntual (ej: "Agregá a Martina Filiel a la clase de las 18 hs", "Anotá a Marcela hoy a las 18 hs", "Inscribí a Alejandra Rivarola en el turno de mañana a las 15:30"):
      -> Usá 'agendar_alumna_en_turno_duena'.
-   * Si Deby pide cancelar la reserva de una alumna (ej: "Cancelale la clase de hoy a Laila"):
+   * Si Deby pide sacar, desanotar o cancelar la clase a una alumna puntual (ej: "Sacá a Martina Filiel de la clase de las 15:30", "Sacala a Norma de hoy", "Cancelale la clase de hoy a Laila", "Desanotá a Marcela", "Bajala de la clase de las 15"):
      -> Usá 'cancelar_reserva_alumna_duena'.
    * Si Deby pide ver la agenda o grilla de clases con los nombres de las que asisten (ej: "¿Quiénes vienen hoy?", "Pasame la agenda de hoy/mañana"):
      -> Usá 'consultar_agenda_completa_dia'.
