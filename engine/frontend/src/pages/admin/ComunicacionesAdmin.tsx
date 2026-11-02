@@ -7,9 +7,11 @@ import {
   togglePausaIA, 
   enviarMensajeManual, 
   getEmailLogs, 
-  getEmailLogDetail 
+  getEmailLogDetail,
+  getErroresIA,
+  toggleResolverErrorIA
 } from '../../lib/comunicacionesApi';
-import type { ConversacionCRM, MensajeCRM, EmailLog } from '../../lib/comunicacionesApi';
+import type { ConversacionCRM, MensajeCRM, EmailLog, RegistroErrorIAItem } from '../../lib/comunicacionesApi';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -26,7 +28,13 @@ import {
   PlayCircle, 
   RefreshCw, 
   CheckCircle2, 
+  CheckCircle,
   AlertCircle, 
+  AlertTriangle,
+  Terminal,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp, 
   Clock, 
   Eye, 
   Sparkles,
@@ -34,7 +42,7 @@ import {
 } from 'lucide-react';
 
 export function ComunicacionesAdmin() {
-  const [activeTab, setActiveTab] = useState<'whatsapp' | 'emails'>('whatsapp');
+  const [activeTab, setActiveTab] = useState<'whatsapp' | 'emails' | 'errores'>('whatsapp');
 
   // ==========================================
   // ESTADOS WHATSAPP CRM
@@ -63,6 +71,15 @@ export function ComunicacionesAdmin() {
   const [selectedEmailDetail, setSelectedEmailDetail] = useState<EmailLog | null>(null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [loadingEmailDetail, setLoadingEmailDetail] = useState(false);
+
+  // ==========================================
+  // ESTADOS DIAGNÓSTICO Y ERRORES IA (CENTINELA)
+  // ==========================================
+  const [erroresIA, setErroresIA] = useState<RegistroErrorIAItem[]>([]);
+  const [loadingErrores, setLoadingErrores] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [verResueltos, setVerResueltos] = useState(false);
+  const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null);
 
   // ==========================================
   // EFECTOS Y CARGA DE DATOS
@@ -109,14 +126,42 @@ export function ComunicacionesAdmin() {
     }
   };
 
+  const fetchErroresData = async () => {
+    setLoadingErrores(true);
+    try {
+      const res = await getErroresIA(verResueltos, searchError);
+      setErroresIA(res.data);
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al cargar la bitácora de errores');
+    } finally {
+      setLoadingErrores(false);
+    }
+  };
+
+  const handleToggleResolver = async (errorId: string) => {
+    try {
+      const res = await toggleResolverErrorIA(errorId);
+      toast.success(res.data.detail);
+      setErroresIA(prev => prev.map(item => item.id === errorId ? { ...item, resuelto: res.data.resuelto } : item));
+      if (!verResueltos) {
+        setErroresIA(prev => prev.filter(item => item.id !== errorId));
+      }
+    } catch (e) {
+      toast.error('Error al actualizar estado del ticket');
+    }
+  };
+
   // Carga inicial y filtros de WhatsApp
   useEffect(() => {
     if (activeTab === 'whatsapp') {
       fetchConversacionesData();
-    } else {
+    } else if (activeTab === 'emails') {
       fetchEmailLogsData();
+    } else if (activeTab === 'errores') {
+      fetchErroresData();
     }
-  }, [activeTab, rolFilter]);
+  }, [activeTab, rolFilter, verResueltos]);
 
   // Carga de mensajes al seleccionar conversación
   useEffect(() => {
@@ -249,6 +294,22 @@ export function ComunicacionesAdmin() {
           >
             <Mail className="w-4 h-4" />
             <span>Historial de Emails</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('errores')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'errores'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-rose-700 hover:bg-white/50'
+            }`}
+          >
+            <AlertTriangle className={`w-4 h-4 ${activeTab === 'errores' ? 'text-amber-400' : 'text-amber-500'}`} />
+            <span>Diagnóstico y Errores IA</span>
+            {erroresIA.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-extrabold">
+                {erroresIA.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -658,6 +719,177 @@ export function ComunicacionesAdmin() {
               </table>
             </div>
 
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ======================================================== */}
+      {/* PESTAÑA 3: DIAGNÓSTICO Y ERRORES IA (AGENT CENTINELA)    */}
+      {/* ======================================================== */}
+      {activeTab === 'errores' && (
+        <Card className="border-slate-200 overflow-hidden shadow-sm bg-white">
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            {/* Header de la pestaña */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-slate-900 text-amber-400">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    Bitácora Centinela de Diagnóstico IA
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                      {erroresIA.length} {verResueltos ? 'totales' : 'activos'}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-muted">
+                    Monitoreo en tiempo real de fallos técnicos, cuotas de API y diagnóstico comprensible en lenguaje humano.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerResueltos(!verResueltos)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                    verResueltos
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {verResueltos ? '✓ Mostrando resueltos' : 'Ver resueltos'}
+                </button>
+                <button
+                  type="button"
+                  onClick={fetchErroresData}
+                  disabled={loadingErrores}
+                  className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+                  title="Recargar"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingErrores ? 'animate-spin text-primary-main' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Listado de Errores */}
+            {loadingErrores ? (
+              <div className="p-12 text-center text-xs text-muted">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary-main" />
+                Consultando bitácora del agente centinela...
+              </div>
+            ) : erroresIA.length === 0 ? (
+              <div className="p-12 text-center bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-2">
+                <ShieldCheck className="w-8 h-8 text-emerald-600 mx-auto" />
+                <h3 className="text-sm font-bold text-emerald-900">
+                  {verResueltos ? 'No hay errores resueltos para mostrar' : '¡Todo el sistema de IA está funcionando a la perfección!'}
+                </h3>
+                <p className="text-xs text-emerald-700 max-w-md mx-auto">
+                  {verResueltos
+                    ? 'No se encontraron tickets resueltos en el historial.'
+                    : 'No hay errores pendientes ni interrupciones registradas en las conversaciones de WhatsApp.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {erroresIA.map((item) => {
+                  const isExpanded = expandedErrorId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`border rounded-2xl p-4 transition-all ${
+                        item.resuelto
+                          ? 'bg-slate-50/60 border-slate-200 opacity-75'
+                          : 'bg-white border-rose-200 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
+                            {item.ticket}
+                          </span>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                            item.rol_usuario === 'DUENA'
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {item.rol_usuario} {item.telefono ? `(${item.telefono})` : ''}
+                          </span>
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                            {item.tipo_error}
+                          </span>
+                          <span className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                            Agente: {item.agente_responsable}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{item.created_at}</span>
+                        </div>
+                      </div>
+
+                      {/* Mensaje que provocó el error */}
+                      {item.mensaje_usuario && (
+                        <div className="mt-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <span className="font-bold text-slate-900">Mensaje recibido: </span>
+                          <span className="italic">"{item.mensaje_usuario}"</span>
+                        </div>
+                      )}
+
+                      {/* Diagnóstico en Lenguaje Humano */}
+                      <div className="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 p-3 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                          <Sparkles className="w-4 h-4 text-amber-600" />
+                          <span>Diagnóstico Inteligente:</span>
+                        </div>
+                        <p className="text-amber-950 leading-relaxed font-sans">
+                          {item.diagnostico_ia || 'Inconveniente detectado durante el procesamiento.'}
+                        </p>
+                      </div>
+
+                      {/* Detalle técnico */}
+                      <div className="mt-2 text-xs font-mono bg-slate-900 text-slate-200 p-2.5 rounded-xl overflow-x-auto">
+                        <span className="text-rose-400 font-bold">Error: </span>
+                        <span>{item.detalle_error}</span>
+                      </div>
+
+                      {/* Acciones y Stack trace */}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedErrorId(isExpanded ? null : item.id)}
+                          className="text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 font-semibold"
+                        >
+                          <Terminal className="w-3.5 h-3.5" />
+                          <span>{isExpanded ? 'Ocultar consola / traceback' : 'Ver consola / traceback'}</span>
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleResolver(item.id)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition-all ${
+                            item.resuelto
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                          }`}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>{item.resuelto ? 'Reabrir ticket' : 'Marcar como resuelto'}</span>
+                        </button>
+                      </div>
+
+                      {/* Stack Trace desplegable */}
+                      {isExpanded && item.traceback_completo && (
+                        <div className="mt-3 p-3 bg-black/95 rounded-xl text-[11px] font-mono text-emerald-400 overflow-x-auto max-h-64 whitespace-pre">
+                          {item.traceback_completo}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

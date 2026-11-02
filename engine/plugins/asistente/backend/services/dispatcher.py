@@ -79,8 +79,14 @@ def _ejecutar_ciclo_agente(data: dict):
     except Exception as e:
         print(f"[ASISTENTE ERROR GRAFO] Excepción para {clean_phone}: {e}", flush=True)
         logger.error(f"[ASISTENTE ERROR] Excepción ejecutando LangGraph para {clean_phone}: {e}", exc_info=True)
-        respuesta_texto = "¡Hola! ✦ Disculpá, estoy experimentando una breve interrupción momentánea. En unos minutos vuelvo a estar disponible."
-        agente_responsable = "fallback_error"
+        from .debugger_service import registrar_y_diagnosticar_error
+        respuesta_texto, _ = registrar_y_diagnosticar_error(
+            conversacion=conversacion,
+            mensaje_usuario=text,
+            excepcion=e,
+            agente_responsable="fallback_error"
+        )
+        agente_responsable = "centinela_debugger"
         tools_usadas = []
 
     # Sanitizar formato nativo de WhatsApp (eliminar ###, convertir tablas y ** a *)

@@ -322,6 +322,16 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         print(f"[ASISTENTE MULTI-AGENTE ERROR CRITICO] Fallback a simulador por error: {e}", flush=True)
         traceback.print_exc()
         logger.error(f"[ASISTENTE MULTI-AGENTE ERROR] Fallback a simulador conversacional por error: {e}", exc_info=True)
+        try:
+            from ..services.debugger_service import registrar_y_diagnosticar_error
+            registrar_y_diagnosticar_error(
+                conversacion=conversacion,
+                mensaje_usuario=mensaje_usuario,
+                excepcion=e,
+                agente_responsable="orquestador_langgraph"
+            )
+        except Exception:
+            pass
         return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
 
 
@@ -335,6 +345,18 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
         return _procesar_simulacion_interna(conversacion, mensaje_usuario, usuario_id, nombre_user)
     except Exception as sim_err:
         logger.error(f"[ASISTENTE SIMULACION ERROR] Excepción controlada en simulación: {sim_err}", exc_info=True)
+        try:
+            from ..services.debugger_service import registrar_y_diagnosticar_error
+            respuesta_texto, _ = registrar_y_diagnosticar_error(
+                conversacion=conversacion,
+                mensaje_usuario=mensaje_usuario,
+                excepcion=sim_err,
+                agente_responsable="simulador_fallback"
+            )
+            return (respuesta_texto, "centinela_debugger", [])
+        except Exception:
+            pass
+
         rol = getattr(conversacion, 'rol_detectado', 'PROSPECTO')
         if rol == 'DUENA':
             return (

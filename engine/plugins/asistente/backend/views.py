@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
 from django.utils import timezone
-from .models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA
+from .models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA, RegistroErrorIA
 from .config_loader import get_asistente_config, get_brand_persona
 
 def format_datetime_local(dt, fmt='%d/%m/%Y %H:%M'):
@@ -153,3 +153,65 @@ class AsistenteConfigView(APIView):
             'config': get_asistente_config(),
             'brand_persona': get_brand_persona()
         })
+
+
+class RegistroErrorIAView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        resueltos = request.query_params.get('resueltos', 'false').lower() == 'true'
+        q = request.query_params.get('q', '').strip()
+
+        qs = RegistroErrorIA.objects.all().select_related('conversacion')
+        if not resueltos:
+            qs = qs.filter(resuelto=False)
+        if q:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(telefono__icontains=q) |
+                Q(tipo_error__icontains=q) |
+                Q(detalle_error__icontains=q) |
+                Q(diagnostico_ia__icontains=q) |
+                Q(mensaje_usuario__icontains=q)
+            )
+
+        qs = qs.order_by('-created_at')[:100]
+
+        data = []
+        for e in qs:
+            ticket = f"#ERR-{str(e.id)[:8]}"
+            data.append({
+                'id': str(e.id),
+                'ticket': ticket,
+                'conversacion_id': str(e.conversacion.id) if e.conversacion else None,
+                'telefono': e.telefono,
+                'rol_usuario': e.rol_usuario,
+                'mensaje_usuario': e.mensaje_usuario,
+                'agente_responsable': e.agente_responsable,
+                'tipo_error': e.tipo_error,
+                'detalle_error': e.detalle_error,
+                'diagnostico_ia': e.diagnostico_ia,
+                'traceback_completo': e.traceback_completo,
+                'resuelto': e.resuelto,
+                'created_at': format_datetime_local(e.created_at, '%d/%m/%Y %H:%M:%S')
+            })
+
+        return Response(data)
+
+
+class ResolverErrorIAView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, error_id):
+        try:
+            err = RegistroErrorIA.objects.get(id=error_id)
+        except RegistroErrorIA.DoesNotExist:
+            return Response({'detail': 'Error no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+        err.resuelto = not err.resuelto
+        err.save(update_fields=['resuelto'])
+        return Response({
+            'detail': f"Error marcado como {'resuelto' if err.resuelto else 'pendiente'}.",
+            'resuelto': err.resuelto
+        })
+

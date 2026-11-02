@@ -33,6 +33,22 @@ export interface EmailLog {
   created_at: string;
 }
 
+export interface RegistroErrorIAItem {
+  id: string;
+  ticket: string;
+  conversacion_id: string | null;
+  telefono: string;
+  rol_usuario: string;
+  mensaje_usuario: string;
+  agente_responsable: string;
+  tipo_error: string;
+  detalle_error: string;
+  diagnostico_ia: string;
+  traceback_completo: string;
+  resuelto: boolean;
+  created_at: string;
+}
+
 export const getConversaciones = (q: string = '', rol: string = '') =>
   api.get<ConversacionCRM[]>('/admin/asistente/conversaciones/', {
     params: { q: q || undefined, rol: rol || undefined }
@@ -56,3 +72,11 @@ export const getEmailLogs = (q: string = '', estado: string = '') =>
 
 export const getEmailLogDetail = (id: string) =>
   api.get<EmailLog>(`/admin/comunicaciones/emails/${id}/`);
+
+export const getErroresIA = (resueltos: boolean = false, q: string = '') =>
+  api.get<RegistroErrorIAItem[]>('/admin/asistente/errores/', {
+    params: { resueltos, q: q || undefined }
+  });
+
+export const toggleResolverErrorIA = (errorId: string) =>
+  api.post<{ detail: string; resuelto: boolean }>(`/admin/asistente/errores/${errorId}/resolver/`);

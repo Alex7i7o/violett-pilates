@@ -4,7 +4,9 @@ from .views import (
     ConversacionMensajesAdminView,
     TogglePausaHumanoView,
     EnviarMensajeManualAdminView,
-    AsistenteConfigView
+    AsistenteConfigView,
+    RegistroErrorIAView,
+    ResolverErrorIAView
 )
 
 urlpatterns = [
@@ -13,4 +15,6 @@ urlpatterns = [
     path('admin/asistente/conversaciones/<str:conversacion_id>/pausar/', TogglePausaHumanoView.as_view(), name='asistente-pausar'),
     path('admin/asistente/conversaciones/<str:conversacion_id>/enviar/', EnviarMensajeManualAdminView.as_view(), name='asistente-enviar-mensaje'),
     path('admin/asistente/config/', AsistenteConfigView.as_view(), name='asistente-config'),
+    path('admin/asistente/errores/', RegistroErrorIAView.as_view(), name='asistente-errores'),
+    path('admin/asistente/errores/<uuid:error_id>/resolver/', ResolverErrorIAView.as_view(), name='asistente-resolver-error'),
 ]

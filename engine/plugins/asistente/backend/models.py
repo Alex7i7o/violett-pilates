@@ -164,3 +164,27 @@ class PreferenciaAlumno(models.Model):
 
     def __str__(self):
         return f"Preferencias de {self.usuario.nombre} - {self.franja_preferida}"
+
+
+class RegistroErrorIA(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversacion = models.ForeignKey(ConversacionWhatsApp, on_delete=models.SET_NULL, null=True, blank=True, related_name='errores_registrados')
+    telefono = models.CharField(max_length=30, blank=True)
+    rol_usuario = models.CharField(max_length=20, default='PROSPECTO')
+    mensaje_usuario = models.TextField(blank=True)
+    agente_responsable = models.CharField(max_length=50, default='orquestador')
+    tipo_error = models.CharField(max_length=100, default='EXCEPCION_DESCONOCIDA')
+    detalle_error = models.TextField()
+    diagnostico_ia = models.TextField(blank=True, help_text="Diagnóstico en lenguaje humano sobre qué causó el error y solución sugerida")
+    traceback_completo = models.TextField(blank=True)
+    resuelto = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Registro de Error IA'
+        verbose_name_plural = 'Bitácora de Errores IA'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        ticket = str(self.id)[:8]
+        return f"#ERR-{ticket} [{self.tipo_error}] {self.telefono}: {self.detalle_error[:50]}"
