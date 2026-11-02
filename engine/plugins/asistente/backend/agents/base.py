@@ -56,8 +56,8 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     if gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            # Modelos oficiales estándar de Google Gemini API: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash
-            model_name = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+            # Modelos oficiales estándar de Google Gemini API: gemini-3.8-flash, gemini-flash-latest, gemini-2.0-flash
+            model_name = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
             gemini_kwargs = dict(
                 model=model_name,
                 temperature=0.1, # Muy baja temperatura para evitar alucinaciones
@@ -71,7 +71,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
 
             # Modelos alternativos de Gemini en cascada de resiliencia
             gemini_fallbacks = []
-            for alt in ['gemini-2.0-flash', 'gemini-1.5-flash']:
+            for alt in ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']:
                 if alt != model_name:
                     try:
                         gemini_fallbacks.append(ChatGoogleGenerativeAI(

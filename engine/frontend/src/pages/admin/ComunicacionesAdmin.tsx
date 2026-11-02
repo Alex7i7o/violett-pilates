@@ -169,6 +169,64 @@ export function ComunicacionesAdmin() {
     }
   };
 
+  const handleExportarErrores = () => {
+    if (erroresIA.length === 0) {
+      toast.info('No hay errores para exportar.');
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const lineas = [
+      '=======================================================',
+      'BITÁCORA CENTINELA - REPORTE DE ERRORES Y DIAGNÓSTICO IA',
+      `Fecha de exportación: ${new Date().toLocaleString()}`,
+      `Total de tickets exportados: ${erroresIA.length}`,
+      '=======================================================\n'
+    ];
+
+    erroresIA.forEach((item, idx) => {
+      lineas.push('-------------------------------------------------------');
+      lineas.push(`[${idx + 1}] TICKET: ${item.ticket} | ESTADO: ${item.resuelto ? 'RESUELTO' : 'ACTIVO'}`);
+      lineas.push(`Fecha: ${item.created_at}`);
+      lineas.push(`Rol: ${item.rol_usuario} ${item.telefono ? `(${item.telefono})` : ''}`);
+      lineas.push(`Agente responsable: ${item.agente_responsable}`);
+      lineas.push(`Tipo de fallo: ${item.tipo_error}`);
+      if (item.mensaje_usuario) {
+        lineas.push(`Mensaje de la usuaria: "${item.mensaje_usuario}"`);
+      }
+      lineas.push(`Diagnóstico Centinela: ${item.diagnostico_ia || 'N/A'}`);
+      lineas.push(`Error técnico: ${item.detalle_error}`);
+      if (item.traceback_completo) {
+        lineas.push(`\nTraceback completo:\n${item.traceback_completo}`);
+      }
+      lineas.push('\n');
+    });
+
+    const textoFinal = lineas.join('\n');
+
+    // 1. Descargar archivo .txt
+    const blob = new Blob([textoFinal], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `bitacora_errores_ia_${timestamp}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    // 2. Copiar al portapapeles para pasar rápido por chat
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(textoFinal).then(() => {
+        toast.success('¡Reporte descargado y copiado al portapapeles!');
+      }).catch(() => {
+        toast.success('¡Archivo de errores descargado!');
+      });
+    } else {
+      toast.success('¡Archivo de errores descargado!');
+    }
+  };
+
   // Carga inicial y filtros de WhatsApp
   useEffect(() => {
     if (activeTab === 'whatsapp') {
@@ -923,6 +981,17 @@ export function ComunicacionesAdmin() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleExportarErrores}
+                  disabled={erroresIA.length === 0}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                  title="Descargar reporte completo de errores"
+                >
+                  <Download className="w-3.5 h-3.5 text-primary-main" />
+                  <span>Exportar / Descargar</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setVerResueltos(!verResueltos)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                     verResueltos
@@ -1027,15 +1096,31 @@ export function ComunicacionesAdmin() {
 
                       {/* Acciones y Stack trace */}
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedErrorId(isExpanded ? null : item.id)}
-                          className="text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 font-semibold"
-                        >
-                          <Terminal className="w-3.5 h-3.5" />
-                          <span>{isExpanded ? 'Ocultar consola / traceback' : 'Ver consola / traceback'}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedErrorId(isExpanded ? null : item.id)}
+                            className="text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 font-semibold"
+                          >
+                            <Terminal className="w-3.5 h-3.5" />
+                            <span>{isExpanded ? 'Ocultar consola / traceback' : 'Ver consola / traceback'}</span>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const textoError = `[ERROR IA ${item.ticket}]\nFecha: ${item.created_at}\nRol: ${item.rol_usuario} (${item.telefono || 'Sin tel'})\nAgente: ${item.agente_responsable}\nTipo: ${item.tipo_error}\nMensaje: "${item.mensaje_usuario || ''}"\nDiagnóstico: ${item.diagnostico_ia || ''}\nError: ${item.detalle_error}\nTraceback: ${item.traceback_completo || 'N/A'}`;
+                              navigator.clipboard?.writeText(textoError);
+                              toast.success('¡Detalle del error copiado al portapapeles!');
+                            }}
+                            className="text-slate-500 hover:text-slate-800 inline-flex items-center gap-1 font-medium"
+                            title="Copiar este error para compartir"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copiar error</span>
+                          </button>
+                        </div>
 
                         <button
                           type="button"
