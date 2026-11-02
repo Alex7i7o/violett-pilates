@@ -50,42 +50,40 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     groq_key = os.environ.get('GROQ_API_KEY')
 
     llm = None
-    fallback_llm = None
+    all_fallbacks = []
 
-    # 1. Google Gemini (Recomendado: 1M tokens context, 1M TPM, súper inteligente, entiende audios y contexto humano)
+    # 1. Google Gemini (Recomendado: 1M tokens context, ultra rápido, voseo natural)
     if gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            # Modelos oficiales estándar de Google Gemini API: gemini-3.8-flash, gemini-flash-latest, gemini-2.0-flash
-            model_name = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
+            # gemini-2.0-flash es el modelo más veloz y estable de Google sin picos 503
+            model_name = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash')
             gemini_kwargs = dict(
                 model=model_name,
-                temperature=0.1, # Muy baja temperatura para evitar alucinaciones
+                temperature=0.1,
                 max_output_tokens=max(max_tokens, 1024),
                 google_api_key=gemini_key,
-                max_retries=2,
-                timeout=25,
+                max_retries=1,
+                timeout=18,
             )
             llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
 
-            # Modelos alternativos de Gemini en cascada de resiliencia
-            gemini_fallbacks = []
-            for alt in ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']:
+            # Cascada completa de modelos alternativos para tolerancia ante picos 503 / 504 de Google
+            modelos_alternativos = ['gemini-2.0-flash', 'gemini-3.8-flash', 'gemini-1.5-flash', 'gemini-flash-latest']
+            for alt in modelos_alternativos:
                 if alt != model_name:
                     try:
-                        gemini_fallbacks.append(ChatGoogleGenerativeAI(
+                        all_fallbacks.append(ChatGoogleGenerativeAI(
                             model=alt,
                             temperature=0.1,
                             max_output_tokens=max(max_tokens, 1024),
                             google_api_key=gemini_key,
                             max_retries=1,
-                            timeout=20
+                            timeout=15
                         ))
                     except Exception:
                         pass
-            if gemini_fallbacks:
-                fallback_llm = gemini_fallbacks[0]
         except Exception as eg:
             logger.error(f"[ASISTENTE LLM] Error inicializando ChatGoogleGenerativeAI: {eg}")
             llm = None
@@ -122,35 +120,36 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
         )
         fallback_model = os.environ.get('GROQ_FALLBACK_MODEL', 'llama-3.3-70b-versatile' if '8b' in model_name else 'llama-3.1-8b-instant')
         if fallback_model and fallback_model != model_name:
-            fallback_llm = ChatGroq(
+            all_fallbacks.append(ChatGroq(
                 model=fallback_model,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 api_key=groq_key
-            )
+            ))
 
-    # Si Gemini es el principal y además hay Groq disponible en el entorno, lo sumamos como fallback
-    if gemini_key and llm and groq_key and not fallback_llm:
+    # Si además hay Groq disponible en el entorno, lo sumamos como fallback de emergencia final
+    if groq_key:
         try:
             from langchain_groq import ChatGroq
-            fallback_llm = ChatGroq(
+            all_fallbacks.append(ChatGroq(
                 model=os.environ.get('GROQ_MODEL', 'llama-3.1-8b-instant'),
                 temperature=temperature,
                 max_tokens=max_tokens,
                 api_key=groq_key
-            )
+            ))
         except Exception:
             pass
 
-    # Enlace de herramientas y fallbacks
+    # Enlace de herramientas y fallbacks en cascada completa
     if llm:
-        if tools:
-            if fallback_llm:
-                return llm.bind_tools(tools).with_fallbacks([fallback_llm.bind_tools(tools)])
-            return llm.bind_tools(tools)
+        if all_fallbacks:
+            if tools:
+                tools_fallbacks = [fb.bind_tools(tools) for fb in all_fallbacks]
+                return llm.bind_tools(tools).with_fallbacks(tools_fallbacks)
+            return llm.with_fallbacks(all_fallbacks)
         else:
-            if fallback_llm:
-                return llm.with_fallbacks([fallback_llm])
+            if tools:
+                return llm.bind_tools(tools)
             return llm
 
     return None
