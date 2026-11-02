@@ -188,7 +188,29 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
     """
     Modo simulador conversacional inteligente cuando no hay API Key o falla el proveedor LLM.
     Diseñado especialmente con alta empatía, voseo cariñoso, memoria del historial y trato cálido para personas adultas.
+    Envuelto en protección a prueba de fallos para garantizar que NUNCA lance un fallback_error no controlado.
     """
+    try:
+        return _procesar_simulacion_interna(conversacion, mensaje_usuario, usuario_id, nombre_user)
+    except Exception as sim_err:
+        logger.error(f"[ASISTENTE SIMULACION ERROR] Excepción controlada en simulación: {sim_err}", exc_info=True)
+        rol = getattr(conversacion, 'rol_detectado', 'PROSPECTO')
+        if rol == 'DUENA':
+            return (
+                f"✦ Deby, ocurrió un inconveniente consultando los datos del estudio: {sim_err}. Ya registré el aviso para revisarlo.",
+                "agente_direccion",
+                []
+            )
+        nombre_display = nombre_user.split()[0] if nombre_user else ""
+        saludo = f"¡Hola {nombre_display}! ✦ " if nombre_display else "¡Hola! ✦ "
+        return (
+            f"{saludo}En este momento estoy actualizando la información del sistema. Si querés dejame tu consulta que en unos minutos te respondo con mucho gusto 🌸.",
+            "asistente_recepcionista",
+            []
+        )
+
+
+def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id: str, nombre_user: str) -> Tuple[str, str, List[str]]:
     msg_low = mensaje_usuario.lower().strip()
     tools_usadas = []
     rol = conversacion.rol_detectado
@@ -317,9 +339,13 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
             tools_usadas.append('consultar_alumna_detalle')
             return res, "agente_direccion", tools_usadas
 
-        # 0c. Anotar alumna manualmente en una camilla
-        if any(k in msg_low for k in ['anotá a', 'anota a', 'inscribí a', 'inscribi a', 'anotale a']):
-            m_anota = re.search(r'(?:anot[aá]|inscrib[ií])(?:le)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|mañana|el|a\s+las|\d)|$)', mensaje_usuario, re.IGNORECASE)
+        # 0c. Anotar / agendar alumna manualmente en una camilla
+        if any(k in msg_low for k in [
+            'agendar a', 'agendá a', 'agenda a', 'agendale a', 'agendala a', 'agendalo a',
+            'anotar a', 'anotá a', 'anota a', 'anotale a', 'anotala a', 'anotalo a',
+            'inscribir a', 'inscribí a', 'inscribi a', 'inscribile a', 'anotame a', 'anotáme a'
+        ]):
+            m_anota = re.search(r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\s+(?:hoy|mañana|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
             nom = m_anota.group(1).strip() if m_anota else ""
             hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
             hora_str = hora_match.group(1) if hora_match else "18:00"
@@ -337,7 +363,7 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
             return res, "agente_direccion", tools_usadas
 
         # 0d. Ver agenda completa de clases del día
-        if any(k in msg_low for k in ['agenda', 'quiénes vienen', 'quienes vienen', 'grilla de hoy', 'turnos de hoy']):
+        if any(k in msg_low for k in ['ver agenda', 'la agenda', 'quiénes vienen', 'quienes vienen', 'grilla de hoy', 'turnos de hoy', 'cómo viene el día', 'como viene el dia']) or re.search(r'\bagenda\b', msg_low):
             fecha_str = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
             for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
                 if d in msg_low:

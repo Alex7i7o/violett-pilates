@@ -135,8 +135,10 @@ def obtener_reporte_ocupacion_hoy() -> str:
         "\nDetalle por horario:"
     ]
 
+    from .profesores_tools import obtener_profesor_de_turno
     for t in turnos_hoy:
-        profe = f" - {t.profesor.nombre}" if t.profesor else ""
+        prof_obj = obtener_profesor_de_turno(t)
+        profe = f" - {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
         resultado.append(f"• {t.hora_inicio.strftime('%H:%M')} hs: {3 - t.cupo_actual}/3 ocupadas{profe}")
 
     return "\n".join(resultado)

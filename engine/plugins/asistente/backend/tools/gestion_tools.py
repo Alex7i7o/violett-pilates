@@ -6,7 +6,7 @@ from django.db.models import Q
 from langchain_core.tools import tool
 
 from core.models import Usuario, Turno, Reserva
-from .profesores_tools import resolver_fecha
+from .profesores_tools import resolver_fecha, obtener_profesor_de_turno
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,6 @@ def renovar_o_asignar_plan_alumna(nombre_o_tel_alumna: str, nombre_o_clases_plan
         if ultima_sub and ultima_sub.plan and ultima_sub.plan.is_active:
             plan_seleccionado = ultima_sub.plan
         else:
-            # Plan estándar por defecto (8 clases)
             plan_seleccionado = Plan.objects.filter(is_active=True, cantidad_clases=8).first() or Plan.objects.filter(is_active=True).first()
 
     if not plan_seleccionado:
@@ -120,7 +119,7 @@ def renovar_o_asignar_plan_alumna(nombre_o_tel_alumna: str, nombre_o_clases_plan
         estado='ACTIVO'
     )
 
-    # 3. Disparar hooks de eventos (para webhooks, notificaciones y analítica)
+    # 3. Disparar hooks de eventos
     try:
         from backend_core.hooks import registry
         registry.execute('plan_asignado', data={'suscripcion': nueva_sub, 'usuario': alumna, 'plan': plan_seleccionado})
@@ -180,7 +179,7 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
         usuario=alumna,
         turno__fecha__gte=today,
         estado='CONFIRMADA'
-    ).select_related('turno', 'turno__profesor').order_by('turno__fecha', 'turno__hora_inicio')[:5]
+    ).select_related('turno', 'turno__clase').order_by('turno__fecha', 'turno__hora_inicio')[:5]
 
     if futuras.exists():
         dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -188,7 +187,8 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
         for r in futuras:
             t = r.turno
             dia_str = dias_es[t.fecha.weekday()]
-            profe = f" (Profe: {t.profesor.nombre})" if t.profesor else ""
+            prof_obj = obtener_profesor_de_turno(t)
+            profe = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
             lista_turnos.append(f"  • {dia_str} {t.fecha.strftime('%d/%m')} a las {t.hora_inicio.strftime('%H:%M')} hs{profe}")
         info_turnos = "Próximas clases agendadas:\n" + "\n".join(lista_turnos)
     else:
@@ -207,15 +207,15 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
     """
     Comando para la dueña: inscribe manualmente a una alumna en una camilla de un turno específico.
     Parámetros:
-    - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Laila Marzzuck').
-    - fecha_o_dia: 'hoy', 'mañana' o nombre del día (ej: 'jueves', 'viernes').
-    - hora_str: Hora de inicio (ej: '18:00', '19', '20').
+    - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Laila Marzzuck', 'Alejandra Rivarola').
+    - fecha_o_dia: 'hoy', 'mañana' o nombre del día (ej: 'lunes', 'martes', 'miércoles', 'jueves', 'viernes').
+    - hora_str: Hora de inicio (ej: '15:30', '18:00', '19', '20').
     """
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
     if err == "multiples":
         return f"Encontré varias alumnas con ese nombre. Por favor especificá el apellido completo o teléfono."
     elif not alumna:
-        return f"No encontré a la alumna '{nombre_o_tel_alumna}' en el sistema."
+        return f"No encontré a la alumna '{nombre_o_tel_alumna}' en el sistema. Verificá si está registrada con otro apellido o pasame su número de teléfono."
 
     target_date = resolver_fecha(fecha_o_dia)
     hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
@@ -229,10 +229,20 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
         fecha=target_date,
         hora_inicio__startswith=hora_clean,
         estado='PROGRAMADO'
-    ).select_related('profesor')
+    ).select_related('clase')
 
     if not turnos.exists():
-        return f"No encontré ninguna clase programada para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs."
+        # Si la hora exacta no existe, buscar los turnos disponibles de ese día para sugerirlos
+        turnos_dia = Turno.objects.filter(fecha=target_date, estado='PROGRAMADO', cupo_actual__gt=0).select_related('clase').order_by('hora_inicio')
+        if turnos_dia.exists():
+            lista_horarios = []
+            for t_item in turnos_dia:
+                p_item = obtener_profesor_de_turno(t_item)
+                p_str = f" (Profe: {p_item.nombre})" if p_item and hasattr(p_item, 'nombre') else ""
+                lista_horarios.append(f"• {t_item.hora_inicio.strftime('%H:%M')} hs: {t_item.cupo_actual} camilla(s) libre(s){p_str}")
+            return f"✦ No encontré una clase programada exactamente a las {hora_clean} hs para el {target_date.strftime('%d/%m/%Y')}.\n\nLos horarios con camillas disponibles para ese día son:\n" + "\n".join(lista_horarios) + f"\n\n¿En cuál de estos querés que anote a {alumna.nombre}?"
+        else:
+            return f"✦ No encontré ninguna clase programada para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs, y para esa fecha todas las camillas están completas o no hay grilla."
 
     turno = turnos.first()
 
@@ -252,7 +262,7 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
         usuario=alumna,
         estado='CONFIRMADA'
     )
-    turno.cupo_actual -= 1
+    turno.cupo_actual = max(0, turno.cupo_actual - 1)
     turno.save()
 
     if sub:
@@ -264,7 +274,8 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
             sub.save()
 
     nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
-    profe_str = f" con la profe {turno.profesor.nombre}" if turno.profesor else ""
+    prof_obj = obtener_profesor_de_turno(turno)
+    profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
     return f"✦ ¡Listo Deby! Anoté a {nombre_completo} para el {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs{profe_str}. Quedan {turno.cupo_actual} camilla(s) libre(s) en ese bloque."
 
 
@@ -325,14 +336,15 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy") -> str:
     turnos = Turno.objects.filter(
         fecha=target_date,
         estado='PROGRAMADO'
-    ).select_related('profesor').prefetch_related('reservas__usuario').order_by('hora_inicio')
+    ).prefetch_related('reservas__usuario').order_by('hora_inicio')
 
     if not turnos.exists():
         return f"No hay turnos programados en la agenda para el {dia_nom} {target_date.strftime('%d/%m/%Y')}."
 
     lineas = [f"✦ Agenda de Violett Pilates - {dia_nom} {target_date.strftime('%d/%m/%Y')}:"]
     for t in turnos:
-        profe = f" | Profe: {t.profesor.nombre}" if t.profesor else ""
+        prof_obj = obtener_profesor_de_turno(t)
+        profe = f" | Profe: {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
         reservas = [r for r in t.reservas.all() if r.estado == 'CONFIRMADA']
         cant = len(reservas)
         nombres = [f"{r.usuario.nombre} {r.usuario.apellido}".strip() for r in reservas]
