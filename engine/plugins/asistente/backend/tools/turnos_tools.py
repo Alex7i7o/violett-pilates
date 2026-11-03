@@ -148,31 +148,93 @@ def reservar_camilla_turno(usuario_id: str, fecha_o_dia: str = "", hora_str: str
 
 
 @tool
-def consultar_mis_reservas_alumna(usuario_id: str) -> str:
+def consultar_mis_reservas_alumna(usuario_id: str = "") -> str:
     """
-    Retorna la lista de reservas confirmadas futuras que tiene una alumna.
-    Muestra los turnos prolijamente ordenados por fecha y hora, sin IDs internos.
+    Retorna la lista de clases agendadas y horario fijo que tiene una alumna en el estudio.
+    Muestra los turnos prolijamente ordenados por fecha y hora con la profesora a cargo, sin IDs internos.
     """
-    if not usuario_id:
-        return "No estás identificada aún en el sistema."
+    from core.models import Turno, Reserva, Usuario
+    usuario = None
+    if usuario_id:
+        try:
+            usuario = Usuario.objects.filter(id=usuario_id).first()
+        except Exception:
+            usuario = None
+
+    if not usuario:
+        from .gestion_tools import get_conversacion_activa, buscar_usuario_por_telefono, get_ultima_alumna_activa
+        conv = get_conversacion_activa()
+        if conv:
+            if conv.usuario:
+                usuario = conv.usuario
+            elif conv.telefono:
+                usuario = buscar_usuario_por_telefono(conv.telefono)
+        if not usuario:
+            usuario = get_ultima_alumna_activa()
+
+    if not usuario:
+        return "No estás identificada aún en el sistema como alumna de Violett Pilates ✦."
 
     today = timezone.localdate()
+    now_time = timezone.localtime().time()
+
     reservas = Reserva.objects.filter(
-        usuario_id=usuario_id,
+        usuario=usuario,
         estado='CONFIRMADA',
         turno__fecha__gte=today
     ).select_related('turno', 'turno__clase').order_by('turno__fecha', 'turno__hora_inicio')
 
-    if not reservas.exists():
-        return "Actualmente no tenés ninguna clase agendada a futuro."
+    # Excluir turnos de hoy que ya terminaron
+    reservas_futuras = [
+        r for r in reservas
+        if not (r.turno.fecha == today and r.turno.hora_fin and r.turno.hora_fin <= now_time)
+    ]
+
+    # Consultar esquemas fijos recurrentes
+    horarios_fijos = []
+    try:
+        from plugins.recurrencias.backend.models import Recurrencia
+        recs = Recurrencia.objects.filter(usuario=usuario, is_active=True).select_related('clase')
+        dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+        for rec in recs:
+            d_nom = dias_es.get(rec.dia_semana, f"Día {rec.dia_semana}")
+            h_str = rec.hora_inicio.strftime('%H:%M')
+            horarios_fijos.append(f"• Todos los *{d_nom}s a las {h_str} hs* ({rec.clase.nombre})")
+    except Exception:
+        pass
 
     dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-    resultado = ["✦ Tus próximas clases agendadas:"]
-    for r in reservas:
+    nombre_display = usuario.nombre.split()[0] if usuario.nombre else ""
+    saludo = f"¡Hola {nombre_display}! ✦ " if nombre_display else "✦ "
+
+    if not reservas_futuras and not horarios_fijos:
+        creditos_info = ""
+        try:
+            from plugins.membresias.backend.models import Suscripcion
+            sub = Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).first()
+            if sub and sub.clases_restantes > 0:
+                creditos_info = f"\n\nTenés *{sub.clases_restantes} clase(s) disponibles* en tu {sub.plan.nombre}. ¿Querés que te busque lugar en algún día y horario para agendarte?"
+            elif sub and sub.clases_restantes == 0:
+                creditos_info = f"\n\nTu {sub.plan.nombre} no tiene créditos libres en este momento. Si querés sumar una clase individual o renovar, avisame con gusto 🌸."
+        except Exception:
+            pass
+
+        return f"{saludo}Actualmente no tenés ninguna clase agendada a futuro en Violett Pilates.{creditos_info}"
+
+    resultado = [f"{saludo}Tus próximas clases agendadas en Violett Pilates:"]
+    for r in reservas_futuras:
         t = r.turno
         dia_nombre = dias_semana[t.fecha.weekday()]
-        tipo = " (Horario fijo semanal)" if getattr(r, 'es_recurrente', False) else " (Clase puntual)"
-        resultado.append(f"• {dia_nombre} {t.fecha.strftime('%d/%m')} a las {t.hora_inicio.strftime('%H:%M')} hs - {t.clase.nombre}{tipo}")
+        prof_obj = obtener_profesor_de_turno(t)
+        profe_txt = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+        tipo = " *(Horario fijo)*" if getattr(r, 'es_recurrente', False) else ""
+        resultado.append(
+            f"• *{dia_nombre} {t.fecha.strftime('%d/%m')} a las {t.hora_inicio.strftime('%H:%M')} hs* - {t.clase.nombre}{profe_txt}{tipo}"
+        )
+
+    if horarios_fijos and not any(r.es_recurrente for r in reservas_futuras):
+        resultado.append("\n✦ *Tu esquema de horario fijo semanal:*")
+        resultado.extend(horarios_fijos)
 
     return "\n".join(resultado)
 

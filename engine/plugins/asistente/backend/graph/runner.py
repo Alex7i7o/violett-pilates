@@ -286,10 +286,21 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
     if conversacion.rol_detectado == 'DUENA':
         nombre_user = "Deby"
     elif conversacion.usuario:
-        # Usamos únicamente el primer nombre para máxima calidez humana
         full_name = conversacion.usuario.nombre.strip() if conversacion.usuario.nombre else ""
         nombre_user = full_name.split()[0] if full_name else ""
         usuario_id = str(conversacion.usuario.id)
+    else:
+        from ..tools.gestion_tools import buscar_usuario_por_telefono
+        u_auto = buscar_usuario_por_telefono(conversacion.telefono)
+        if u_auto:
+            conversacion.usuario = u_auto
+            if conversacion.rol_detectado in ('PROSPECTO', ''):
+                is_p = getattr(u_auto, 'is_profesor', False) or str(getattr(u_auto, 'rol', '')).upper() == 'PROFESOR'
+                conversacion.rol_detectado = 'PROFESOR' if is_p else 'ALUMNA'
+            conversacion.save(update_fields=['usuario', 'rol_detectado'])
+            full_name = u_auto.nombre.strip() if u_auto.nombre else ""
+            nombre_user = full_name.split()[0] if full_name else ""
+            usuario_id = str(u_auto.id)
 
     # 1. Modo Simulación si no hay API Key configurada
     if not gemini_key and not anthropic_key and not openai_key and not groq_key:
@@ -1161,6 +1172,32 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             })
             tools_usadas.append('reservar_camilla_turno')
             return f"¡Listo {nombre_display}! ✦ {res_reserva}", "agente_turnos_simulado", tools_usadas
+
+    # 1.5 Consulta de MIS clases / Próxima clase de la alumna ("cuándo tengo clases", "cuándo es mi próxima clase", "qué clase me toca")
+    es_consulta_mis_clases = any(k in msg_low for k in [
+        'cuando tengo clase', 'cuándo tengo clase', 'cuando tengo clases', 'cuándo tengo clases',
+        'que clase me toca', 'qué clase me toca', 'que clases me tocan', 'qué clases me tocan',
+        'mi proxima clase', 'mi próxima clase', 'proxima clase', 'próxima clase',
+        'mis clases', 'mis turnos', 'mis horarios', 'a que hora tengo', 'a qué hora tengo',
+        'a que hora voy', 'a qué hora voy', 'cuando voy', 'cuándo voy', 'cuando vengo', 'cuándo vengo',
+        'estoy anotada', 'estoy anotado', 'que dia voy', 'qué día voy', 'tengo clase hoy',
+        'tengo clase manana', 'tengo clase mañana', 'tengo clase el', 'tengo clase este',
+        'mis reservas', 'mi reserva', 'cuando me toca', 'cuándo me toca'
+    ]) or (
+        ('cuando' in msg_low or 'cuándo' in msg_low or 'a que hora' in msg_low or 'a qué hora' in msg_low)
+        and ('tengo' in msg_low or 'me toca' in msg_low or 'voy' in msg_low or 'es mi' in msg_low or 'estoy' in msg_low)
+    )
+    if es_consulta_mis_clases:
+        if not usuario_id and conversacion.usuario:
+            usuario_id = str(conversacion.usuario.id)
+        if not usuario_id and conversacion.telefono:
+            from ..tools.gestion_tools import buscar_usuario_por_telefono
+            u_found = buscar_usuario_por_telefono(conversacion.telefono)
+            if u_found:
+                usuario_id = str(u_found.id)
+        res = consultar_mis_reservas_alumna.invoke({"usuario_id": usuario_id})
+        tools_usadas.append('consultar_mis_reservas_alumna')
+        return res, "agente_turnos_simulado", tools_usadas
 
     # 2. Consulta de turnos / horarios / disponibilidad
     if any(k in msg_low for k in ['turno', 'horario', 'disponib', 'clase', 'hoy', 'mañana', 'lugar', 'camilla', 'cuando puedo ir']):

@@ -33,9 +33,8 @@ def _ejecutar_ciclo_agente(data: dict):
 
     # 2. Vincular usuario si aun no esta vinculado
     if not conversacion.usuario:
-        # Buscamos por coincidencia de ultimos 8 digitos del telefono
-        ultimos_digitos = clean_phone[-8:]
-        usuario = Usuario.objects.filter(telefono__icontains=ultimos_digitos).first()
+        from ..tools.gestion_tools import buscar_usuario_por_telefono
+        usuario = buscar_usuario_por_telefono(clean_phone)
         if usuario:
             conversacion.usuario = usuario
 

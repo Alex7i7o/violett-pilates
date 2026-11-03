@@ -45,11 +45,15 @@ def build_asistente_graph():
 
     def tools_wrapper_node(state: AgentState):
         ya_notificado = state.get("ack_enviado", False)
+        cancel_event = threading.Event()
         if not ya_notificado:
             phone = state.get("phone")
             rol_user = state.get("rol", "")
             if phone:
                 def _enviar_ack():
+                    # Solo enviar ack si las tools demoran más de 2.5s (evita mensajes duplicados en respuestas rápidas)
+                    if cancel_event.wait(timeout=2.5):
+                        return
                     try:
                         from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
                         from ..models import MensajeWhatsAppLog, ConversacionWhatsApp
@@ -73,6 +77,7 @@ def build_asistente_graph():
                 threading.Thread(target=_enviar_ack, daemon=True).start()
 
         tool_result = raw_tool_node.invoke(state)
+        cancel_event.set()
         if isinstance(tool_result, dict):
             tool_result["ack_enviado"] = True
             return tool_result

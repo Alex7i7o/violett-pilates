@@ -59,6 +59,53 @@ def get_ultimas_coincidencias_alumnas():
     global _ULTIMAS_COINCIDENCIAS_ALUMNAS
     return list(_ULTIMAS_COINCIDENCIAS_ALUMNAS)
 
+def get_conversacion_activa():
+    global _CONVERSACION_ACTIVA
+    return _CONVERSACION_ACTIVA
+
+def buscar_usuario_por_telefono(phone_str: str):
+    """
+    Busca un usuario por número de teléfono de forma tolerante a formatos
+    (con o sin código de país 549, 11, espacios, guiones o prefijos locales).
+    """
+    if not phone_str:
+        return None
+    try:
+        from core.models import Usuario
+        clean_digits = re.sub(r'\D', '', str(phone_str))
+        if not clean_digits:
+            return None
+
+        # 1. Búsqueda exacta
+        u = Usuario.objects.filter(telefono__iexact=str(phone_str).strip()).first()
+        if u:
+            return u
+        u = Usuario.objects.filter(telefono__iexact=clean_digits).first()
+        if u:
+            return u
+
+        # 2. Búsqueda por últimos 8 dígitos
+        if len(clean_digits) >= 8:
+            u8 = clean_digits[-8:]
+            u = Usuario.objects.filter(telefono__icontains=u8).first()
+            if u:
+                return u
+
+        # 3. Comparación dígito a dígito con todos los usuarios
+        for cand in Usuario.objects.exclude(telefono__isnull=True).exclude(telefono=''):
+            c_digits = re.sub(r'\D', '', cand.telefono)
+            if not c_digits or len(c_digits) < 6:
+                continue
+            if c_digits == clean_digits:
+                return cand
+            if clean_digits.endswith(c_digits) or cand_digits.endswith(clean_digits):
+                return cand
+            if len(c_digits) >= 7 and len(clean_digits) >= 7 and c_digits[-7:] == clean_digits[-7:]:
+                return cand
+    except Exception as e:
+        logger.warning(f"Error en buscar_usuario_por_telefono: {e}")
+    return None
+
 VERBOS_Y_STOPWORDS_GESTION = {
     'agregale', 'agregále', 'agrégale', 'agregarle', 'agrega', 'agregá', 'agregar',
     'sumale', 'súmale', 'sumarle', 'suma', 'sumá', 'sumar',
