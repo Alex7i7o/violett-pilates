@@ -29,7 +29,21 @@ from ..tools.gestion_tools import (
     consultar_agenda_completa_dia,
     crear_clase_y_agendar_alumna_duena,
     obtener_metricas_alumnas_duena,
-    ajustar_creditos_alumna_duena
+    ajustar_creditos_alumna_duena,
+    consultar_esquema_fijo_alumna,
+    asignar_horario_fijo_alumna,
+    dar_baja_horario_fijo_alumna,
+    apartar_camilla_duena,
+    liberar_camilla_bloqueada_duena,
+    dar_baja_plan_alumna_duena,
+    consultar_ultimas_resenas_duena,
+    consultar_esquema_fijo_alumna,
+    asignar_horario_fijo_alumna,
+    dar_baja_horario_fijo_alumna,
+    apartar_camilla_duena,
+    liberar_camilla_bloqueada_duena,
+    dar_baja_plan_alumna_duena,
+    consultar_ultimas_resenas_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -44,6 +58,13 @@ DIRECCION_TOOLS = [
     consultar_agenda_completa_dia,
     obtener_metricas_alumnas_duena,
     ajustar_creditos_alumna_duena,
+    consultar_esquema_fijo_alumna,
+    asignar_horario_fijo_alumna,
+    dar_baja_horario_fijo_alumna,
+    apartar_camilla_duena,
+    liberar_camilla_bloqueada_duena,
+    dar_baja_plan_alumna_duena,
+    consultar_ultimas_resenas_duena,
     obtener_reporte_facturacion,
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
@@ -115,6 +136,26 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si pide reasignar una profesora (ej: "El jueves a las 18 poné a Sofía"): usá 'reasignar_profesora_directo'.
    * Si pide buscar cobertura/reemplazo: usá 'buscar_reemplazo_orden_duena'.
    * Si indica que dos alumnas vienen juntas ("Madre e hija"): usá 'vincular_alumnas_inseparables'.
+
+5. ESQUEMA RECURRENTE Y HORARIOS FIJOS SEMANALES:
+   * Si Deby consulta los días fijos de una alumna (ej: "¿Qué días fijos viene Martina?", "¿Tiene horario fijo Alex?"):
+     -> Usá 'consultar_esquema_fijo_alumna'.
+   * Si Deby pide asignarle o cambiarle el horario fijo semanal a una alumna (ej: "Poné a Alex fija los sábados a las 11hs", "Horario fijo para Marcela martes y jueves 18hs"):
+     -> Usá 'asignar_horario_fijo_alumna'.
+   * Si Deby pide sacarle o dar de baja el horario fijo semanal (ej: "Sacale el horario fijo a Alex", "Borrá la recurrencia de Marcela"):
+     -> Usá 'dar_baja_horario_fijo_alumna'.
+
+6. BLOQUEO / APARTADO DE CAMILLAS (DIRECCIÓN O MANTENIMIENTO):
+   * Si Deby pide bloquear, apartar o reservar una camilla para ella o por mantenimiento (ej: "Apartá una camilla mañana a las 18hs", "Bloqueá una camilla el sábado a las 11hs por mantenimiento"):
+     -> Usá 'apartar_camilla_duena'.
+   * Si Deby pide desbloquear o liberar una camilla que estaba apartada:
+     -> Usá 'liberar_camilla_bloqueada_duena'.
+
+7. BAJA DE PLANES Y RESEÑAS DE LA PLATAFORMA:
+   * Si Deby pide dar de baja definitiva el plan o abono de una alumna (ej: "Dar de baja el plan de Alex", "Cancelale el abono a Marcela"):
+     -> Usá 'dar_baja_plan_alumna_duena'.
+   * Si Deby consulta por las opiniones, calificaciones de estrellas o reseñas de las alumnas (ej: "¿Qué reseñas tenemos?", "Cómo vienen las opiniones de la web?", "Últimas reseñas"):
+     -> Usá 'consultar_ultimas_resenas_duena'.
 
 {formato_rules}
 """

@@ -49,7 +49,14 @@ from ..tools.gestion_tools import (
     consultar_agenda_completa_dia,
     crear_clase_y_agendar_alumna_duena,
     obtener_metricas_alumnas_duena,
-    ajustar_creditos_alumna_duena
+    ajustar_creditos_alumna_duena,
+    consultar_esquema_fijo_alumna,
+    asignar_horario_fijo_alumna,
+    dar_baja_horario_fijo_alumna,
+    apartar_camilla_duena,
+    liberar_camilla_bloqueada_duena,
+    dar_baja_plan_alumna_duena,
+    consultar_ultimas_resenas_duena
 )
 
 logger = logging.getLogger(__name__)
@@ -186,6 +193,26 @@ def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
             "hora_str": params.get('hora_str', '18:00')
         })
         return res, "agente_direccion", ['crear_clase_y_agendar_alumna_duena']
+
+    elif tipo == 'consultar_esquema':
+        res = consultar_esquema_fijo_alumna.invoke({"nombre_o_tel_alumna": nom_completo})
+        return res, "agente_direccion", ['consultar_esquema_fijo_alumna']
+
+    elif tipo == 'asignar_horario_fijo':
+        res = asignar_horario_fijo_alumna.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "dia_semana_str": params.get('dia_semana_str', 'lunes'),
+            "hora_str": params.get('hora_str', '18:00')
+        })
+        return res, "agente_direccion", ['asignar_horario_fijo_alumna']
+
+    elif tipo == 'dar_baja_horario_fijo':
+        res = dar_baja_horario_fijo_alumna.invoke({"nombre_o_tel_alumna": nom_completo})
+        return res, "agente_direccion", ['dar_baja_horario_fijo_alumna']
+
+    elif tipo == 'dar_baja_plan':
+        res = dar_baja_plan_alumna_duena.invoke({"nombre_o_tel_alumna": nom_completo})
+        return res, "agente_direccion", ['dar_baja_plan_alumna_duena']
 
     return None
 
@@ -329,6 +356,14 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
                 tipo_act = 'consultar_ficha'
             elif 'crear_clase_y_agendar_alumna_duena' in tools_usadas:
                 tipo_act = 'crear_clase_y_agendar'
+            elif 'consultar_esquema_fijo_alumna' in tools_usadas:
+                tipo_act = 'consultar_esquema'
+            elif 'asignar_horario_fijo_alumna' in tools_usadas:
+                tipo_act = 'asignar_horario_fijo'
+            elif 'dar_baja_horario_fijo_alumna' in tools_usadas:
+                tipo_act = 'dar_baja_horario_fijo'
+            elif 'dar_baja_plan_alumna_duena' in tools_usadas:
+                tipo_act = 'dar_baja_plan'
             _guardar_hitl_si_corresponde(conversacion, respuesta_final, tipo_act, {})
 
         print(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}", flush=True)
@@ -500,6 +535,88 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
 
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
     if rol == 'DUENA':
+        # 0. Reseñas y testimonios web
+        if any(k in msg_low for k in ['reseñas', 'resenas', 'opiniones', 'calificaciones', 'estrellas', 'testimonios']):
+            res = consultar_ultimas_resenas_duena.invoke({})
+            tools_usadas.append('consultar_ultimas_resenas_duena')
+            return res, "agente_direccion", tools_usadas
+
+        # 0. Bloquear o apartar camilla
+        if any(k in msg_low for k in ['apartar camilla', 'apartá una camilla', 'aparta una camilla', 'bloquear camilla', 'bloqueá una camilla', 'bloquea una camilla', 'apartar una camilla', 'bloqueo de camilla']):
+            hora_m = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_val = hora_m.group(1) if hora_m else "18:00"
+            fecha_val = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
+                if d in msg_low:
+                    fecha_val = d
+                    break
+            res = apartar_camilla_duena.invoke({"fecha_o_dia": fecha_val, "hora_str": hora_val, "motivo": "Reserva de dirección"})
+            tools_usadas.append('apartar_camilla_duena')
+            return res, "agente_direccion", tools_usadas
+
+        # 0. Desbloquear o liberar camilla apartada
+        if any(k in msg_low for k in ['desbloquear camilla', 'desbloqueá la camilla', 'desbloquea la camilla', 'liberar camilla bloqueada', 'liberar la camilla']):
+            hora_m = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            hora_val = hora_m.group(1) if hora_m else "18:00"
+            fecha_val = "mañana" if any(k in msg_low for k in ['mañana', 'manana']) else "hoy"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
+                if d in msg_low:
+                    fecha_val = d
+                    break
+            res = liberar_camilla_bloqueada_duena.invoke({"fecha_o_dia": fecha_val, "hora_str": hora_val})
+            tools_usadas.append('liberar_camilla_bloqueada_duena')
+            return res, "agente_direccion", tools_usadas
+
+        # 0. Esquema fijo semanal (consulta o asignación)
+        if any(k in msg_low for k in ['dias fijos', 'días fijos', 'horario fijo', 'horarios fijos', 'poner fija', 'poné fija', 'dejar fija', 'deja fija', 'sacale el horario fijo', 'borrá la recurrencia']):
+            # Si pide sacar o borrar
+            if any(k in msg_low for k in ['sacale', 'sacar', 'borra', 'borrá', 'elimina', 'eliminá', 'dar de baja']):
+                m_nom = re.search(r'(?:sacale(?:\s+el)?\s+horario\s+fijo\s+a|borr[aá]\s+el\s+horario\s+fijo\s+de|baja\s+(?:a|de))\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+                nom_target = m_nom.group(1).strip() if m_nom else ""
+                res = dar_baja_horario_fijo_alumna.invoke({"nombre_o_tel_alumna": nom_target or mensaje_usuario})
+                _guardar_hitl_si_corresponde(conversacion, res, 'dar_baja_horario_fijo', {})
+                tools_usadas.append('dar_baja_horario_fijo_alumna')
+                return res, "agente_direccion", tools_usadas
+
+            # Si pide asignar ("poné a Alex fija los sábados 11hs", "horario fijo para Marcela martes 18hs")
+            es_asignar_fijo = any(k in msg_low for k in ['pone', 'poné', 'poner', 'asigna', 'asigná', 'asignar', 'deja', 'dejá', 'dejar', 'fija', 'fijo']) and any(d in msg_low for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado'])
+            if es_asignar_fijo:
+                dia_fijo = "lunes"
+                for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado']:
+                    if d in msg_low:
+                        dia_fijo = d
+                        break
+                hora_m = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+                hora_fijo = hora_m.group(1) if hora_m else "18:00"
+                m_nom_fijo = re.search(r'(?:pon[eé]r?\s+(?:a\s+)?|horario\s+fijo\s+(?:para|a)\s+|dejar?\s+(?:a\s+)?)([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:fij[ao]|los|el|a\s+las|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+                nom_target = m_nom_fijo.group(1).strip() if m_nom_fijo else ""
+                nom_target = re.sub(r'\s+(?:para|en|el|la|de|a|fija|fijo)$', '', nom_target, flags=re.IGNORECASE).strip()
+                res = asignar_horario_fijo_alumna.invoke({
+                    "nombre_o_tel_alumna": nom_target or mensaje_usuario,
+                    "dia_semana_str": dia_fijo,
+                    "hora_str": hora_fijo
+                })
+                _guardar_hitl_si_corresponde(conversacion, res, 'asignar_horario_fijo', {'dia_semana_str': dia_fijo, 'hora_str': hora_fijo})
+                tools_usadas.append('asignar_horario_fijo_alumna')
+                return res, "agente_direccion", tools_usadas
+
+            # Consulta ("¿Qué días fijos viene Martina?")
+            m_nom_q = re.search(r'(?:d[ií]as\s+fijos\s+(?:tiene|de|viene)|horario\s+fijo\s+(?:tiene|de)|fija\s+)([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            nom_target = m_nom_q.group(1).strip() if m_nom_q else ""
+            res = consultar_esquema_fijo_alumna.invoke({"nombre_o_tel_alumna": nom_target or mensaje_usuario})
+            _guardar_hitl_si_corresponde(conversacion, res, 'consultar_esquema', {})
+            tools_usadas.append('consultar_esquema_fijo_alumna')
+            return res, "agente_direccion", tools_usadas
+
+        # 0. Dar de baja plan o abono
+        if any(k in msg_low for k in ['dar de baja el plan', 'dar de baja el abono', 'cancelale el plan', 'cancelale el abono', 'baja de su plan', 'baja de su abono', 'dar de baja su abono']):
+            m_nom_baja = re.search(r'(?:plan\s+(?:de\s+)?|abono\s+(?:de\s+)?|a\s+)([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            nom_baja = m_nom_baja.group(1).strip() if m_nom_baja else ""
+            nom_baja = re.sub(r'^(?:su|el|un)\s+(?:plan|abono)\s*', '', nom_baja, flags=re.IGNORECASE).strip()
+            res = dar_baja_plan_alumna_duena.invoke({"nombre_o_tel_alumna": nom_baja or mensaje_usuario})
+            _guardar_hitl_si_corresponde(conversacion, res, 'dar_baja_plan', {})
+            tools_usadas.append('dar_baja_plan_alumna_duena')
+            return res, "agente_direccion", tools_usadas
         # 0g. Consulta de cantidad y métricas de alumnas
         es_consulta_cantidad_alumnas = (
             any(k in msg_low for k in [

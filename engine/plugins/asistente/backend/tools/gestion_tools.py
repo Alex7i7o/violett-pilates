@@ -746,3 +746,271 @@ def ajustar_creditos_alumna_duena(nombre_o_tel_alumna: str, cantidad_creditos: i
         return f"✦ ¡Listo Deby! Le {operacion} clase(s) a {nombre_completo}. Ahora tiene {sub.clases_restantes} clase(s) disponibles en su {sub.plan.nombre} (Vence el {sub.fecha_vencimiento.strftime('%d/%m/%Y')})."
     except Exception as e:
         return f"✦ Ocurrió un error al actualizar los créditos: {e}"
+
+
+@tool
+def consultar_esquema_fijo_alumna(nombre_o_tel_alumna: str) -> str:
+    """
+    Comando para la dueña: consulta qué días y horarios fijos semanales tiene asignados una alumna en la grilla.
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "ver su esquema fijo")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+
+    try:
+        from plugins.recurrencias.backend.models import Recurrencia
+        recs = Recurrencia.objects.filter(usuario=alumna, is_active=True).select_related('clase').order_by('dia_semana', 'hora_inicio')
+    except Exception:
+        recs = []
+
+    nombre_comp = f"{alumna.nombre} {alumna.apellido}".strip()
+    if not recs:
+        return f"✦ {nombre_comp} no tiene ningún horario fijo semanal asignado en este momento."
+
+    dias_nombres = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+    lineas = [f"✦ Esquema Fijo Semanal: {nombre_comp}"]
+    for r in recs:
+        dia_txt = dias_nombres.get(r.dia_semana, f'Día {r.dia_semana}')
+        hora_txt = r.hora_inicio.strftime('%H:%M')
+        lineas.append(f"  • {dia_txt} a las {hora_txt} hs ({r.clase.nombre})")
+
+    return "\n".join(lineas)
+
+
+@tool
+def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, hora_str: str) -> str:
+    """
+    Comando para la dueña: asigna un horario fijo semanal a una alumna en la grilla
+    (ej: 'poner fija a Alex los sábados a las 11hs', 'horario fijo para Marcela martes 18hs').
+    Parámetros:
+    - nombre_o_tel_alumna: Nombre de la alumna.
+    - dia_semana_str: 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'.
+    - hora_str: Hora de inicio (ej: '11:00', '18', '19:30').
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, f"asignarle horario fijo {dia_semana_str} {hora_str}")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+
+    dias_map = {
+        'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
+        'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7
+    }
+    dia_num = 1
+    for d_nombre, d_val in dias_map.items():
+        if d_nombre in dia_semana_str.lower():
+            dia_num = d_val
+            break
+
+    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
+    if ':' not in hora_clean:
+        try:
+            h_int = int(re.search(r'\d+', hora_clean).group(0))
+            hora_clean = f"{h_int:02d}:00"
+        except Exception:
+            hora_clean = "18:00"
+
+    try:
+        from core.models import Clase
+        from plugins.recurrencias.backend.models import Recurrencia
+        from plugins.membresias.backend.models import Suscripcion
+        from plugins.recurrencias.backend.services import auto_agendar_recurrencias_usuario
+
+        clase_reformer = Clase.objects.filter(is_active=True).first()
+        if not clase_reformer:
+            return "No hay clases activas en el sistema para asociar la recurrencia."
+
+        rec, created = Recurrencia.objects.get_or_create(
+            usuario=alumna,
+            clase=clase_reformer,
+            dia_semana=dia_num,
+            hora_inicio=hora_clean,
+            defaults={'is_active': True}
+        )
+        if not created and not rec.is_active:
+            rec.is_active = True
+            rec.save(update_fields=['is_active'])
+
+        dias_nombres = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+        dia_display = dias_nombres.get(dia_num, dia_semana_str)
+        nombre_comp = f"{alumna.nombre} {alumna.apellido}".strip()
+
+        sub = Suscripcion.objects.filter(usuario=alumna, estado='ACTIVO').order_by('-fecha_inicio').first()
+        agendadas = 0
+        if sub:
+            agendadas = auto_agendar_recurrencias_usuario(alumna, sub)
+
+        msg_extra = f" Además, agendé automáticamente {agendadas} clase(s) en sus turnos próximos." if agendadas > 0 else ""
+        return f"✦ ¡Listo Deby! ✦ Le asigné a {nombre_comp} el horario fijo semanal de los *{dia_display} a las {hora_clean} hs*.{msg_extra}"
+    except Exception as e:
+        return f"✦ Ocurrió un error al guardar el horario fijo: {e}"
+
+
+@tool
+def dar_baja_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str = "", hora_str: str = "") -> str:
+    """
+    Comando para la dueña: desactiva los horarios fijos semanales de una alumna
+    (ej: 'sacale el horario fijo a Alex', 'dar de baja la recurrencia de Marcela').
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "desactivar su horario fijo")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+
+    try:
+        from plugins.recurrencias.backend.models import Recurrencia
+        qs = Recurrencia.objects.filter(usuario=alumna, is_active=True)
+        cant = qs.count()
+        if cant == 0:
+            return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún horario fijo semanal activo."
+
+        qs.update(is_active=False)
+        return f"✦ ¡Listo Deby! Desactivé los {cant} horario(s) fijo(s) de {alumna.nombre} {alumna.apellido}."
+    except Exception as e:
+        return f"✦ Error desactivando horario fijo: {e}"
+
+
+@tool
+def apartar_camilla_duena(fecha_o_dia: str, hora_str: str, motivo: str = "Reserva de dirección / Mantenimiento") -> str:
+    """
+    Comando para la dueña: bloquea o aparta una camilla puntual en un turno específico para que ninguna alumna la pueda reservar
+    (ej: 'apartá una camilla mañana a las 18hs', 'bloqueá una camilla el sábado a las 11hs por mantenimiento').
+    """
+    target_date = resolver_fecha(fecha_o_dia)
+    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
+    if ':' not in hora_clean:
+        try:
+            h_int = int(re.search(r'\d+', hora_clean).group(0))
+            hora_clean = f"{h_int:02d}:00"
+        except Exception:
+            hora_clean = "18:00"
+
+    t = Turno.objects.filter(fecha=target_date, hora_inicio__startswith=hora_clean[:2]).first()
+    if not t:
+        return f"✦ No encontré un turno programado a las {hora_str} para el {target_date.strftime('%d/%m/%Y')}."
+
+    if t.cupo_actual <= 0:
+        return f"✦ En ese turno ya no quedan camillas disponibles para bloquear (ocupación al 100%)."
+
+    try:
+        from core.models import Reserva
+        Reserva.objects.create(
+            turno=t,
+            tipo_reserva='BLOQUEO',
+            nombre_temporal=motivo,
+            estado='CONFIRMADA'
+        )
+        t.cupo_actual = max(0, t.cupo_actual - 1)
+        t.save()
+        return f"✦ ¡Listo Deby! ✦ Aparté 1 camilla en el turno del {target_date.strftime('%d/%m/%Y')} a las {t.hora_inicio.strftime('%H:%M')} hs (Motivo: *{motivo}*). Quedan {t.cupo_actual} camilla(s) libre(s) para alumnas."
+    except Exception as e:
+        return f"✦ Error al bloquear la camilla: {e}"
+
+
+@tool
+def liberar_camilla_bloqueada_duena(fecha_o_dia: str, hora_str: str) -> str:
+    """
+    Comando para la dueña: desbloquea una camilla apartada previamente en un turno, devolviéndola al cupo disponible.
+    """
+    target_date = resolver_fecha(fecha_o_dia)
+    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
+    if ':' not in hora_clean:
+        try:
+            h_int = int(re.search(r'\d+', hora_clean).group(0))
+            hora_clean = f"{h_int:02d}:00"
+        except Exception:
+            hora_clean = "18:00"
+
+    t = Turno.objects.filter(fecha=target_date, hora_inicio__startswith=hora_clean[:2]).first()
+    if not t:
+        return f"✦ No encontré el turno de las {hora_str} para el {target_date.strftime('%d/%m/%Y')}."
+
+    try:
+        from core.models import Reserva
+        res_bloqueo = Reserva.objects.filter(turno=t, tipo_reserva='BLOQUEO', estado='CONFIRMADA').first()
+        if not res_bloqueo:
+            return f"✦ No hay ninguna camilla bloqueada en ese turno."
+
+        res_bloqueo.estado = 'CANCELADA'
+        res_bloqueo.save()
+        t.cupo_actual += 1
+        t.save()
+        return f"✦ ¡Listo Deby! Liberé la camilla bloqueada. Ahora hay {t.cupo_actual} camilla(s) disponible(s) en ese horario."
+    except Exception as e:
+        return f"✦ Error al liberar la camilla: {e}"
+
+
+@tool
+def dar_baja_plan_alumna_duena(nombre_o_tel_alumna: str) -> str:
+    """
+    Comando para la dueña: da de baja definitivamente el plan activo de una alumna y cancela sus turnos futuros agendados
+    (ej: 'dar de baja el plan de Alex', 'cancelale el abono a Marcela').
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "dar de baja su plan")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+
+    try:
+        from plugins.membresias.backend.models import Suscripcion
+        from core.models import Reserva
+        today = timezone.localdate()
+
+        subs = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO'])
+        if not subs.exists():
+            return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún abono activo para dar de baja."
+
+        subs.update(estado='VENCIDO', clases_restantes=0)
+
+        futuras = Reserva.objects.filter(usuario=alumna, turno__fecha__gte=today, estado='CONFIRMADA')
+        cant_turnos = futuras.count()
+        for r in futuras:
+            r.estado = 'CANCELADA'
+            r.save()
+            t = r.turno
+            t.cupo_actual += 1
+            t.save()
+
+        nombre_comp = f"{alumna.nombre} {alumna.apellido}".strip()
+        msg_turnos = f" y se liberaron {cant_turnos} clase(s) agendadas a futuro" if cant_turnos > 0 else ""
+        return f"✦ ¡Listo Deby! ✦ Di de baja el abono de {nombre_comp}{msg_turnos}. Su ficha quedó sin abono activo."
+    except Exception as e:
+        return f"✦ Error al dar de baja el plan: {e}"
+
+
+@tool
+def consultar_ultimas_resenas_duena() -> str:
+    """
+    Comando para la dueña: consulta las últimas opiniones, calificaciones de estrellas y testimonios dejados por las alumnas en la web.
+    """
+    try:
+        from plugins.resenas.backend.models import Resena
+        from django.db.models import Avg
+        resenas = Resena.objects.select_related('usuario').order_by('-fecha')[:5]
+        if not resenas.exists():
+            return "✦ Por el momento no se han registrado reseñas de alumnas en la plataforma web."
+
+        total_resenas = Resena.objects.count()
+        promedio = Resena.objects.aggregate(Avg('estrellas'))['estrellas__avg'] or 5.0
+
+        lineas = [
+            f"✦ Opiniones y Reseñas de Alumnas (Violett Pilates):",
+            f"• Promedio general: {promedio:.1f} / 5.0 ★ (de {total_resenas} opiniones)",
+            f"\nÚltimos testimonios recibidos:"
+        ]
+
+        for r in resenas:
+            u_nom = f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else "Alumna"
+            estrellas_str = "★" * r.estrellas + "☆" * (5 - r.estrellas)
+            fecha_str = r.fecha.strftime('%d/%m/%Y') if hasattr(r, 'fecha') and r.fecha else ""
+            txt = f"_{r.mensaje}_" if r.mensaje else "Sin comentario escrito"
+            lineas.append(f"• *{u_nom}* ({estrellas_str}) - {fecha_str}\n  {txt}")
+
+        return "\n".join(lineas)
+    except Exception as e:
+        return f"✦ Ocurrió un error al consultar las reseñas: {e}"
