@@ -91,7 +91,7 @@ def cancelar_reserva(turno_id, usuario):
     time_diff = dt - now
     
     if time_diff > datetime.timedelta(hours=horas_limite):
-        reserva.estado = 'CANCELADA'
+        reserva.estado = 'CANCELADA_TIEMPO'
         reserva.save()
         turno.cupo_actual += 1
         turno.save()

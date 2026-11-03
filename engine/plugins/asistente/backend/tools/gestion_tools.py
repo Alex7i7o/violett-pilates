@@ -1098,7 +1098,7 @@ def liberar_camilla_bloqueada_duena(fecha_o_dia: str, hora_str: str) -> str:
         if not res_bloqueo:
             return f"✦ No hay ninguna camilla bloqueada en ese turno."
 
-        res_bloqueo.estado = 'CANCELADA'
+        res_bloqueo.estado = 'CANCELADA_TIEMPO'
         res_bloqueo.save()
         t.cupo_actual += 1
         t.save()
@@ -1133,7 +1133,7 @@ def dar_baja_plan_alumna_duena(nombre_o_tel_alumna: str) -> str:
         futuras = Reserva.objects.filter(usuario=alumna, turno__fecha__gte=today, estado='CONFIRMADA')
         cant_turnos = futuras.count()
         for r in futuras:
-            r.estado = 'CANCELADA'
+            r.estado = 'CANCELADA_TIEMPO'
             r.save()
             t = r.turno
             t.cupo_actual += 1

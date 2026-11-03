@@ -38,14 +38,26 @@ def resolver_fecha(fecha_str: str) -> datetime.date:
                 dias_adelante = 7
             return today + datetime.timedelta(days=dias_adelante)
 
+    # Formato ISO primero: YYYY-MM-DD
+    m_iso = re.search(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', s)
+    if m_iso:
+        try:
+            return datetime.date(int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3)))
+        except ValueError:
+            pass
+
+    # Formato latino: DD/MM o DD/MM/YYYY
     m = re.search(r'(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?', s)
     if m:
-        day = int(m.group(1))
-        month = int(m.group(2))
-        year = int(m.group(3)) if m.group(3) else today.year
-        if year < 100:
-            year += 2000
-        return datetime.date(year, month, day)
+        try:
+            day = int(m.group(1))
+            month = int(m.group(2))
+            year = int(m.group(3)) if m.group(3) else today.year
+            if year < 100:
+                year += 2000
+            return datetime.date(year, month, day)
+        except ValueError:
+            pass
 
     try:
         return datetime.date.fromisoformat(s)

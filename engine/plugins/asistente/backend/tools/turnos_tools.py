@@ -301,26 +301,41 @@ def cancelar_reserva_alumna(usuario_id: str, fecha_o_dia: str, hora_str: str = "
 
     with transaction.atomic():
         t_locked = Turno.objects.select_for_update().get(id=turno.id)
-        reserva.estado = 'CANCELADA'
-        reserva.save()
-
-        # Liberar cupo de camilla
-        t_locked.cupo_actual += 1
-        t_locked.save()
 
         # Aplicar regla de 24 horas
         if horas_anticipacion >= 24.0:
-            if suscripcion:
-                suscripcion.clases_restantes += 1
-                if suscripcion.estado == 'AGOTADO':
-                    suscripcion.estado = 'ACTIVO'
-                suscripcion.save()
+            reserva.estado = 'CANCELADA_TIEMPO'
             recupero_credito = True
         else:
+            reserva.estado = 'CANCELADA_TARDIA'
             recupero_credito = False
 
+        reserva.save()
+
+        # Liberar cupo de camilla
+        max_cupo = turno.clase.cupo_maximo if turno.clase else 3
+        t_locked.cupo_actual = min(max_cupo, t_locked.cupo_actual + 1)
+        t_locked.save()
+
         from backend_core.hooks import registry
-        registry.execute('reserva_cancelada', reserva)
+        hook_name = 'reserva_cancelada_a_tiempo' if recupero_credito else 'reserva_cancelada_tardia'
+        try:
+            registry.execute(hook_name, reserva)
+        except Exception as e:
+            logger.warning(f"Error hook {hook_name}: {e}")
+        try:
+            registry.execute('reserva_cancelada', reserva)
+        except Exception:
+            pass
+
+        # Fallback si no había ReservaMembresia vinculada pero hay suscripción
+        if recupero_credito and suscripcion and not res_mem:
+            suscripcion.clases_restantes += 1
+            if suscripcion.estado == 'AGOTADO':
+                suscripcion.estado = 'ACTIVO'
+            suscripcion.save()
+        elif suscripcion:
+            suscripcion.refresh_from_db()
 
     if recupero_credito:
         creditos_rest = f" Tu saldo actual es de {suscripcion.clases_restantes} clases disponibles." if suscripcion else ""

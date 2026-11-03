@@ -424,6 +424,7 @@ export function AgendaAdmin() {
               {turnos.map((turno) => {
                 const cuposLibres = turno.cupo_actual;
                 const tieneCupo = cuposLibres > 0 && turno.estado === 'PROGRAMADO';
+                const reservasActivas = turno.reservas_list?.filter((r: any) => !r.estado?.startsWith('CANCELADA')) || [];
 
                 return (
                   <motion.div 
@@ -445,7 +446,7 @@ export function AgendaAdmin() {
                           </div>
                           <div className="text-right flex flex-col items-end gap-1">
                              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md">
-                               Asistencia: {turno.reservas_list.filter((r: any) => r.estado === 'TOMADA').length}/{turno.reservas_list.length}
+                               Asistencia: {reservasActivas.filter((r: any) => r.estado === 'TOMADA').length}/{reservasActivas.length}
                              </span>
                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${cuposLibres === 0 ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-700'}`}>
                                {cuposLibres === 0 ? 'Lleno' : `${cuposLibres} libre${cuposLibres > 1 ? 's' : ''}`}
@@ -454,13 +455,13 @@ export function AgendaAdmin() {
                         </div>
                         
                         <div className="flex-1 mt-2 mb-4 bg-slate-50/50 rounded-xl p-3 border border-slate-100">
-                          {turno.reservas_list.length > 0 ? (
+                          {reservasActivas.length > 0 ? (
                             <div className="space-y-3">
                               <button 
                                 onClick={() => toggleExpand(turno.id)}
                                 className="w-full text-left py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm text-slate-700 transition-colors flex justify-between items-center shadow-sm"
                               >
-                                <span>{turno.reservas_list.length} inscriptas</span>
+                                <span>{reservasActivas.length} inscriptas</span>
                                 <span className="text-lg leading-none text-slate-400">{expandedIds.includes(turno.id) ? '▾' : '▸'}</span>
                               </button>
                               <AnimatePresence initial={false}>
@@ -472,7 +473,7 @@ export function AgendaAdmin() {
                                     transition={{ duration: 0.2 }}
                                     className="space-y-3 overflow-hidden px-1 pt-2"
                                   >
-                                    {turno.reservas_list.map((r: any) => {
+                                    {reservasActivas.map((r: any) => {
                                       const isManual = r.tipo_reserva === 'MANUAL_TEMPORAL' || !r.alumno_id;
 
                                       return (
@@ -508,11 +509,14 @@ export function AgendaAdmin() {
                                               {r.estado === 'CONFIRMADA' && (
                                                 <Button size="sm" variant="outline" className="flex-1 text-red-500 border-red-200 hover:bg-red-50 text-[11px] h-7" onClick={() => handleAsistencia(r.id, 'AUSENTE')}>Ausente</Button>
                                               )}
-                                              {r.estado !== 'CONFIRMADA' && (
+                                              {r.estado === 'TOMADA' && (
                                                 <div className="w-full text-center py-1">
-                                                  <span className={`text-xs font-semibold ${r.estado === 'TOMADA' ? 'text-emerald-600' : 'text-red-500'}`}>
-                                                    {r.estado === 'TOMADA' ? '✓ Asistió' : '✕ Ausente'}
-                                                  </span>
+                                                  <span className="text-xs font-semibold text-emerald-600">✓ Asistió</span>
+                                                </div>
+                                              )}
+                                              {r.estado === 'AUSENTE' && (
+                                                <div className="w-full text-center py-1">
+                                                  <span className="text-xs font-semibold text-red-500">✕ Ausente</span>
                                                 </div>
                                               )}
                                             </div>
