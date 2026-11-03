@@ -110,8 +110,8 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
      -> Usá 'consultar_alumna_detalle'.
    * Si Deby consulta por la cantidad total o estado de alumnas del estudio (ej: "Quiero la cantidad de alumnas que tenemos", "¿Cuántas alumnas tenemos?", "Cuántas clientas activas hay"):
      -> Usá 'obtener_metricas_alumnas_duena'.
-   * Si Deby pide sumarle o restarle clases sueltas o créditos a una alumna puntual (ej: "Sumale 1 clase a Marcela", "Cargale 2 clases de regalo a Alex"):
-     -> Usá 'ajustar_creditos_alumna_duena'.
+   * Si Deby pide sumarle, restarle o agregarle clases sueltas o créditos a una alumna puntual (ej: "Sumale 1 clase a Marcela", "Cargale 2 clases de regalo a Alex", "Agrégale 4 clases", "Ponele 4 créditos más", "Sumale 4 créditos"):
+     -> Usá 'ajustar_creditos_alumna_duena' (usando el nombre de la alumna activa en contexto si no la vuelve a nombrar). NUNCA repitas el estado del plan ni preguntes si querés que lo hagas cuando te lo acaba de pedir: ¡EJECUTÁ 'ajustar_creditos_alumna_duena' DE INMEDIATO!
 
 2. GESTIÓN DE AGENDA Y RESERVAS (AGREGAR, CREAR O SACAR ALUMNAS):
    * Si Deby pide agregar, anotar o inscribir a una alumna en una clase puntual existente (ej: "Agregá a Martina Filiel a la clase de las 18 hs", "Anotá a Marcela hoy a las 18 hs", "Inscribí a Alejandra Rivarola en el turno de mañana a las 15:30", "Agenda a Alex para el sábado 17hs"):

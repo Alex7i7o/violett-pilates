@@ -12,14 +12,44 @@ from .profesores_tools import resolver_fecha, obtener_profesor_de_turno
 
 logger = logging.getLogger(__name__)
 
-# Almacén en memoria de las últimas coincidencias para Human-in-the-loop
+# Almacén en memoria y sesión de las últimas coincidencias para Human-in-the-loop y contexto
 _ULTIMAS_COINCIDENCIAS_ALUMNAS = []
 _ULTIMA_ALUMNA_ACTIVA = None
+_CONVERSACION_ACTIVA = None
+
+def set_conversacion_activa(conversacion):
+    """Sincroniza la conversación actual y restaura la alumna activa desde su metadata en BD"""
+    global _CONVERSACION_ACTIVA, _ULTIMA_ALUMNA_ACTIVA
+    _CONVERSACION_ACTIVA = conversacion
+    if conversacion and getattr(conversacion, 'metadata', None):
+        alumna_meta = conversacion.metadata.get('alumna_activa')
+        if alumna_meta and isinstance(alumna_meta, dict):
+            u_id = alumna_meta.get('id')
+            if u_id:
+                try:
+                    from core.models import Usuario
+                    u = Usuario.objects.filter(id=u_id).first()
+                    if u:
+                        _ULTIMA_ALUMNA_ACTIVA = u
+                except Exception:
+                    pass
 
 def registrar_alumna_activa(alumna):
-    global _ULTIMA_ALUMNA_ACTIVA
+    global _ULTIMA_ALUMNA_ACTIVA, _CONVERSACION_ACTIVA
     if alumna:
         _ULTIMA_ALUMNA_ACTIVA = alumna
+        if _CONVERSACION_ACTIVA and hasattr(_CONVERSACION_ACTIVA, 'metadata'):
+            try:
+                nom = f"{alumna.nombre} {alumna.apellido}".strip()
+                if not isinstance(_CONVERSACION_ACTIVA.metadata, dict):
+                    _CONVERSACION_ACTIVA.metadata = {}
+                _CONVERSACION_ACTIVA.metadata['alumna_activa'] = {
+                    'id': str(alumna.id),
+                    'nombre': nom
+                }
+                _CONVERSACION_ACTIVA.save(update_fields=['metadata'])
+            except Exception as e:
+                logger.warning(f"No se pudo persistir alumna_activa en metadata: {e}")
 
 def get_ultima_alumna_activa():
     global _ULTIMA_ALUMNA_ACTIVA
@@ -39,6 +69,9 @@ VERBOS_Y_STOPWORDS_GESTION = {
     'agendale', 'agéndale', 'agendarle', 'agenda', 'agendá', 'agendar',
     'sacale', 'sácale', 'sacarle', 'saca', 'sacá', 'sacar',
     'desanota', 'desanotá', 'desanotale',
+    'ponele', 'ponéle', 'pónele', 'pone', 'poné', 'poner', 'ponerle',
+    'dale', 'darle', 'dame',
+    'mas', 'más', 'que', 'q',
     'plan', 'planes', 'abono', 'abonos', 'clase', 'clases', 'credito', 'creditos', 'crédito', 'créditos',
     'su', 'sus', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'al', 'del', 'a', 'de', 'para', 'en', 'por', 'con',
     'hoy', 'mañana', 'sabado', 'sábado', 'lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes',
@@ -143,6 +176,16 @@ def buscar_alumna_flexible(query: str):
                 registrar_alumna_activa(u)
                 _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
                 return u, [u], None
+
+        # Prioridad de contexto inmediato: si entre las candidatas está la alumna activa, seleccionarla directamente
+        activa = get_ultima_alumna_activa()
+        if activa and any(u.id == activa.id for u in qs):
+            for u in qs:
+                if u.id == activa.id:
+                    registrar_alumna_activa(u)
+                    _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
+                    return u, [u], None
+
         _ULTIMAS_COINCIDENCIAS_ALUMNAS = qs
         return None, qs, "multiples"
 
@@ -195,6 +238,13 @@ def buscar_alumna_flexible(query: str):
 
     # Al ser coincidencia difusa, devolvemos hasta 4 candidatas para Human-in-the-loop
     top_candidatos = [u for score, u in candidatos_con_score[:4]]
+    activa = get_ultima_alumna_activa()
+    if activa and any(u.id == activa.id for u in top_candidatos):
+        for u in top_candidatos:
+            if u.id == activa.id:
+                registrar_alumna_activa(u)
+                _ULTIMAS_COINCIDENCIAS_ALUMNAS = [u]
+                return u, [u], None
     _ULTIMAS_COINCIDENCIAS_ALUMNAS = top_candidatos
     return None, top_candidatos, "multiples"
 
@@ -739,6 +789,8 @@ def ajustar_creditos_alumna_duena(nombre_o_tel_alumna: str, cantidad_creditos: i
         sub.clases_restantes = max(0, sub.clases_restantes + cantidad_creditos)
         if sub.clases_restantes > 0 and sub.estado == 'AGOTADO':
             sub.estado = 'ACTIVO'
+        if sub.fecha_vencimiento and sub.fecha_vencimiento < timezone.localdate():
+            sub.fecha_vencimiento = timezone.localdate() + datetime.timedelta(days=30)
         sub.save()
 
         nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()

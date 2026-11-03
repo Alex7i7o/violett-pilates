@@ -56,7 +56,9 @@ from ..tools.gestion_tools import (
     apartar_camilla_duena,
     liberar_camilla_bloqueada_duena,
     dar_baja_plan_alumna_duena,
-    consultar_ultimas_resenas_duena
+    consultar_ultimas_resenas_duena,
+    set_conversacion_activa,
+    get_ultima_alumna_activa
 )
 
 logger = logging.getLogger(__name__)
@@ -74,6 +76,7 @@ def get_compiled_graph():
 
 
 def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
+    set_conversacion_activa(conversacion)
     """
     Verifica si hay una acción pendiente esperando selección de alumna (Human-in-the-loop).
     Si el mensaje del usuario selecciona una opción ('1', 'la 1', 'laila', etc.), ejecuta la acción y limpia el estado.
@@ -214,6 +217,14 @@ def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
         res = dar_baja_plan_alumna_duena.invoke({"nombre_o_tel_alumna": nom_completo})
         return res, "agente_direccion", ['dar_baja_plan_alumna_duena']
 
+    elif tipo == 'ajustar_creditos':
+        res = ajustar_creditos_alumna_duena.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "cantidad_creditos": params.get('cantidad_creditos', 1),
+            "motivo": params.get('motivo', 'Ajuste manual de la dueña')
+        })
+        return res, "agente_direccion", ['ajustar_creditos_alumna_duena']
+
     return None
 
 
@@ -234,6 +245,7 @@ def _guardar_hitl_si_corresponde(conversacion, texto_respuesta: str, tipo_accion
 
 
 def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, str, List[str]]:
+    set_conversacion_activa(conversacion)
     """
     Ejecuta el ciclo de atención multi-agente con arquitectura de legos orquestada por LangGraph.
     Retorna: (texto_respuesta, agente_responsable, tools_ejecutadas)
@@ -348,10 +360,17 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
         if "encontré estas posibles coincidencias" in respuesta_final.lower() or "te referías a alguna" in respuesta_final.lower():
             tipo_act = 'agendar'
+            params_act = {}
             if 'cancelar_reserva_alumna_duena' in tools_usadas:
                 tipo_act = 'cancelar'
             elif 'renovar_o_asignar_plan_alumna' in tools_usadas:
                 tipo_act = 'renovar_plan'
+            elif 'ajustar_creditos_alumna_duena' in tools_usadas:
+                tipo_act = 'ajustar_creditos'
+                m_cant = re.search(r'(\d+)\s*(?:cr[eé]ditos?|clases?)', mensaje_usuario.lower())
+                params_act['cantidad_creditos'] = int(m_cant.group(1)) if m_cant else 1
+                if any(k in mensaje_usuario.lower() for k in ['rest', 'descont', 'menos']):
+                    params_act['cantidad_creditos'] = -abs(params_act['cantidad_creditos'])
             elif 'consultar_alumna_detalle' in tools_usadas:
                 tipo_act = 'consultar_ficha'
             elif 'crear_clase_y_agendar_alumna_duena' in tools_usadas:
@@ -364,7 +383,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
                 tipo_act = 'dar_baja_horario_fijo'
             elif 'dar_baja_plan_alumna_duena' in tools_usadas:
                 tipo_act = 'dar_baja_plan'
-            _guardar_hitl_si_corresponde(conversacion, respuesta_final, tipo_act, {})
+            _guardar_hitl_si_corresponde(conversacion, respuesta_final, tipo_act, params_act)
 
         print(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}", flush=True)
         logger.info(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}")
@@ -428,6 +447,7 @@ def _ejecutar_modo_simulacion(conversacion, mensaje_usuario: str, usuario_id: st
 
 
 def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id: str, nombre_user: str) -> Tuple[str, str, List[str]]:
+    set_conversacion_activa(conversacion)
     msg_low = mensaje_usuario.lower().strip()
     tools_usadas = []
     rol = conversacion.rol_detectado
@@ -633,16 +653,33 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             tools_usadas.append('obtener_metricas_alumnas_duena')
             return res, "agente_direccion", tools_usadas
 
-        # 0h. Ajustar créditos sueltos a una alumna
-        if any(k in msg_low for k in ['sumale una clase', 'sumale 1 clase', 'sumale 2 clases', 'restale una clase', 'restale 1 clase', 'clase de regalo', 'clase de cortesía', 'clase de cortesia']) or (('sumale' in msg_low or 'restale' in msg_low) and 'clase' in msg_low):
-            m_cant = re.search(r'(\d+)\s*clases?', msg_low)
+        # 0h. Ajustar créditos sueltos a una alumna (ej: "Agrégale 4 clases", "Ponele 4 créditos más", "Sumale 1 clase")
+        es_ajuste_creditos = (
+            any(k in msg_low for k in [
+                'sumale una clase', 'sumale 1 clase', 'sumale 2 clases', 'sumale 4 clases',
+                'restale una clase', 'restale 1 clase', 'clase de regalo', 'clase de cortesía', 'clase de cortesia',
+                'creditos mas', 'créditos mas', 'creditos más', 'créditos más'
+            ]) or
+            bool(re.search(r'\b(?:agr[eé]g|s[uú]m|p[oó]n|c[aá]rg|d[aá]|rest)\w*\s+(?:le\s+)?(\d+)\s*(?:cr[eé]ditos?|clases?)', msg_low)) or
+            (('sumale' in msg_low or 'restale' in msg_low or 'agregale' in msg_low or 'agrégale' in msg_low or 'ponele' in msg_low or 'cargale' in msg_low) and any(k in msg_low for k in ['clase', 'clases', 'credito', 'crédito', 'creditos', 'créditos']))
+        )
+        if es_ajuste_creditos and not ('plan' in msg_low):
+            m_cant = re.search(r'(\d+)\s*(?:cr[eé]ditos?|clases?)', msg_low)
             cant = int(m_cant.group(1)) if m_cant else 1
-            if 'rest' in msg_low:
-                cant = -cant
-            m_nom = re.search(r'(?:a|para)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:hoy|el|con|por)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            if any(k in msg_low for k in ['rest', 'descont', 'menos']):
+                cant = -abs(cant)
+            m_nom = re.search(r'(?:(?:a|para)\s+)([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:hoy|el|con|por|\d)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
             nom = m_nom.group(1).strip() if m_nom else ""
-            nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
-            res = ajustar_creditos_alumna_duena.invoke({"nombre_o_tel_alumna": nom, "cantidad_creditos": cant})
+            nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta|su|un)$', '', nom, flags=re.IGNORECASE).strip()
+            if nom.lower() in ['un', 'el', 'su', 'la', 'clase', 'clases', 'credito', 'creditos', 'crédito', 'créditos', 'mas', 'más']:
+                nom = ""
+
+            if not nom:
+                activa = get_ultima_alumna_activa()
+                if activa:
+                    nom = f"{activa.nombre} {activa.apellido}".strip()
+
+            res = ajustar_creditos_alumna_duena.invoke({"nombre_o_tel_alumna": nom or mensaje_usuario, "cantidad_creditos": cant})
             _guardar_hitl_si_corresponde(conversacion, res, 'ajustar_creditos', {'cantidad_creditos': cant})
             tools_usadas.append('ajustar_creditos_alumna_duena')
             return res, "agente_direccion", tools_usadas
