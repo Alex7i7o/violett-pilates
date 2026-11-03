@@ -257,6 +257,10 @@ def notificar_reserva_creada(usuario, turno):
         }]
         client._send_template(phone, "reserva_confirmada", components)
     _registrar_log_saliente(phone, usuario, texto, "notificacion_reserva_creada")
+    try:
+        notificar_duena_reserva(usuario, turno)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando reserva a la dueña: {ex_d}")
 
 def notificar_cancelacion_usuario(usuario, turno, motivo=""):
     client = WhatsAppClient()
@@ -290,6 +294,10 @@ def notificar_cancelacion_usuario(usuario, turno, motivo=""):
         }]
         client._send_template(phone, "reserva_cancelada_usuario", components)
     _registrar_log_saliente(phone, usuario, texto, "notificacion_cancelacion_usuario")
+    try:
+        notificar_duena_cancelacion(usuario, turno, motivo)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando cancelacion a la dueña: {ex_d}")
 
 def notificar_reprogramacion_alumna(usuario, turno_nuevo, turno_anterior=None):
     client = WhatsAppClient()
@@ -337,6 +345,10 @@ def notificar_reprogramacion_alumna(usuario, turno_nuevo, turno_anterior=None):
         }]
         client._send_template(phone, "reserva_confirmada", components)
     _registrar_log_saliente(phone, usuario, texto, "notificacion_reprogramacion_alumna")
+    try:
+        notificar_duena_reprogramacion(usuario, turno_nuevo, turno_anterior)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando reprogramacion a la dueña: {ex_d}")
 
 def notificar_horario_fijo_alumna(usuario, dia_semana: int, hora_str: str, clase_nombre: str = "Pilates Reformer", profe_nombre: str = "", accion: str = "asignado"):
     client = WhatsAppClient()
@@ -365,3 +377,114 @@ def notificar_horario_fijo_alumna(usuario, dia_semana: int, hora_str: str, clase
         )
     client.send_text_message(phone, texto)
     _registrar_log_saliente(phone, usuario, texto, "notificacion_horario_fijo_alumna")
+
+def obtener_telefono_duena():
+    try:
+        from plugins.asistente.backend.config_loader import get_asistente_config
+        config = get_asistente_config()
+        tel = config.get('telefono_duena', '5491157691786')
+        return str(tel).replace('+', '').replace('-', '').replace(' ', '')
+    except Exception:
+        return '5491157691786'
+
+def notificar_duena_reserva(usuario, turno):
+    tel_duena = obtener_telefono_duena()
+    if not tel_duena:
+        return
+
+    # Evitar auto-notificarse si la reserva es de la misma dueña
+    tel_user = getattr(usuario, 'telefono', '') if usuario else ''
+    if tel_user and str(tel_user).replace('+', '').replace('-', '').replace(' ', '') == tel_duena:
+        return
+
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Una alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno.fecha.weekday()]
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    clase_nom = turno.clase.nombre if turno.clase else "Pilates Reformer"
+    cupo_libres = turno.cupo_actual
+
+    profe_txt = ""
+    try:
+        from plugins.asistente.backend.tools.profesores_tools import obtener_profesor_de_turno
+        prof = obtener_profesor_de_turno(turno)
+        if prof and hasattr(prof, 'nombre'):
+            profe_txt = f" con Profe {prof.nombre}"
+    except Exception:
+        pass
+
+    msg_duena = (
+        f"✦ *Aviso Dirección - Reserva* ✦\n\n"
+        f"• *Alumna:* {nombre_alumna} se agendó\n"
+        f"• *Clase:* {dia_nombre} {fecha_str} a las {hora_str} hs ({clase_nom}){profe_txt}\n"
+        f"• *Camillas disponibles:* {cupo_libres} libres."
+    )
+
+    client = WhatsAppClient()
+    client.send_text_message(tel_duena, msg_duena)
+    _registrar_log_saliente(tel_duena, None, msg_duena, "notificacion_duena")
+
+def notificar_duena_cancelacion(usuario, turno, motivo=""):
+    tel_duena = obtener_telefono_duena()
+    if not tel_duena:
+        return
+
+    tel_user = getattr(usuario, 'telefono', '') if usuario else ''
+    if tel_user and str(tel_user).replace('+', '').replace('-', '').replace(' ', '') == tel_duena:
+        return
+
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Una alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno.fecha.weekday()]
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    clase_nom = turno.clase.nombre if turno.clase else "Pilates Reformer"
+    cupo_libres = turno.cupo_actual
+
+    motivo_str = f"\n• *Motivo:* {motivo}" if motivo else ""
+    msg_duena = (
+        f"✦ *Aviso Dirección - Baja de Clase* ✦\n\n"
+        f"• *Alumna:* {nombre_alumna} se dio de baja\n"
+        f"• *Clase:* {dia_nombre} {fecha_str} a las {hora_str} hs ({clase_nom}){motivo_str}\n"
+        f"• *Camilla liberada:* Ahora hay {cupo_libres} libres en ese bloque."
+    )
+
+    client = WhatsAppClient()
+    client.send_text_message(tel_duena, msg_duena)
+    _registrar_log_saliente(tel_duena, None, msg_duena, "notificacion_duena")
+
+def notificar_duena_reprogramacion(usuario, turno_nuevo, turno_anterior=None):
+    tel_duena = obtener_telefono_duena()
+    if not tel_duena:
+        return
+
+    tel_user = getattr(usuario, 'telefono', '') if usuario else ''
+    if tel_user and str(tel_user).replace('+', '').replace('-', '').replace(' ', '') == tel_duena:
+        return
+
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Una alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nuevo_nom = dias_semana[turno_nuevo.fecha.weekday()]
+    fecha_nueva_str = turno_nuevo.fecha.strftime('%d/%m')
+    hora_nueva_str = turno_nuevo.hora_inicio.strftime('%H:%M')
+    clase_nom = turno_nuevo.clase.nombre if turno_nuevo.clase else "Pilates Reformer"
+
+    ant_str = ""
+    if turno_anterior:
+        dia_ant_nom = dias_semana[turno_anterior.fecha.weekday()]
+        fecha_ant_str = turno_anterior.fecha.strftime('%d/%m')
+        hora_ant_str = turno_anterior.hora_inicio.strftime('%H:%M')
+        ant_str = f"• *Se dio de baja de:* {dia_ant_nom} {fecha_ant_str} a las {hora_ant_str} hs (camilla liberada)\n"
+
+    msg_duena = (
+        f"✦ *Aviso Dirección - Modificación de Horario* ✦\n\n"
+        f"• *Alumna:* {nombre_alumna} modificó su clase\n"
+        f"{ant_str}"
+        f"• *Se agendó para:* {dia_nuevo_nom} {fecha_nueva_str} a las {hora_nueva_str} hs ({clase_nom})\n"
+        f"• *Camillas disponibles:* {turno_nuevo.cupo_actual} libres."
+    )
+
+    client = WhatsAppClient()
+    client.send_text_message(tel_duena, msg_duena)
+    _registrar_log_saliente(tel_duena, None, msg_duena, "notificacion_duena")

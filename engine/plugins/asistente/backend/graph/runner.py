@@ -314,7 +314,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
         historial_langchain = []
         for m in reversed(mensajes_db):
             # Los avisos de espera ("Aguardame un segundito...") y errores técnicos no aportan contexto
-            if m.agente_responsable in ('asistente_espera_activa', 'fallback_error'):
+            if m.agente_responsable in ('asistente_espera_activa', 'fallback_error', 'notificacion_duena'):
                 continue
             if m.direccion == 'ENTRANTE':
                 # Limpiar prefijo [Audio] para fluidez conversacional
