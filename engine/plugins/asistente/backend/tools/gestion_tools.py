@@ -4,11 +4,12 @@ import re
 import difflib
 import unicodedata
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Q
 from langchain_core.tools import tool
 
 from core.models import Usuario, Turno, Reserva, Clase
-from .profesores_tools import resolver_fecha, obtener_profesor_de_turno
+from .profesores_tools import resolver_fecha, resolver_hora, obtener_profesor_de_turno
 
 logger = logging.getLogger(__name__)
 
@@ -564,6 +565,12 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
                 sub.estado = 'AGOTADO'
             sub.save()
 
+    from backend_core.hooks import registry
+    try:
+        registry.execute('reserva_creada', reserva)
+    except Exception as ex_h:
+        logger.warning(f"Error hook reserva_creada en agendar_alumna_en_turno_duena: {ex_h}")
+
     nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
     prof_obj = obtener_profesor_de_turno(turno)
     profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
@@ -750,13 +757,18 @@ def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o
         if turno.cupo_actual <= 0:
             return f"✦ La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
 
-        Reserva.objects.create(
+        res_creada = Reserva.objects.create(
             turno=turno,
             usuario=alumna,
             estado='CONFIRMADA'
         )
         turno.cupo_actual = max(0, turno.cupo_actual - 1)
         turno.save()
+        from backend_core.hooks import registry
+        try:
+            registry.execute('reserva_creada', res_creada)
+        except Exception as ex_h:
+            logger.warning(f"Error hook reserva_creada: {ex_h}")
 
         # Descontar crédito de suscripción activa si tiene
         creditos_msg = ""
@@ -985,7 +997,12 @@ def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, h
             agendadas = auto_agendar_recurrencias_usuario(alumna, sub)
 
         msg_extra = f" Además, agendé automáticamente {agendadas} clase(s) en sus turnos próximos." if agendadas > 0 else ""
-        return f"✦ ¡Listo Deby! ✦ Le asigné a {nombre_comp} el horario fijo semanal de los *{dia_display} a las {hora_clean} hs*.{msg_extra}"
+        try:
+            from plugins.comunicaciones.backend.whatsapp_service import notificar_horario_fijo_alumna
+            notificar_horario_fijo_alumna(alumna, dia_num, hora_clean, "Pilates Reformer", "", "asignado")
+        except Exception as ex_notif:
+            logger.warning(f"Error notificando horario fijo a alumna: {ex_notif}")
+        return f"✦ ¡Listo Deby! ✦ Le asigné a {nombre_comp} el horario fijo semanal de los *{dia_display} a las {hora_clean} hs*.{msg_extra} Le enviamos la confirmación por WhatsApp 🌸."
     except Exception as e:
         return f"✦ Ocurrió un error al guardar el horario fijo: {e}"
 
@@ -1010,7 +1027,12 @@ def dar_baja_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str =
             return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún horario fijo semanal activo."
 
         qs.update(is_active=False)
-        return f"✦ ¡Listo Deby! Desactivé los {cant} horario(s) fijo(s) de {alumna.nombre} {alumna.apellido}."
+        try:
+            from plugins.comunicaciones.backend.whatsapp_service import notificar_horario_fijo_alumna
+            notificar_horario_fijo_alumna(alumna, 1, "fijo", "Pilates Reformer", "", "dada_de_baja")
+        except Exception as ex_notif:
+            logger.warning(f"Error notificando baja horario fijo: {ex_notif}")
+        return f"✦ ¡Listo Deby! Desactivé los {cant} horario(s) fijo(s) de {alumna.nombre} {alumna.apellido} y le avisamos por WhatsApp."
     except Exception as e:
         return f"✦ Error desactivando horario fijo: {e}"
 
@@ -1436,3 +1458,115 @@ def enviar_mensaje_whatsapp_alumna_duena(nombre_o_tel_alumna: str, mensaje: str)
         )
     except Exception as e:
         return f"✦ Ocurrió un error al enviar el WhatsApp a {alumna.nombre}: {e}"
+
+
+@tool
+def reprogramar_o_mover_reserva_alumna_duena(nombre_o_tel_alumna: str, fecha_origen: str, hora_origen: str, fecha_destino: str, hora_destino: str) -> str:
+    """
+    Comando para la dueña: mueve, cambia o reprograma la clase de una alumna a otro día u horario
+    (ej: 'Cambiale la clase a Alex del sábado 17hs para el sábado a las 18hs', 'Pasá a Martina de mañana 18hs a las 19hs').
+    Automáticamente libera la camilla anterior, reserva la nueva y le envía un WhatsApp avisándole a la alumna.
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, f"reprogramarle la clase")
+    elif not alumna:
+        return f"✦ No encontré a la alumna '{nombre_o_tel_alumna}' en el sistema."
+
+    f_origen = resolver_fecha(fecha_origen)
+    h_orig_clean = normalizar_hora_str(hora_origen, fecha_origen)
+    h_orig_dt = resolver_hora(h_orig_clean) if h_orig_clean else None
+
+    # Buscar reserva origen
+    qs_res = Reserva.objects.filter(
+        usuario=alumna,
+        estado='CONFIRMADA',
+        turno__fecha=f_origen
+    ).select_related('turno', 'turno__clase')
+
+    if h_orig_dt:
+        qs_res = qs_res.filter(turno__hora_inicio__hour=h_orig_dt.hour, turno__hora_inicio__minute=h_orig_dt.minute)
+
+    res_origen = qs_res.first()
+    if not res_origen:
+        return f"✦ No encontré ninguna reserva confirmada de {alumna.nombre} para el {f_origen.strftime('%d/%m')} a las {h_orig_clean} hs."
+
+    turno_anterior = res_origen.turno
+
+    # Resolver turno destino
+    f_destino = resolver_fecha(fecha_destino)
+    h_dest_clean = normalizar_hora_str(hora_destino, fecha_destino)
+    h_dest_dt = resolver_hora(h_dest_clean) if h_dest_clean else None
+
+    # Asegurar turnos
+    try:
+        from core.services import generar_turnos_desde_plantillas
+        generar_turnos_desde_plantillas()
+    except Exception:
+        pass
+
+    qs_turno_dest = Turno.objects.filter(fecha=f_destino, estado='PROGRAMADO')
+    if h_dest_dt:
+        qs_turno_dest = qs_turno_dest.filter(hora_inicio__hour=h_dest_dt.hour, hora_inicio__minute=h_dest_dt.minute)
+
+    turno_destino = qs_turno_dest.first()
+    if not turno_destino:
+        # Intentar crear turno si no existe
+        from core.models import Clase
+        clase_def = Clase.objects.filter(is_active=True).first()
+        h_i, m_i = map(int, h_dest_clean.split(':'))
+        t_ini = datetime.time(h_i, m_i)
+        t_fin = datetime.time((h_i + 1) % 24, m_i)
+        turno_destino = Turno.objects.create(
+            clase=clase_def,
+            fecha=f_destino,
+            hora_inicio=t_ini,
+            hora_fin=t_fin,
+            cupo_actual=2,
+            estado='PROGRAMADO'
+        )
+
+    if turno_destino.cupo_actual <= 0:
+        return f"✦ La clase de destino ({f_destino.strftime('%d/%m')} a las {h_dest_clean} hs) ya no tiene camillas libres."
+
+    with transaction.atomic():
+        # Cancelar origen
+        res_origen.estado = 'CANCELADA_TIEMPO'
+        res_origen.save()
+        turno_anterior.cupo_actual += 1
+        turno_anterior.save()
+
+        # Crear destino
+        res_nueva = Reserva.objects.create(
+            turno=turno_destino,
+            usuario=alumna,
+            estado='CONFIRMADA'
+        )
+        turno_destino.cupo_actual = max(0, turno_destino.cupo_actual - 1)
+        turno_destino.save()
+
+        # Mantener o vincular suscripción
+        try:
+            from plugins.membresias.backend.models import ReservaMembresia
+            rm = ReservaMembresia.objects.filter(reserva=res_origen).first()
+            if rm:
+                ReservaMembresia.objects.create(reserva=res_nueva, suscripcion=rm.suscripcion)
+                rm.delete()
+        except Exception:
+            pass
+
+    # Notificar a la alumna por WhatsApp
+    try:
+        from plugins.comunicaciones.backend.whatsapp_service import notificar_reprogramacion_alumna
+        notificar_reprogramacion_alumna(alumna, turno_destino, turno_anterior)
+    except Exception as ex_not:
+        logger.warning(f"Error notificando reprogramación a {alumna.nombre}: {ex_not}")
+
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_dest_nom = dias_semana[f_destino.weekday()]
+    return (
+        f"✦ ¡Listo Deby! Moví la clase de {alumna.nombre} {alumna.apellido}:\n"
+        f"• *Anterior:* {turno_anterior.fecha.strftime('%d/%m')} a las {turno_anterior.hora_inicio.strftime('%H:%M')} hs (camilla liberada)\n"
+        f"• *Nuevo horario:* {dia_dest_nom} {f_destino.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs\n"
+        f"• Le envié un mensaje de WhatsApp a {alumna.nombre} confirmándole el cambio 🌸."
+    )

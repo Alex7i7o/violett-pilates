@@ -159,11 +159,17 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save()
         alumnos = self.request.data.get('alumnos', [])
+        from backend_core.hooks import registry
         for alumno_id in alumnos:
             usuario = Usuario.objects.filter(id=alumno_id).first()
             if usuario:
-                Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
+                r_new = Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
                 instance.cupo_actual = max(0, instance.cupo_actual - 1)
+                try:
+                    registry.execute('reserva_creada', r_new)
+                except Exception as ex:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Error hook reserva_creada en perform_create: {ex}")
         
         alumnos_manuales = self.request.data.get('alumnos_manuales', [])
         for manual in alumnos_manuales:
@@ -185,7 +191,12 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
         registry.execute("after_turno_created_manual", self.request.data, instance=instance)
 
     def perform_update(self, serializer):
+        old_turno = Turno.objects.filter(id=serializer.instance.id).first()
+        old_fecha = old_turno.fecha if old_turno else None
+        old_hora = old_turno.hora_inicio if old_turno else None
+
         instance = serializer.save()
+        from backend_core.hooks import registry
         alumnos = self.request.data.get('alumnos', None)
         if alumnos is not None:
             current_reservas = Reserva.objects.filter(turno=instance, usuario__isnull=False).exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])
@@ -196,8 +207,13 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
             for alumno_id in new_alumnos_ids - current_alumnos_ids:
                 usuario = Usuario.objects.filter(id=alumno_id).first()
                 if usuario:
-                    Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
+                    r_new = Reserva.objects.create(turno=instance, usuario=usuario, estado='CONFIRMADA')
                     instance.cupo_actual = max(0, instance.cupo_actual - 1)
+                    try:
+                        registry.execute('reserva_creada', r_new)
+                    except Exception as ex:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Error hook reserva_creada en perform_update: {ex}")
             
             # To remove
             for reserva in current_reservas:
@@ -205,9 +221,24 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                     reserva.estado = 'CANCELADA_TIEMPO'
                     reserva.save()
                     instance.cupo_actual += 1
+                    try:
+                        registry.execute('reserva_cancelada_a_tiempo', reserva)
+                    except Exception as ex:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Error hook reserva_cancelada en perform_update: {ex}")
             instance.save()
+
+        # Si cambió el día o la hora del turno, avisar a todas las alumnas activas inscriptas
+        if old_fecha and old_hora and (old_fecha != instance.fecha or old_hora != instance.hora_inicio):
+            try:
+                from plugins.comunicaciones.backend.whatsapp_service import notificar_reprogramacion_alumna
+                reservas_activas = instance.reservas.filter(estado='CONFIRMADA', usuario__isnull=False).select_related('usuario')
+                for r in reservas_activas:
+                    notificar_reprogramacion_alumna(r.usuario, instance, old_turno)
+            except Exception as ex:
+                import logging
+                logging.getLogger(__name__).warning(f"Error notificando reprogramación de turno: {ex}")
                     
-        from backend_core.hooks import registry
         registry.execute("after_turno_updated_manual", self.request.data, instance=instance)
 
 class AdminReservaViewSet(viewsets.ModelViewSet):

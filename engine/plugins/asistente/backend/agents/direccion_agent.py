@@ -51,7 +51,8 @@ from ..tools.gestion_tools import (
     agregar_horario_esquema_semanal_duena,
     consultar_esquema_semanal_completo_duena,
     dar_baja_horario_esquema_semanal_duena,
-    enviar_mensaje_whatsapp_alumna_duena
+    enviar_mensaje_whatsapp_alumna_duena,
+    reprogramar_o_mover_reserva_alumna_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 

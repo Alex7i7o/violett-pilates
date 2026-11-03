@@ -165,37 +165,203 @@ class WhatsAppClient:
             print(f'[WHATSAPP EXCEPTION] {e}', flush=True)
             logger.error(f'[WHATSAPP TEXT EXCEPTION] {e}')
             return False
+def _registrar_log_saliente(phone, usuario, texto, agente="notificaciones_sistema"):
+    try:
+        from plugins.asistente.backend.models import ConversacionWhatsApp, MensajeWhatsAppLog
+        clean_phone = str(phone).replace("+", "").replace("-", "").replace(" ", "")
+        conv = ConversacionWhatsApp.objects.filter(telefono=clean_phone).first()
+        if not conv and clean_phone:
+            conv = ConversacionWhatsApp.objects.create(
+                telefono=clean_phone,
+                usuario=usuario,
+                rol_detectado='ALUMNA'
+            )
+        if conv:
+            MensajeWhatsAppLog.objects.create(
+                conversacion=conv,
+                direccion='SALIENTE',
+                agente_responsable=agente,
+                texto=texto
+            )
+    except Exception as e:
+        logger.warning(f"Error registrando log de notificacion WhatsApp: {e}")
+
 def notificar_cancelacion_clase(usuario, turno):
     client = WhatsAppClient()
-    components = [{
-        "type": "body",
-        "parameters": [
-            {"type": "text", "text": usuario.nombre},
-            {"type": "text", "text": f"{turno.clase.nombre} ({turno.fecha})"},
-            {"type": "text", "text": "El crédito ha sido devuelto a tu plan."}
-        ]
-    }]
-    client._send_template(usuario.telefono or "1164142172", "clase_cancelada_admin", components)
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    clase_nom = turno.clase.nombre if turno.clase else "Pilates Reformer"
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    texto = (
+        f"¡Hola {nombre}! ✦ Te avisamos desde Violett Pilates que la clase de "
+        f"*{clase_nom}* del *{fecha_str} a las {hora_str} hs* fue cancelada por la administración. "
+        f"El crédito ya fue reintegrado a tu plan activo 🌸."
+    )
+    enviado = client.send_text_message(phone, texto)
+    if not enviado:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": usuario.nombre},
+                {"type": "text", "text": f"{clase_nom} ({turno.fecha})"},
+                {"type": "text", "text": "El crédito ha sido devuelto a tu plan."}
+            ]
+        }]
+        client._send_template(phone, "clase_cancelada_admin", components)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_clase_cancelada")
 
 def notificar_reserva_creada(usuario, turno):
     client = WhatsAppClient()
-    components = [{
-        "type": "body",
-        "parameters": [
-            {"type": "text", "text": usuario.nombre},
-            {"type": "text", "text": turno.clase.nombre},
-            {"type": "text", "text": turno.hora_inicio.strftime('%H:%M')}
-        ]
-    }]
-    client._send_template(usuario.telefono or "1164142172", "reserva_confirmada", components)
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
 
-def notificar_cancelacion_usuario(usuario, turno):
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno.fecha.weekday()]
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    clase_nombre = turno.clase.nombre if turno.clase else "Pilates Reformer"
+
+    profe_txt = ""
+    try:
+        from plugins.asistente.backend.tools.profesores_tools import obtener_profesor_de_turno
+        prof = obtener_profesor_de_turno(turno)
+        if prof and hasattr(prof, 'nombre'):
+            profe_txt = f" con la Profe {prof.nombre}"
+    except Exception:
+        pass
+
+    texto = (
+        f"¡Hola {nombre}! ✦ Te confirmamos desde Violett Pilates que quedaste agendada para tu clase de "
+        f"*{clase_nombre}* el *{dia_nombre} {fecha_str} a las {hora_str} hs*{profe_txt} 🌸.\n\n"
+        f"¡Te esperamos en el estudio para disfrutar de tu momento de bienestar!"
+    )
+    enviado = client.send_text_message(phone, texto)
+    if not enviado:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": usuario.nombre},
+                {"type": "text", "text": clase_nombre},
+                {"type": "text", "text": hora_str}
+            ]
+        }]
+        client._send_template(phone, "reserva_confirmada", components)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_reserva_creada")
+
+def notificar_cancelacion_usuario(usuario, turno, motivo=""):
     client = WhatsAppClient()
-    components = [{
-        "type": "body",
-        "parameters": [
-            {"type": "text", "text": usuario.nombre},
-            {"type": "text", "text": f"{turno.clase.nombre} el {turno.fecha}"}
-        ]
-    }]
-    client._send_template(usuario.telefono or "1164142172", "reserva_cancelada_usuario", components)
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno.fecha.weekday()]
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    clase_nombre = turno.clase.nombre if turno.clase else "Pilates Reformer"
+
+    motivo_txt = f" ({motivo})" if motivo else ""
+    texto = (
+        f"¡Hola {nombre}! ✦ Te avisamos desde Violett Pilates que tu turno de *{clase_nombre}* "
+        f"del *{dia_nombre} {fecha_str} a las {hora_str} hs* fue cancelado{motivo_txt}. "
+        f"El crédito correspondiente ya se encuentra disponible en tu plan para cuando desees volver a agendarte 🌿."
+    )
+    enviado = client.send_text_message(phone, texto)
+    if not enviado:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": usuario.nombre},
+                {"type": "text", "text": f"{clase_nombre} el {turno.fecha}"}
+            ]
+        }]
+        client._send_template(phone, "reserva_cancelada_usuario", components)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_cancelacion_usuario")
+
+def notificar_reprogramacion_alumna(usuario, turno_nuevo, turno_anterior=None):
+    client = WhatsAppClient()
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno_nuevo.fecha.weekday()]
+    fecha_str = turno_nuevo.fecha.strftime('%d/%m')
+    hora_str = turno_nuevo.hora_inicio.strftime('%H:%M')
+    clase_nombre = turno_nuevo.clase.nombre if turno_nuevo.clase else "Pilates Reformer"
+
+    profe_txt = ""
+    try:
+        from plugins.asistente.backend.tools.profesores_tools import obtener_profesor_de_turno
+        prof = obtener_profesor_de_turno(turno_nuevo)
+        if prof and hasattr(prof, 'nombre'):
+            profe_txt = f" con la Profe {prof.nombre}"
+    except Exception:
+        pass
+
+    cambio_de = ""
+    if turno_anterior:
+        d_ant = dias_semana[turno_anterior.fecha.weekday()]
+        cambio_de = f" de las {turno_anterior.hora_inicio.strftime('%H:%M')} hs ({d_ant} {turno_anterior.fecha.strftime('%d/%m')})"
+
+    texto = (
+        f"¡Hola {nombre}! ✦ Te avisamos desde Violett Pilates que tu clase{cambio_de} fue modificada.\n\n"
+        f"Tu nuevo horario confirmado es: *{dia_nombre} {fecha_str} a las {hora_str} hs* ({clase_nombre}){profe_txt} ✦.\n\n"
+        f"Cualquier consulta o si necesitás cambiarlo, estamos a tu disposición 🌸."
+    )
+    enviado = client.send_text_message(phone, texto)
+    if not enviado:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": usuario.nombre},
+                {"type": "text", "text": clase_nombre},
+                {"type": "text", "text": f"{dia_nombre} {fecha_str} {hora_str} hs"}
+            ]
+        }]
+        client._send_template(phone, "reserva_confirmada", components)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_reprogramacion_alumna")
+
+def notificar_horario_fijo_alumna(usuario, dia_semana: int, hora_str: str, clase_nombre: str = "Pilates Reformer", profe_nombre: str = "", accion: str = "asignado"):
+    client = WhatsAppClient()
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+    dia_nombre = dias_es.get(dia_semana, f"Día {dia_semana}")
+    profe_txt = f" con la Profe {profe_nombre}" if profe_nombre else ""
+
+    if accion == "dada_de_baja":
+        texto = (
+            f"¡Hola {nombre}! ✦ Te avisamos desde Violett Pilates que tu horario fijo de los "
+            f"*{dia_nombre}s a las {hora_str} hs* fue dado de baja 🌿.\n\n"
+            f"Podés seguir reservando tus turnos individuales con los créditos de tu abono siempre que quieras."
+        )
+    else:
+        texto = (
+            f"¡Hola {nombre}! ✦ Te avisamos desde Violett Pilates que tenés un nuevo horario fijo semanal asignado:\n\n"
+            f"• *Todos los {dia_nombre}s a las {hora_str} hs* - {clase_nombre}{profe_txt} ✦.\n\n"
+            f"Ya dejamos todas tus camillas reservadas automáticamente para cada semana. ¡Te esperamos! 🌸"
+        )
+    client.send_text_message(phone, texto)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_horario_fijo_alumna")
