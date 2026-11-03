@@ -54,7 +54,34 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
             
             return Response(status=204)
             
-        return super().destroy(request, *args, **kwargs)
+        # Cancelación puntual de esta fecha específica (no eliminar fila para que generar_turnos_desde_plantillas no la regenere)
+        with transaction.atomic():
+            instance.estado = 'CANCELADO'
+            instance.cupo_actual = 0
+            
+            # Reembolsar y cancelar a tiempo todas las reservas activas
+            reservas_activas = list(instance.reservas.filter(
+                estado__in=['CONFIRMADA', 'PENDIENTE']
+            ).select_related('usuario'))
+            
+            from backend_core.hooks import registry
+            for res in reservas_activas:
+                res.estado = 'CANCELADA_TIEMPO'
+                res.save()
+                try:
+                    registry.execute('reserva_cancelada_a_tiempo', res)
+                except Exception as ex:
+                    import logging
+                    logging.getLogger(__name__).warning(f'Error hook reserva_cancelada_a_tiempo en cancelacion puntual: {ex}')
+            
+            instance.save()
+            
+            try:
+                registry.execute('turno_cancelado_por_falta_cupo', instance)
+            except Exception:
+                pass
+                
+        return Response(status=204)
 
     @action(detail=True, methods=['post'], url_path='apartar-manual')
     def apartar_manual(self, request, pk=None):

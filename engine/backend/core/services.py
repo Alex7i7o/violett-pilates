@@ -119,13 +119,18 @@ def generar_turnos_desde_plantillas():
         current_date = now
         while current_date <= end_date:
             if current_date.isoweekday() == plantilla.dia_semana:
-                turno_existente = Turno.objects.filter(
+                turnos_existentes = Turno.objects.filter(
                     clase=plantilla.clase,
                     fecha=current_date,
                     hora_inicio=plantilla.hora_inicio
-                ).first()
+                )
                 
-                if turno_existente:
+                if turnos_existentes.filter(estado='CANCELADO').exists():
+                    # Turno puntual explícitamente cancelado por administración.
+                    # No regenerar ni reactivar para esta fecha específica.
+                    pass
+                elif turnos_existentes.exists():
+                    turno_existente = turnos_existentes.first()
                     if not turno_existente.plantilla:
                         turno_existente.plantilla = plantilla
                         turno_existente.save(update_fields=['plantilla'])
