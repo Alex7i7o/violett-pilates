@@ -78,6 +78,35 @@ VERBOS_Y_STOPWORDS_GESTION = {
     'hs', 'horas'
 }
 
+
+def normalizar_hora_str(hora_str: str, texto_completo: str = "") -> str:
+    """
+    Normaliza expresiones como '5', 'a las 5', '5 de la tarde', '17', '17hs', '17:00' a '17:00'.
+    Mantiene compatibilidad con horarios matutinos (08:00, 09:00, 10:00, 11:00) y vespertinos (15:00..21:00).
+    """
+    texto = (str(hora_str) + " " + str(texto_completo)).lower()
+    
+    # 1. Formato explícito HH:MM
+    m_hhmm = re.search(r'\b([01]?\d|2[0-3]):([0-5]\d)\b', hora_str)
+    if m_hhmm:
+        h = int(m_hhmm.group(1))
+        m = int(m_hhmm.group(2))
+        return f"{h:02d}:{m:02d}"
+
+    # 2. Extraer número
+    m_num = re.search(r'\b(\d{1,2})\b', hora_str)
+    if not m_num:
+        m_num = re.search(r'\b(?:a\s+las?|las?)\s*(\d{1,2})\b', texto)
+
+    if m_num:
+        val = int(m_num.group(1))
+        es_tarde = any(k in texto for k in ['tarde', 'pm', 'p.m.', 'noche'])
+        if (es_tarde or val in [1, 2, 3, 4, 5, 6, 7]) and val <= 12:
+            val += 12
+        return f"{val:02d}:00"
+
+    return "18:00"
+
 def normalizar_texto_fonetico(texto: str) -> str:
     """Elimina acentos, diacríticos y reduce repeticiones para tolerar audios y ortografía"""
     if not texto:
@@ -857,13 +886,7 @@ def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, h
             dia_num = d_val
             break
 
-    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
-    if ':' not in hora_clean:
-        try:
-            h_int = int(re.search(r'\d+', hora_clean).group(0))
-            hora_clean = f"{h_int:02d}:00"
-        except Exception:
-            hora_clean = "18:00"
+    hora_clean = normalizar_hora_str(hora_str, dia_semana_str)
 
     try:
         from core.models import Clase
@@ -885,6 +908,25 @@ def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, h
         if not created and not rec.is_active:
             rec.is_active = True
             rec.save(update_fields=['is_active'])
+
+        # Asegurar que la clase exista en el Esquema Semanal (PlantillaTurno) para que la web lo muestre y genere turnos
+        from core.models import PlantillaTurno
+        from core.services import generar_turnos_desde_plantillas
+        h_i, m_i = map(int, hora_clean.split(':'))
+        h_f = (h_i + 1) % 24
+        t_inicio = datetime.time(h_i, m_i)
+        t_fin = datetime.time(h_f, m_i)
+        plantilla, p_created = PlantillaTurno.objects.get_or_create(
+            clase=clase_reformer,
+            dia_semana=dia_num,
+            hora_inicio=t_inicio,
+            defaults={'hora_fin': t_fin, 'is_active': True}
+        )
+        if not p_created and not plantilla.is_active:
+            plantilla.is_active = True
+            plantilla.save(update_fields=['is_active'])
+
+        generar_turnos_desde_plantillas()
 
         dias_nombres = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
         dia_display = dias_nombres.get(dia_num, dia_semana_str)
@@ -1066,3 +1108,284 @@ def consultar_ultimas_resenas_duena() -> str:
         return "\n".join(lineas)
     except Exception as e:
         return f"✦ Ocurrió un error al consultar las reseñas: {e}"
+
+
+@tool
+def agregar_horario_esquema_semanal_duena(dia_semana_str: str, hora_str: str, nombre_profesora: str = "", nombre_o_tel_alumna: str = "") -> str:
+    """
+    Comando exclusivo de la dueña (Deby) para agregar un horario fijo al ESQUEMA SEMANAL (esqueleto del negocio).
+    Crea la plantilla recurrente para que todos los días de esa semana (ej: todos los sábados del mes) se generen automáticamente
+    con sus camillas libres en la Agenda web, asigna la profesora a cargo, y opcionalmente inscribe de forma fija a una alumna.
+    Parámetros:
+    - dia_semana_str: Día de la semana (ej: 'sábado', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes').
+    - hora_str: Hora de inicio (ej: '17:00', '17hs', '5 de la tarde').
+    - nombre_profesora: Nombre de la profesora asignada (ej: 'Emiliana', 'Brian'). Opcional.
+    - nombre_o_tel_alumna: Nombre o teléfono de la alumna a dejar fija en ese horario. Opcional.
+    """
+    dias_map = {
+        'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
+        'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7
+    }
+    dia_num = 6
+    for d_nom, d_v in dias_map.items():
+        if d_nom in dia_semana_str.lower():
+            dia_num = d_v
+            break
+
+    hora_clean = normalizar_hora_str(hora_str, dia_semana_str)
+    h_i, m_i = map(int, hora_clean.split(':'))
+    h_f = (h_i + 1) % 24
+    t_inicio = datetime.time(h_i, m_i)
+    t_fin = datetime.time(h_f, m_i)
+
+    try:
+        from core.models import Clase, PlantillaTurno, Turno
+        clase_obj = Clase.objects.filter(is_active=True).first()
+        if not clase_obj:
+            return "✦ No hay una disciplina activa en el sistema para asociar la nueva plantilla."
+
+        plantilla, created = PlantillaTurno.objects.get_or_create(
+            clase=clase_obj,
+            dia_semana=dia_num,
+            hora_inicio=t_inicio,
+            defaults={'hora_fin': t_fin, 'is_active': True}
+        )
+        if not created and not plantilla.is_active:
+            plantilla.is_active = True
+            plantilla.save(update_fields=['is_active'])
+
+        prof_obj = None
+        if nombre_profesora and nombre_profesora.strip():
+            try:
+                from plugins.profesores.backend.models import Profesor, PlantillaProfesor
+                for p in Profesor.objects.filter(is_active=True).select_related('usuario'):
+                    nom_full = f"{p.usuario.nombre} {p.usuario.apellido}".lower()
+                    if nombre_profesora.lower() in nom_full:
+                        prof_obj = p
+                        break
+                if prof_obj:
+                    PlantillaProfesor.objects.update_or_create(
+                        plantilla=plantilla,
+                        defaults={'profesor': prof_obj}
+                    )
+            except Exception as ep:
+                logger.warning(f"Error asignando profesor a plantilla: {ep}")
+
+        # Generar turnos para los próximos 30 días en base a la plantilla
+        from core.services import generar_turnos_desde_plantillas
+        generar_turnos_desde_plantillas()
+
+        # Si había turnos manuales ya creados sin plantilla en esa fecha/hora, vincularlos y asignarles la profesora
+        turnos_coincidentes = Turno.objects.filter(
+            clase=clase_obj,
+            hora_inicio=t_inicio
+        )
+        for tc in turnos_coincidentes:
+            if tc.fecha.isoweekday() == dia_num:
+                if not tc.plantilla:
+                    tc.plantilla = plantilla
+                    tc.save(update_fields=['plantilla'])
+                if prof_obj:
+                    try:
+                        from plugins.profesores.backend.models import TurnoProfesor
+                        TurnoProfesor.objects.update_or_create(
+                            turno=tc,
+                            defaults={'profesor': prof_obj}
+                        )
+                    except Exception:
+                        pass
+
+        alumna_msg = ""
+        if nombre_o_tel_alumna and nombre_o_tel_alumna.strip():
+            alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+            if err == "multiples":
+                return formatear_opciones_human_in_the_loop(
+                    nombre_o_tel_alumna,
+                    matches,
+                    f"agregar al esquema semanal los {dia_semana_str} {hora_clean} hs"
+                )
+            if alumna:
+                from plugins.recurrencias.backend.models import Recurrencia
+                from plugins.recurrencias.backend.services import auto_agendar_recurrencias_usuario
+                from plugins.membresias.backend.models import Suscripcion
+
+                rec, r_created = Recurrencia.objects.get_or_create(
+                    usuario=alumna,
+                    clase=clase_obj,
+                    dia_semana=dia_num,
+                    hora_inicio=t_inicio,
+                    defaults={'is_active': True}
+                )
+                if not r_created and not rec.is_active:
+                    rec.is_active = True
+                    rec.save(update_fields=['is_active'])
+
+                sub = Suscripcion.objects.filter(usuario=alumna, estado='ACTIVO').order_by('-fecha_inicio').first()
+                agendadas = 0
+                if sub:
+                    agendadas = auto_agendar_recurrencias_usuario(alumna, sub)
+                alumna_msg = f"\n• *Alumna inscripta:* {alumna.nombre} {alumna.apellido} (se aseguraron automáticamente sus clases fijas de todos los sábados del mes en la Agenda)."
+
+        dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+        dia_display = dias_es.get(dia_num, dia_semana_str.capitalize())
+        prof_msg = f"\n• *Profesora a cargo:* {prof_obj.usuario.nombre} {prof_obj.usuario.apellido}" if prof_obj else ""
+
+        return (
+            f"✦ ¡Listo Deby! ✦\n\n"
+            f"Cargué el nuevo horario al *Esquema Semanal*:\n"
+            f"• *Día y horario fijo:* Todos los {dia_display}s a las {hora_clean} hs"
+            f"{prof_msg}"
+            f"{alumna_msg}\n"
+            f"• *Estado:* Ya figura en el Esquema del panel web y los turnos de todos los {dia_display}s del mes quedaron generados en la Agenda."
+        )
+    except Exception as e:
+        return f"✦ Ocurrió un error al agregar el horario al esquema: {e}"
+
+
+@tool
+def consultar_esquema_semanal_completo_duena(dia_semana_str: str = "") -> str:
+    """
+    Comando para la dueña: consulta la grilla completa del ESQUEMA SEMANAL (todas las clases fijas del estudio cargadas en la web).
+    """
+    try:
+        from core.models import PlantillaTurno
+        qs = PlantillaTurno.objects.filter(is_active=True).select_related('clase').order_by('dia_semana', 'hora_inicio')
+
+        dias_map = {
+            'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
+            'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7
+        }
+        if dia_semana_str:
+            for d_n, d_v in dias_map.items():
+                if d_n in dia_semana_str.lower():
+                    qs = qs.filter(dia_semana=d_v)
+                    break
+
+        if not qs.exists():
+            return "✦ No hay horarios fijos cargados en el Esquema Semanal para ese período."
+
+        dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+        lineas = ["✦ *Esquema Semanal de Violett Pilates:*\n"]
+        dia_actual = None
+        for p in qs:
+            if p.dia_semana != dia_actual:
+                dia_actual = p.dia_semana
+                lineas.append(f"\n*{dias_es.get(p.dia_semana, f'Día {p.dia_semana}')}*")
+
+            prof_txt = "Sin profesor asignado"
+            try:
+                from plugins.profesores.backend.models import PlantillaProfesor
+                pp = PlantillaProfesor.objects.filter(plantilla_id=p.id).select_related('profesor__usuario').first()
+                if pp and pp.profesor and pp.profesor.usuario:
+                    prof_txt = f"Prof. {pp.profesor.usuario.nombre} {pp.profesor.usuario.apellido}".strip()
+            except Exception:
+                pass
+
+            hora_fmt = p.hora_inicio.strftime('%H:%M')
+            lineas.append(f"  • {hora_fmt} hs — {p.clase.nombre} ({prof_txt})")
+
+        return "\n".join(lineas)
+    except Exception as e:
+        return f"✦ Ocurrió un error al consultar el esquema: {e}"
+
+
+@tool
+def dar_baja_horario_esquema_semanal_duena(dia_semana_str: str, hora_str: str) -> str:
+    """
+    Comando para la dueña: elimina o desactiva un horario fijo del ESQUEMA SEMANAL en la web.
+    """
+    dias_map = {
+        'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
+        'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7
+    }
+    dia_num = 1
+    for d_nom, d_v in dias_map.items():
+        if d_nom in dia_semana_str.lower():
+            dia_num = d_v
+            break
+
+    hora_clean = normalizar_hora_str(hora_str, dia_semana_str)
+    try:
+        from core.models import PlantillaTurno
+        h_i, m_i = map(int, hora_clean.split(':'))
+        t_inicio = datetime.time(h_i, m_i)
+        plantilla = PlantillaTurno.objects.filter(dia_semana=dia_num, hora_inicio=t_inicio, is_active=True).first()
+        if not plantilla:
+            return f"✦ No encontré una clase activa en el Esquema Semanal para el {dia_semana_str} a las {hora_clean} hs."
+
+        plantilla.is_active = False
+        plantilla.save(update_fields=['is_active'])
+
+        dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+        dia_nom = dias_es.get(dia_num, dia_semana_str)
+        return f"✦ ¡Listo Deby! Di de baja el horario del Esquema Semanal para los *{dia_nom}s a las {hora_clean} hs*."
+    except Exception as e:
+        return f"✦ Ocurrió un error al dar de baja el horario del esquema: {e}"
+
+
+@tool
+def enviar_mensaje_whatsapp_alumna_duena(nombre_o_tel_alumna: str, mensaje: str) -> str:
+    """
+    Comando exclusivo de la dueña (Deby) para enviar un mensaje directo de WhatsApp a una alumna
+    (ej: 'Mandale un mensaje a Alex avisándole que va a tener la clase a las 5 de la tarde con Emiliana').
+    Parámetros:
+    - nombre_o_tel_alumna: Nombre, apellido o teléfono de la alumna (o vacío si se refiere a la alumna activa en contexto).
+    - mensaje: Contenido del mensaje, aviso o instrucción para la alumna.
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, f"enviarle el WhatsApp")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates para enviarle el mensaje."
+
+    clean_phone = getattr(alumna, 'telefono', None)
+    if not clean_phone:
+        try:
+            from plugins.asistente.backend.models import ConversacionWhatsApp
+            conv_prev = ConversacionWhatsApp.objects.filter(usuario=alumna).first()
+            clean_phone = conv_prev.telefono if conv_prev else None
+        except Exception:
+            pass
+
+    if not clean_phone:
+        return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún número de teléfono registrado en el sistema."
+
+    # Limpiar y formatear el mensaje con el tono cálido de Violett
+    cuerpo = mensaje.strip()
+    cuerpo = re.sub(r'^(?:avis[aá]ndole|dici[eé]ndole|comunic[aá]ndole|record[aá]ndole)\s+que\s+', '', cuerpo, flags=re.IGNORECASE)
+    cuerpo = re.sub(r'^(?:mandale\s+un\s+mensaje\s+(?:a\s+[\w\s]+\s+)?(?:avis[aá]ndole\s+que|dici[eé]ndole\s+que|que)?)\s*', '', cuerpo, flags=re.IGNORECASE)
+    cuerpo = re.sub(r'^(?:que|q)\s+', '', cuerpo, flags=re.IGNORECASE).strip()
+    cuerpo = cuerpo[0].upper() + cuerpo[1:] if cuerpo else cuerpo
+
+    nombre_dest = alumna.nombre or "Alumna"
+    if any(k in cuerpo.lower() for k in ['¡hola', 'hola ', 'buenas']):
+        texto_final = cuerpo
+    else:
+        texto_final = f"¡Hola {nombre_dest}! ✦ Te escribo desde Violett Pilates de parte de Deby: {cuerpo}"
+
+    try:
+        from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+        client = WhatsAppClient()
+        client.send_text_message(clean_phone, texto_final)
+
+        from plugins.asistente.backend.models import ConversacionWhatsApp, MensajeWhatsAppLog
+        conv_alumna = ConversacionWhatsApp.objects.filter(telefono=clean_phone).first()
+        if not conv_alumna:
+            conv_alumna = ConversacionWhatsApp.objects.create(
+                telefono=clean_phone,
+                usuario=alumna,
+                rol_detectado='CLIENTE'
+            )
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conv_alumna,
+            direccion='SALIENTE',
+            agente_responsable='agente_direccion',
+            texto=texto_final
+        )
+        return (
+            f"✦ ¡Listo Deby! Le envié el mensaje de WhatsApp a {alumna.nombre} {alumna.apellido} ({clean_phone}) ✦\n\n"
+            f"Le escribí:\n"
+            f"\"{texto_final}\""
+        )
+    except Exception as e:
+        return f"✦ Ocurrió un error al enviar el WhatsApp a {alumna.nombre}: {e}"

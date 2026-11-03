@@ -37,13 +37,21 @@ from ..tools.gestion_tools import (
     liberar_camilla_bloqueada_duena,
     dar_baja_plan_alumna_duena,
     consultar_ultimas_resenas_duena,
+    agregar_horario_esquema_semanal_duena,
+    consultar_esquema_semanal_completo_duena,
+    dar_baja_horario_esquema_semanal_duena,
+    enviar_mensaje_whatsapp_alumna_duena,
     consultar_esquema_fijo_alumna,
     asignar_horario_fijo_alumna,
     dar_baja_horario_fijo_alumna,
     apartar_camilla_duena,
     liberar_camilla_bloqueada_duena,
     dar_baja_plan_alumna_duena,
-    consultar_ultimas_resenas_duena
+    consultar_ultimas_resenas_duena,
+    agregar_horario_esquema_semanal_duena,
+    consultar_esquema_semanal_completo_duena,
+    dar_baja_horario_esquema_semanal_duena,
+    enviar_mensaje_whatsapp_alumna_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -137,13 +145,23 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si pide buscar cobertura/reemplazo: usá 'buscar_reemplazo_orden_duena'.
    * Si indica que dos alumnas vienen juntas ("Madre e hija"): usá 'vincular_alumnas_inseparables'.
 
-5. ESQUEMA RECURRENTE Y HORARIOS FIJOS SEMANALES:
-   * Si Deby consulta los días fijos de una alumna (ej: "¿Qué días fijos viene Martina?", "¿Tiene horario fijo Alex?"):
+5. ESQUEMA SEMANAL DE CLASES (GRILLA RECURRENTE EN LA WEB) Y HORARIOS FIJOS:
+   * Si Deby pide agregar una clase fija al esquema o abrir un turno para 'los sábados', 'todos los sábados' o que quede fijo en el esquema (ej: "Fijate que la clase del sábado no quedó en el esquema. Agrégamela en el esquema para que quede fija. Fija todos los sábados", "Haceme una clase nueva los sábados a las 5 con Emiliana para Alex"):
+     -> Usá 'agregar_horario_esquema_semanal_duena'. Esto creará la clase en el Esquema Semanal del panel web y generará los turnos para todos los sábados del mes en la Agenda con la profe y alumna asignada.
+   * Si Deby consulta la grilla completa del Esquema Semanal (ej: "¿Cómo está el esquema semanal?", "¿Qué clases fijas tenemos?"):
+     -> Usá 'consultar_esquema_semanal_completo_duena'.
+   * Si Deby pide dar de baja una clase del esquema semanal (ej: "Sacá del esquema los sábados 17hs"):
+     -> Usá 'dar_baja_horario_esquema_semanal_duena'.
+   * Si Deby consulta los días fijos de una alumna puntual (ej: "¿Qué días fijos viene Martina?", "¿Tiene horario fijo Alex?"):
      -> Usá 'consultar_esquema_fijo_alumna'.
    * Si Deby pide asignarle o cambiarle el horario fijo semanal a una alumna (ej: "Poné a Alex fija los sábados a las 11hs", "Horario fijo para Marcela martes y jueves 18hs"):
      -> Usá 'asignar_horario_fijo_alumna'.
-   * Si Deby pide sacarle o dar de baja el horario fijo semanal (ej: "Sacale el horario fijo a Alex", "Borrá la recurrencia de Marcela"):
+   * Si Deby pide sacarle o dar de baja el horario fijo semanal a una alumna:
      -> Usá 'dar_baja_horario_fijo_alumna'.
+
+8. COMUNICACIONES Y MENSAJES DE WHATSAPP A ALUMNAS:
+   * Si Deby te ordena mandarle un mensaje, aviso o WhatsApp a una alumna (ej: "Mandale un mensaje a Alex avisándole que va a tener la clase a las 5 de la tarde con Emiliana", "Avisale a Alejandra Rivarola por WhatsApp que mañana no viene"):
+     -> Usá 'enviar_mensaje_whatsapp_alumna_duena'. NUNCA respondas que no tenés herramientas para enviar mensajes: ¡EJECUTÁ 'enviar_mensaje_whatsapp_alumna_duena' INMEDIATAMENTE!
 
 6. BLOQUEO / APARTADO DE CAMILLAS (DIRECCIÓN O MANTENIMIENTO):
    * Si Deby pide bloquear, apartar o reservar una camilla para ella o por mantenimiento (ej: "Apartá una camilla mañana a las 18hs", "Bloqueá una camilla el sábado a las 11hs por mantenimiento"):

@@ -57,6 +57,11 @@ from ..tools.gestion_tools import (
     liberar_camilla_bloqueada_duena,
     dar_baja_plan_alumna_duena,
     consultar_ultimas_resenas_duena,
+    agregar_horario_esquema_semanal_duena,
+    consultar_esquema_semanal_completo_duena,
+    dar_baja_horario_esquema_semanal_duena,
+    enviar_mensaje_whatsapp_alumna_duena,
+    normalizar_hora_str,
     set_conversacion_activa,
     get_ultima_alumna_activa
 )
@@ -225,6 +230,22 @@ def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
         })
         return res, "agente_direccion", ['ajustar_creditos_alumna_duena']
 
+    elif tipo == 'enviar_mensaje':
+        res = enviar_mensaje_whatsapp_alumna_duena.invoke({
+            "nombre_o_tel_alumna": nom_completo,
+            "mensaje": params.get('mensaje', '')
+        })
+        return res, "agente_direccion", ['enviar_mensaje_whatsapp_alumna_duena']
+
+    elif tipo == 'agregar_esquema':
+        res = agregar_horario_esquema_semanal_duena.invoke({
+            "dia_semana_str": params.get('dia_semana_str', 'sábado'),
+            "hora_str": params.get('hora_str', '17:00'),
+            "nombre_profesora": params.get('nombre_profesora', ''),
+            "nombre_o_tel_alumna": nom_completo
+        })
+        return res, "agente_direccion", ['agregar_horario_esquema_semanal_duena']
+
     return None
 
 
@@ -383,6 +404,11 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
                 tipo_act = 'dar_baja_horario_fijo'
             elif 'dar_baja_plan_alumna_duena' in tools_usadas:
                 tipo_act = 'dar_baja_plan'
+            elif 'enviar_mensaje_whatsapp_alumna_duena' in tools_usadas:
+                tipo_act = 'enviar_mensaje'
+                params_act['mensaje'] = mensaje_usuario
+            elif 'agregar_horario_esquema_semanal_duena' in tools_usadas:
+                tipo_act = 'agregar_esquema'
             _guardar_hitl_si_corresponde(conversacion, respuesta_final, tipo_act, params_act)
 
         print(f"[ASISTENTE TIMING] Multi-Agente completado en {duracion:.2f}s | Agente: {agente_responsable} | Tools: {tools_usadas}", flush=True)
@@ -555,6 +581,108 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
 
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
     if rol == 'DUENA':
+        # 0. Enviar mensaje de WhatsApp a una alumna por orden de la dueña
+        es_orden_mensaje = any(k in msg_low for k in [
+            'mandale un mensaje', 'mandale un whatsapp', 'mandale un wp', 'mandale un wpp',
+            'avisale a', 'avisale por whatsapp', 'avisale por wp', 'escribile a',
+            'mandale a'
+        ])
+        if es_orden_mensaje:
+            # Buscar nombre tras 'a' o 'para'
+            m_a_nom = re.search(r'(?:(?:mandale\s+(?:un\s+mensaje\s+)?a|avisale\s+a|escribile\s+a)\s+)([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:avisándole|diciéndole|que|q|para)|$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            nom_target = m_a_nom.group(1).strip() if m_a_nom else ""
+            if not nom_target:
+                activa = get_ultima_alumna_activa()
+                if activa:
+                    nom_target = f"{activa.nombre} {activa.apellido}".strip()
+
+            res = enviar_mensaje_whatsapp_alumna_duena.invoke({
+                "nombre_o_tel_alumna": nom_target,
+                "mensaje": mensaje_usuario
+            })
+            _guardar_hitl_si_corresponde(conversacion, res, 'enviar_mensaje', {'mensaje': mensaje_usuario})
+            tools_usadas.append('enviar_mensaje_whatsapp_alumna_duena')
+            return res, "agente_direccion", tools_usadas
+
+        # 0. Esquema Semanal (agregar, consultar o dar de baja horarios fijos recurrentes en la web)
+        es_orden_esquema = (
+            any(k in msg_low for k in ['en el esquema', 'al esquema', 'esquema semanal', 'fija todos los', 'fijo todos los', 'fija todas las']) or
+            ('esquema' in msg_low and any(k in msg_low for k in ['agreg', 'carg', 'pon', 'crea', 'met']))
+        )
+        if es_orden_esquema:
+            dia_fijo = "sábado"
+            for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'domingo']:
+                if d in msg_low:
+                    dia_fijo = d
+                    break
+
+            hora_clean = normalizar_hora_str(msg_low, msg_low)
+            # Si no encontró una hora explícita en este mensaje (ej: "Fijate que la clase del sábado no quedó en el esquema..."),
+            # buscar si recientemente se habló de una clase a las 17hs o 5hs o si existe un turno creado
+            if hora_clean == "18:00" and not any(k in msg_low for k in ['18', '6', '18hs', '18:00']):
+                m_prev_hora = None
+                if conversacion and hasattr(conversacion, 'mensajes'):
+                    try:
+                        for m_prev in conversacion.mensajes.all().order_by('-created_at')[:6]:
+                            m_ph = re.search(r'\b(17(?::00)?|5(?:\s*de\s+la\s+tarde)?|11(?::00)?|9(?::00)?)\b', m_prev.texto.lower())
+                            if m_ph:
+                                m_prev_hora = m_ph.group(1)
+                                break
+                    except Exception:
+                        pass
+                if m_prev_hora:
+                    hora_clean = normalizar_hora_str(m_prev_hora, "tarde")
+                else:
+                    try:
+                        from core.models import Turno
+                        dias_map_idx = {'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6}
+                        d_num = dias_map_idx.get(dia_fijo.lower(), 6)
+                        t_rec = Turno.objects.filter(fecha__gte=timezone.localdate(), estado='PROGRAMADO').order_by('-fecha')
+                        for t in t_rec:
+                            if t.fecha.isoweekday() == d_num:
+                                hora_clean = t.hora_inicio.strftime('%H:%M')
+                                break
+                    except Exception:
+                        pass
+
+            # Profesora
+            prof_nom = ""
+            for p_cand in ['Emiliana', 'Brian', 'Sofia', 'Sofía', 'Deby', 'Debora', 'Débora']:
+                if p_cand.lower() in msg_low:
+                    prof_nom = p_cand
+                    break
+            if not prof_nom and conversacion and hasattr(conversacion, 'mensajes'):
+                try:
+                    for m_prev in conversacion.mensajes.all().order_by('-created_at')[:6]:
+                        for p_cand in ['Emiliana', 'Brian', 'Sofia', 'Sofía']:
+                            if p_cand.lower() in m_prev.texto.lower():
+                                prof_nom = p_cand
+                                break
+                        if prof_nom:
+                            break
+                except Exception:
+                    pass
+
+            # Alumna
+            nom_alumna = ""
+            m_a = re.search(r'(?:para|con|alumna|alumno)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:$|[?.,!])', mensaje_usuario, re.IGNORECASE)
+            if m_a:
+                nom_alumna = m_a.group(1).strip()
+            if not nom_alumna:
+                activa = get_ultima_alumna_activa()
+                if activa:
+                    nom_alumna = f"{activa.nombre} {activa.apellido}".strip()
+
+            res = agregar_horario_esquema_semanal_duena.invoke({
+                "dia_semana_str": dia_fijo,
+                "hora_str": hora_clean,
+                "nombre_profesora": prof_nom,
+                "nombre_o_tel_alumna": nom_alumna
+            })
+            _guardar_hitl_si_corresponde(conversacion, res, 'agregar_esquema', {'dia_semana_str': dia_fijo, 'hora_str': hora_clean, 'nombre_profesora': prof_nom})
+            tools_usadas.append('agregar_horario_esquema_semanal_duena')
+            return res, "agente_direccion", tools_usadas
+
         # 0. Reseñas y testimonios web
         if any(k in msg_low for k in ['reseñas', 'resenas', 'opiniones', 'calificaciones', 'estrellas', 'testimonios']):
             res = consultar_ultimas_resenas_duena.invoke({})
