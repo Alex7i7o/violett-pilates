@@ -54,6 +54,7 @@ function Header() {
           <a href="#metodo" className="hover:text-violett-500 transition-colors">El Método</a>
           <a href="#experiencia" className="hover:text-violett-500 transition-colors">La Experiencia</a>
           <a href="#membresias" className="hover:text-violett-500 transition-colors">Membresías</a>
+          <Link to="/tutorial" className="hover:text-violett-500 transition-colors">Tutorial App</Link>
           <Link 
             to="/login" 
             className="px-6 py-2.5 rounded-full bg-primary-main text-white hover:bg-primary-hover transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
@@ -490,6 +491,13 @@ export function LandingView() {
           <img src="/logo-icon.png" alt="Violett" className="w-10 h-10 md:w-12 md:h-12 object-contain mx-auto mb-6 opacity-60" />
           <p className="font-laluxes mb-2 text-lg md:text-xl tracking-widest text-primary-main">Violett Pilates</p>
           <p className="mb-6 text-sm md:text-base text-primary-main/80">📍 Gral. Guido 1573, Ramos Mejía.</p>
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-primary-main/80 pt-2 mb-4">
+            <Link to="/tutorial" className="hover:underline font-bold text-primary-main">📚 Manual y Tutorial de la App</Link>
+            <span>•</span>
+            <Link to="/terminos" className="hover:underline">Términos</Link>
+            <span>•</span>
+            <Link to="/privacidad" className="hover:underline">Privacidad</Link>
+          </div>
           <p className="text-[10px] md:text-xs tracking-widest uppercase text-primary-main/60">© {new Date().getFullYear()} Violett.</p>
         </motion.div>
       </footer>

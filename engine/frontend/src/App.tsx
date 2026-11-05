@@ -8,6 +8,7 @@ import { BookingRoutes } from './routes/BookingRoutes';
 import { Terminos } from './pages/public/Terminos';
 import { Privacidad } from './pages/public/Privacidad';
 import { EliminarDatos } from './pages/public/EliminarDatos';
+import { TutorialDoc } from './pages/public/TutorialDoc';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,9 @@ function App() {
             <Route path="/eliminar-datos" element={<EliminarDatos />} />
             <Route path="/data-deletion" element={<EliminarDatos />} />
             <Route path="/instrucciones-eliminacion-datos" element={<EliminarDatos />} />
+            <Route path="/doc" element={<TutorialDoc />} />
+            <Route path="/tutorial" element={<TutorialDoc />} />
+            <Route path="/guia" element={<TutorialDoc />} />
             <Route path="/*" element={<BookingRoutes />} />
           </Routes>
         </BrowserRouter>

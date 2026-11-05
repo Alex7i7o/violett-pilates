@@ -1,6 +1,6 @@
 import React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar as CalendarIcon, User as UserIcon } from 'lucide-react';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { Home, Calendar as CalendarIcon, User as UserIcon, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InstallAppModal } from '../components/ui/InstallAppModal';
 import { PushNotificationPrompt } from '../components/PushNotificationPrompt';
@@ -32,7 +32,16 @@ export function ClientLayout() {
                <span className="text-xs font-semibold text-violett-400 uppercase tracking-widest leading-none">{isEstetica ? 'Violett Estética' : 'Violett Pilates'}</span>
             </div>
           </div>
-          <nav className="flex gap-1 bg-muted/10 p-1 rounded-xl">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/tutorial"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors flex items-center gap-1.5 shadow-2xs"
+              title="Guía y tutorial de la app"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-purple-700" />
+              <span>Tutorial</span>
+            </Link>
+            <nav className="flex gap-1 bg-muted/10 p-1 rounded-xl">
             {tabs.map(tab => {
               const active = location.pathname === tab.path;
               return (
@@ -51,6 +60,7 @@ export function ClientLayout() {
               )
             })}
           </nav>
+          </div>
         </div>
       </header>
 

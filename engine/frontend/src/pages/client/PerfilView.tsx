@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useClientProfile } from '../../hooks/useClientProfile';
 import { ClientProfileHeader } from '../../components/dashboard/ClientProfileHeader';
 import { api } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { LogOut, Bell, BellRing, Save, AlertCircle, CheckCircle2, User } from 'lucide-react';
+import { LogOut, Bell, BellRing, Save, AlertCircle, CheckCircle2, User, BookOpen, ChevronRight } from 'lucide-react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { useClientConfig } from '../../context/ClientConfigContext';
 import { toast } from 'sonner';
@@ -290,6 +291,27 @@ export function PerfilView() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Acceso a Guía y Tutorial */}
+      <Link
+        to="/tutorial"
+        className="w-full p-4 rounded-2xl bg-white border border-primary-light hover:border-primary-main/40 hover:shadow-xs transition-all flex items-center justify-between group cursor-pointer block"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-800 flex items-center justify-center shrink-0 border border-purple-100">
+            <BookOpen className="w-5 h-5 text-purple-700" />
+          </div>
+          <div className="text-left">
+            <h4 className="font-bold text-sm text-foreground group-hover:text-primary-main transition-colors">
+              Guía y Tutorial de la App
+            </h4>
+            <p className="text-xs text-muted">
+              Aprendé a reservar, cancelar a tiempo, horarios fijos y más
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted group-hover:text-primary-main transition-colors shrink-0" />
+      </Link>
 
       {/* Acciones de Perfil */}
       <div className="pt-6 border-t border-primary-light/40 space-y-3">
