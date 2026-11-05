@@ -41,18 +41,8 @@ from ..tools.gestion_tools import (
     consultar_esquema_semanal_completo_duena,
     dar_baja_horario_esquema_semanal_duena,
     enviar_mensaje_whatsapp_alumna_duena,
-    consultar_esquema_fijo_alumna,
-    asignar_horario_fijo_alumna,
-    dar_baja_horario_fijo_alumna,
-    apartar_camilla_duena,
-    liberar_camilla_bloqueada_duena,
-    dar_baja_plan_alumna_duena,
-    consultar_ultimas_resenas_duena,
-    agregar_horario_esquema_semanal_duena,
-    consultar_esquema_semanal_completo_duena,
-    dar_baja_horario_esquema_semanal_duena,
-    enviar_mensaje_whatsapp_alumna_duena,
-    reprogramar_o_mover_reserva_alumna_duena
+    reprogramar_o_mover_reserva_alumna_duena,
+    mover_o_reprogramar_clase_completa_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -86,7 +76,14 @@ DIRECCION_TOOLS = [
     rechazar_comprobante_pago,
     contactar_prospectos_desde_lista,
     guardar_preferencia_alumna,
-    consultar_preferencias_o_vinculos
+    consultar_preferencias_o_vinculos,
+    # Herramientas de esquema, mensajería y traslados
+    agregar_horario_esquema_semanal_duena,
+    consultar_esquema_semanal_completo_duena,
+    dar_baja_horario_esquema_semanal_duena,
+    enviar_mensaje_whatsapp_alumna_duena,
+    reprogramar_o_mover_reserva_alumna_duena,
+    mover_o_reprogramar_clase_completa_duena
 ]
 
 SYSTEM_PROMPT_DIRECCION = """Sos el Agente Ejecutivo de Dirección y Gestión Operativa de Violett Pilates ✦.
@@ -159,6 +156,12 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
      -> Usá 'asignar_horario_fijo_alumna'.
    * Si Deby pide sacarle o dar de baja el horario fijo semanal a una alumna:
      -> Usá 'dar_baja_horario_fijo_alumna'.
+
+9. TRASLADO O REPROGRAMACIÓN DE CLASE COMPLETA (FERIADOS O REASIGNACIONES):
+   * Si Deby pide mover, trasladar, cambiar de horario o reprogramar una clase entera con todas sus alumnas y su profesora (ej: "Hola, el lunes es feriado, necesito cambiar la clase de las 18 horas para las 10 de la mañana. Con las mismas alumnas todo igual, pero sacarla de las 18 para las 10 de la mañana", "Quiero pasar la clase del lunes 9 a las 18 horas para el lunes 9 a las 10 de la mañana con las mismas alumnas, la misma profesora", "Mové la clase del martes 19hs al miércoles 19hs"):
+     -> Usá 'mover_o_reprogramar_clase_completa_duena'. Esto trasladará a todas las alumnas inscriptas a la nueva clase, conservará la profesora, cancelará el turno anterior para que no quede ocupando camillas y enviará un WhatsApp automático a cada alumna avisándole del cambio.
+   * Si Deby pide mover o reprogramar solamente a UNA alumna individual (ej: "Pasá a Alex del sábado 17hs a las 18hs"):
+     -> Usá 'reprogramar_o_mover_reserva_alumna_duena'.
 
 8. COMUNICACIONES Y MENSAJES DE WHATSAPP A ALUMNAS:
    * Si Deby te ordena mandarle un mensaje, aviso o WhatsApp a una alumna (ej: "Mandale un mensaje a Alex avisándole que va a tener la clase a las 5 de la tarde con Emiliana", "Avisale a Alejandra Rivarola por WhatsApp que mañana no viene"):
