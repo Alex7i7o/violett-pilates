@@ -61,8 +61,8 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             from langchain_google_genai import ChatGoogleGenerativeAI
             # Gemini 2.5 Flash es el modelo actual oficial recomendado por Google AI Studio
             raw_model = os.environ.get('GEMINI_MODEL', '').strip()
-            if not raw_model or '2.0-flash' in raw_model:
-                model_name = 'gemini-2.5-flash'
+            if not raw_model or '2.0-flash' in raw_model or '2.5-flash' in raw_model:
+                model_name = 'gemini-3.8-flash'
             else:
                 model_name = raw_model
             gemini_kwargs = dict(
@@ -77,7 +77,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
 
             # Cascada completa de modelos alternativos para tolerancia ante picos 503 / 504 de Google
-            modelos_alternativos = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro']
+            modelos_alternativos = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2-flash', 'gemini-2.0-flash']
             for alt in modelos_alternativos:
                 if alt != model_name:
                     try:
