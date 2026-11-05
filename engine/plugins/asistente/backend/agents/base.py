@@ -55,8 +55,40 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     llm = None
     all_fallbacks = []
 
-    # 1. Google Gemini (Recomendado: 1M tokens context, ultra rápido, voseo natural)
-    if gemini_key:
+    provider_pref = os.environ.get('LLM_PROVIDER', 'gemini').lower().strip()
+
+    # Si se configuró Groq como proveedor prioritario (Costo $0 USD por su Free Tier)
+    if provider_pref == 'groq' and groq_key:
+        try:
+            from langchain_groq import ChatGroq
+            model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+            llm = ChatGroq(
+                model=model_name,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_key=groq_key
+            )
+            logger.info(f"[ASISTENTE LLM] Usando Groq como proveedor principal gratuito: {model_name}")
+            # Gemini como fallback
+            if gemini_key:
+                try:
+                    from langchain_google_genai import ChatGoogleGenerativeAI
+                    all_fallbacks.append(ChatGoogleGenerativeAI(
+                        model='gemini-3.8-flash',
+                        temperature=0.1,
+                        max_output_tokens=max(max_tokens, 1024),
+                        google_api_key=gemini_key,
+                        max_retries=1,
+                        timeout=15
+                    ))
+                except Exception:
+                    pass
+        except Exception as eg_groq:
+            logger.error(f"[ASISTENTE LLM] Error inicializando ChatGroq prioritario: {eg_groq}")
+            llm = None
+
+    # 1. Google Gemini (Por defecto: 1M tokens context, ultra rápido, voseo natural)
+    if not llm and gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
             # Gemini 2.5 Flash es el modelo actual oficial recomendado por Google AI Studio

@@ -309,19 +309,22 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
 
     # 2. Modo Orquestador Multi-Agente con LangGraph
     try:
-        # Cargar historial previo de la conversación excluyendo el mensaje entrante recién creado en dispatcher
-        mensajes_db = list(conversacion.mensajes.order_by('-created_at')[1:11])
+        # Cargar historial previo optimizado (últimos 6 mensajes para ahorrar 60% de tokens de entrada)
+        mensajes_db = list(conversacion.mensajes.order_by('-created_at')[1:7])
         historial_langchain = []
         for m in reversed(mensajes_db):
-            # Los avisos de espera ("Aguardame un segundito...") y errores técnicos no aportan contexto
+            # Los avisos de espera y errores técnicos no aportan contexto
             if m.agente_responsable in ('asistente_espera_activa', 'fallback_error', 'notificacion_duena'):
                 continue
             if m.direccion == 'ENTRANTE':
-                # Limpiar prefijo [Audio] para fluidez conversacional
                 txt = m.texto.replace("🎤 [Audio]: ", "").strip()
                 nuevo = HumanMessage(content=txt)
             else:
-                nuevo = AIMessage(content=m.texto)
+                # Comprimir respuestas históricas extensas para no re-enviar tablas gigantes en cada turno
+                txt_resp = m.texto.strip()
+                if len(txt_resp) > 400:
+                    txt_resp = txt_resp[:400] + "... [resumido]"
+                nuevo = AIMessage(content=txt_resp)
             if not nuevo.content:
                 continue
             # Gemini exige turnos alternados: fusionamos mensajes consecutivos del mismo rol
