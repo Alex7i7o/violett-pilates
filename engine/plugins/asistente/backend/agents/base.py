@@ -76,21 +76,25 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
 
-            # Cascada completa de modelos alternativos para tolerancia ante picos 503 / 504 de Google
-            modelos_alternativos = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2-flash', 'gemini-2.0-flash']
-            for alt in modelos_alternativos:
-                if alt != model_name:
-                    try:
-                        all_fallbacks.append(ChatGoogleGenerativeAI(
-                            model=alt,
-                            temperature=0.1,
-                            max_output_tokens=max(max_tokens, 1024),
-                            google_api_key=gemini_key,
-                            max_retries=1,
-                            timeout=15
-                        ))
-                    except Exception:
-                        pass
+            # Si Groq está configurado, se agrega como PRIMER fallback inmediato (0.2s)
+            # para que ante cualquier corte de Google salte de inmediato a Llama 3.3 sin bloqueos
+            if groq_key:
+                try:
+                    from langchain_groq import ChatGroq
+                    all_fallbacks.append(ChatGroq(
+                        model=os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        api_key=groq_key
+                    ))
+                    all_fallbacks.append(ChatGroq(
+                        model='llama-3.1-8b-instant',
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        api_key=groq_key
+                    ))
+                except Exception as eg_g:
+                    logger.warning(f"[ASISTENTE LLM] Error agregando Groq a fallbacks: {eg_g}")
         except Exception as eg:
             logger.error(f"[ASISTENTE LLM] Error inicializando ChatGoogleGenerativeAI: {eg}")
             llm = None
@@ -134,18 +138,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                 api_key=groq_key
             ))
 
-    # Si además hay Groq disponible en el entorno, lo sumamos como fallback de emergencia final
-    if groq_key:
-        try:
-            from langchain_groq import ChatGroq
-            all_fallbacks.append(ChatGroq(
-                model=os.environ.get('GROQ_MODEL', 'llama-3.1-8b-instant'),
-                temperature=temperature,
-                max_tokens=max_tokens,
-                api_key=groq_key
-            ))
-        except Exception:
-            pass
+
 
     # Enlace de herramientas y fallbacks en cascada completa
     if llm:
