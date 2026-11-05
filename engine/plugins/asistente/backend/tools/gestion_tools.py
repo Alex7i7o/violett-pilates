@@ -1586,18 +1586,19 @@ def mover_o_reprogramar_clase_completa_duena(
     avisar_alumnas: bool = True
 ) -> str:
     """
-    Comando para la dueña: mueve o traslada una clase entera con todas sus alumnas inscriptas y su profesora
+    Comando para la dueña: mueve o traslada una clase entera con todas sus alumnas inscriptas (tanto registradas como apartados manuales y alumnas con horario fijo recurrente) y su profesora
     a otro horario o fecha (ej: 'El lunes es feriado, necesito cambiar la clase de las 18 horas para las 10 de la mañana',
     'Pasar la clase del lunes 9 a las 18 horas para el lunes 9 a las 10 de la mañana con las mismas alumnas, la misma profesora').
     Automáticamente:
-    1. Busca la clase original y todas las reservas confirmadas.
+    1. Busca la clase original y todas las reservas (registradas, manuales y alumnas con recurrencia fija en ese día/horario).
     2. Crea o localiza la clase en el nuevo horario/fecha, conservando la profesora y disciplina.
-    3. Traslada a todas las alumnas inscriptas sin descontarles créditos adicionales.
+    3. Traslada a todas las alumnas inscriptas sin cobrarles créditos adicionales ni perder apartados manuales.
     4. Cancela la clase del horario anterior para liberar la agenda.
-    5. Envía un WhatsApp individual a cada alumna informando el traslado por feriado / reprogramación.
+    5. Actualiza exactamente los cupos de camillas para que refleje 100% la ocupación real.
+    6. Envía un WhatsApp individual a cada alumna informando el traslado por feriado / reprogramación.
     """
     try:
-        from core.models import Turno, Reserva, Clase
+        from core.models import Turno, Reserva, Clase, Usuario
     except ImportError:
         return "✦ Error interno: modelos del núcleo no disponibles."
 
@@ -1647,9 +1648,27 @@ def mover_o_reprogramar_clase_completa_duena(
     except Exception:
         pass
 
-    # Obtener reservas confirmadas
-    reservas_confirmadas = list(Reserva.objects.filter(turno=turno_origen, estado='CONFIRMADA').select_related('usuario'))
-    total_alumnas = len(reservas_confirmadas)
+    # Obtener reservas activas en el turno origen (tanto registradas como manuales)
+    reservas_confirmadas = list(Reserva.objects.filter(turno=turno_origen).exclude(estado__startswith='CANCELADA').select_related('usuario'))
+
+    # Detectar también alumnas con Horario Fijo recurrente (Recurrencia) para este día y hora
+    # (Muy importante: cubre alumnas como Nora cuyo plan haya vencido recientemente y por eso no tenían Reserva pre-creada)
+    weekday = f_orig.isoweekday()
+    alumnas_recurrentes_extra = []
+    try:
+        from plugins.recurrencias.backend.models import Recurrencia
+        recs = Recurrencia.objects.filter(
+            clase=turno_origen.clase,
+            dia_semana=weekday,
+            hora_inicio__hour=h_orig_dt.hour,
+            hora_inicio__minute=h_orig_dt.minute,
+            is_active=True
+        ).select_related('usuario')
+        for r in recs:
+            if r.usuario and not any(res.usuario_id == r.usuario_id for res in reservas_confirmadas):
+                alumnas_recurrentes_extra.append(r.usuario)
+    except Exception as ex_rec:
+        logger.warning(f"Error consultando recurrencias fijas en traslado: {ex_rec}")
 
     # 2. Buscar o crear turno destino
     qs_dest = Turno.objects.filter(
@@ -1674,7 +1693,7 @@ def mover_o_reprogramar_clase_completa_duena(
             estado='PROGRAMADO'
         )
 
-    # Asignar la misma profesora al turno destino
+    # Asignar la misma profesora al turno destino si no tiene una
     if profesor_actual:
         try:
             from plugins.profesores.backend.models import TurnoProfesor
@@ -1686,45 +1705,80 @@ def mover_o_reprogramar_clase_completa_duena(
             logger.warning(f"Error reasignando profesora en turno destino: {e_prof}")
 
     # 3. Trasladar alumnas atómicamente
-    alumnas_movidas = []
+    alumnas_notificar = []
+    nombres_trasladadas = []
+
     with transaction.atomic():
+        # A) Trasladar reservas existentes (registradas y manuales)
         for res in reservas_confirmadas:
-            alumna = res.usuario
             res.estado = 'CANCELADA_TIEMPO'
             res.save(update_fields=['estado'])
 
-            res_nueva, _ = Reserva.objects.get_or_create(
+            if res.usuario:
+                res_nueva, _ = Reserva.objects.get_or_create(
+                    turno=turno_destino,
+                    usuario=res.usuario,
+                    defaults={'estado': 'CONFIRMADA', 'tipo_reserva': res.tipo_reserva, 'es_recurrente': res.es_recurrente}
+                )
+                try:
+                    from plugins.membresias.backend.models import ReservaMembresia
+                    rm = ReservaMembresia.objects.filter(reserva=res).first()
+                    if rm:
+                        ReservaMembresia.objects.get_or_create(reserva=res_nueva, defaults={'suscripcion': rm.suscripcion})
+                except Exception:
+                    pass
+                nombres_trasladadas.append(f"{res.usuario.nombre} {res.usuario.apellido}".strip())
+                alumnas_notificar.append(res.usuario)
+            else:
+                # Alumna apartada manualmente sin cuenta
+                Reserva.objects.create(
+                    turno=turno_destino,
+                    usuario=None,
+                    nombre_temporal=res.nombre_temporal,
+                    telefono_temporal=res.telefono_temporal,
+                    tipo_reserva='MANUAL_TEMPORAL',
+                    estado='CONFIRMADA'
+                )
+                nombres_trasladadas.append(f"{res.nombre_temporal} (manual)")
+
+        # B) Trasladar alumnas con horario fijo recurrente que no tenían reserva puntual precreada (ej: plan por renovar como Nora)
+        for u_rec in alumnas_recurrentes_extra:
+            Reserva.objects.get_or_create(
                 turno=turno_destino,
-                usuario=alumna,
-                defaults={'estado': 'CONFIRMADA'}
+                usuario=u_rec,
+                defaults={'estado': 'CONFIRMADA', 'tipo_reserva': 'REGISTRADO', 'es_recurrente': True}
             )
+            saldo_info = ""
             try:
-                from plugins.membresias.backend.models import ReservaMembresia
-                rm = ReservaMembresia.objects.filter(reserva=res).first()
-                if rm:
-                    ReservaMembresia.objects.get_or_create(reserva=res_nueva, defaults={'suscripcion': rm.suscripcion})
+                from plugins.membresias.backend.models import Suscripcion
+                susc = Suscripcion.objects.filter(usuario=u_rec, estado='ACTIVO').first()
+                if not susc or susc.clases_restantes <= 0 or (susc.fecha_vencimiento and susc.fecha_vencimiento < f_dest):
+                    saldo_info = " (recurrente - abono por renovar)"
             except Exception:
                 pass
+            nombres_trasladadas.append(f"{u_rec.nombre} {u_rec.apellido}".strip() + saldo_info)
+            alumnas_notificar.append(u_rec)
 
-            alumnas_movidas.append(alumna)
-
-        turno_destino.cupo_actual = max(0, turno_destino.clase.cupo_maximo - len(alumnas_movidas))
+        # Sincronizar cupo_actual real exacto del turno destino
+        total_activas_dest = Reserva.objects.filter(turno=turno_destino).exclude(estado__startswith='CANCELADA').count()
+        turno_destino.cupo_actual = max(0, turno_destino.clase.cupo_maximo - total_activas_dest)
         turno_destino.save(update_fields=['cupo_actual'])
 
+        # Cancelar y liberar el turno origen
         turno_origen.estado = 'CANCELADO'
         turno_origen.cupo_actual = turno_origen.clase.cupo_maximo
         turno_origen.save(update_fields=['estado', 'cupo_actual'])
 
-    # 4. Enviar WhatsApp a cada alumna informando el cambio
+    # 4. Enviar WhatsApp a cada alumna registrada informando el cambio
     notificadas = []
-    if avisar_alumnas and alumnas_movidas:
+    if avisar_alumnas and alumnas_notificar:
         try:
             from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
             from plugins.asistente.backend.models import ConversacionWhatsApp, MensajeWhatsAppLog
             client = WhatsAppClient()
             profe_txt = f" con la profe {profesor_actual.nombre}" if profesor_actual else ""
 
-            for al in alumnas_movidas:
+            for al in alumnas_notificar:
                 clean_phone = getattr(al, 'telefono', None)
                 if not clean_phone:
                     continue
@@ -1755,23 +1809,22 @@ def mover_o_reprogramar_clase_completa_duena(
         except Exception as e_w:
             logger.warning(f"Error en bloque de notificación de traslado: {e_w}")
 
-    # 5. Respuesta para Deby
+    # 5. Respuesta ejecutiva para Deby
     dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
     dia_dest_nom = dias_semana[f_dest.weekday()]
-    nombres_txt = ", ".join([f"{a.nombre} {a.apellido}".strip() for a in alumnas_movidas]) if alumnas_movidas else "Sin alumnas inscriptas"
+    nombres_txt = ", ".join(nombres_trasladadas) if nombres_trasladadas else "Sin alumnas inscriptas"
     profe_nom = f"{profesor_actual.nombre} {profesor_actual.apellido}".strip() if profesor_actual else "Sin asignar"
+    cupos_libres_txt = f"{turno_destino.cupo_actual} libre(s)" if turno_destino.cupo_actual > 0 else "Clase COMPLETA (0 libres)"
 
     res_final = (
         f"✦ ¡Listo Deby! Moví la clase completa con éxito ✦\n\n"
         f"• *Clase anterior:* {f_orig.strftime('%d/%m')} a las {turno_origen.hora_inicio.strftime('%H:%M')} hs (quedó CANCELADA y liberada)\n"
         f"• *Nuevo horario:* {dia_dest_nom} {f_dest.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs\n"
         f"• *Profesora:* {profe_nom}\n"
-        f"• *Alumnas trasladadas ({len(alumnas_movidas)}):* {nombres_txt}\n"
-        f"• *Camillas disponibles en el nuevo horario:* {turno_destino.cupo_actual} libres\n"
+        f"• *Alumnas en la clase ({len(nombres_trasladadas)}):* {nombres_txt}\n"
+        f"• *Disponibilidad:* {cupos_libres_txt}\n"
     )
     if notificadas:
         res_final += f"• Se les envió aviso por WhatsApp a: {', '.join(notificadas)} 🌸"
-    elif total_alumnas > 0:
-        res_final += "• (No se enviaron mensajes automáticos porque las alumnas no tenían teléfono registrado)"
 
     return res_final

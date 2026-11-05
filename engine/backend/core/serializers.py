@@ -214,6 +214,14 @@ class AdminTurnoSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        # Sincronización dinámica de cupos reales (incluyendo alumnas manuales y registradas)
+        cupo_max = instance.clase.cupo_maximo if instance.clase else 3
+        data['clase_cupo_maximo'] = cupo_max
+        reservas_activas_count = Reserva.objects.filter(turno=instance).exclude(estado__startswith='CANCELADA').count()
+        cupo_real = max(0, cupo_max - reservas_activas_count)
+        data['cupo_actual'] = cupo_real
+        if instance.cupo_actual != cupo_real:
+            Turno.objects.filter(id=instance.id).update(cupo_actual=cupo_real)
         from backend_core.hooks import registry
         return registry.execute('admin_turno_serializer', data, instance=instance)
 

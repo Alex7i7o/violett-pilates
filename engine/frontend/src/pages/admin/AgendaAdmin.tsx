@@ -422,9 +422,10 @@ export function AgendaAdmin() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
             <AnimatePresence>
               {turnos.map((turno) => {
-                const cuposLibres = turno.cupo_actual;
-                const tieneCupo = cuposLibres > 0 && turno.estado === 'PROGRAMADO';
                 const reservasActivas = turno.reservas_list?.filter((r: any) => !r.estado?.startsWith('CANCELADA')) || [];
+                const cupoMaximo = turno.clase_cupo_maximo || 3;
+                const cuposLibres = Math.max(0, cupoMaximo - reservasActivas.length);
+                const tieneCupo = cuposLibres > 0 && turno.estado === 'PROGRAMADO';
 
                 return (
                   <motion.div 
