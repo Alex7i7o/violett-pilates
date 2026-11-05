@@ -190,24 +190,51 @@ export function BookingGrid({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between mt-4">
-                      <span className="text-sm text-muted">
-                        Cupos: {turno.availableSpots} / {turno.totalSpots}
-                      </span>
-                      
-                      {turno.isBookedByMe ? (
-                        <Button variant="outline" size="sm" onClick={() => setSelectedTurnoToCancel(turno)}>
-                          Cancelar
-                        </Button>
-                      ) : (
-                        <Button 
-                          size="sm" 
-                          disabled={turno.availableSpots === 0}
-                          onClick={() => setSelectedTurnoToBook(turno)}
-                        >
-                          Agendar
-                        </Button>
-                      )}
+                    <div className="flex flex-col gap-2 mt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted">
+                          Cupos: <strong>{turno.availableSpots}</strong> / {turno.totalSpots}
+                        </span>
+                        
+                        {turno.availableSpots >= 2 && !turno.isBookedByMe && (
+                          <span className="text-[10px] font-bold text-violett-700 bg-violett-50 border border-violett-200 px-2 py-0.5 rounded-full">
+                            ✦ Ideal Dupla
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-neutral-100">
+                        {!turno.isBookedByMe && turno.availableSpots >= 2 ? (
+                          <a
+                            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                              `¡Hola! 🌸 ¿Te sumás conmigo a Pilates Reformer en Violett? Hay camillas libres el ${formatDate(turno.date)} a las ${turno.time} hs. ¡Avisame y vamos juntas!`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-violett-700 hover:text-violett-900 font-semibold inline-flex items-center gap-1 bg-violett-50 hover:bg-violett-100 px-2 py-1.5 rounded-xl transition-colors"
+                            title="Invitar a una amiga por WhatsApp"
+                          >
+                            <span>👭 Invitar amiga</span>
+                          </a>
+                        ) : (
+                          <span />
+                        )}
+
+                        {turno.isBookedByMe ? (
+                          <Button variant="outline" size="sm" onClick={() => setSelectedTurnoToCancel(turno)}>
+                            Reprogramar / Cancelar
+                          </Button>
+                        ) : (
+                          <Button 
+                            size="sm" 
+                            disabled={turno.availableSpots === 0}
+                            onClick={() => setSelectedTurnoToBook(turno)}
+                            className="px-4"
+                          >
+                            Agendar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

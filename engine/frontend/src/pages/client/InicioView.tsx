@@ -93,6 +93,26 @@ export function InicioView() {
         </div>
       </div>
 
+      {/* CITA DE BIENESTAR BOUTIQUE */}
+      <div className="bg-primary-light/35 border border-primary-light/70 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-primary-main shadow-2xs">
+        <span className="font-medium italic">
+          ✦ "Cuidando tu cuerpo con elegancia: tu constancia semanal se refleja en cada movimiento."
+        </span>
+        <span className="hidden sm:inline font-bold uppercase tracking-wider text-[10px] bg-white text-violett-700 px-2.5 py-0.5 rounded-full border border-primary-light">
+          Método Violett
+        </span>
+      </div>
+
+      {/* CITA DE BIENESTAR BOUTIQUE */}
+      <div className="bg-primary-light/35 border border-primary-light/70 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-primary-main shadow-2xs">
+        <span className="font-medium italic">
+          ✦ "Cuidando tu cuerpo con elegancia: tu constancia semanal se refleja en cada movimiento."
+        </span>
+        <span className="hidden sm:inline font-bold uppercase tracking-wider text-[10px] bg-white text-violett-700 px-2.5 py-0.5 rounded-full border border-primary-light">
+          Método Violett
+        </span>
+      </div>
+
       {/* ALERTA DE PERFIL INCOMPLETO */}
       {profile?.perfil_incompleto && (
         <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">

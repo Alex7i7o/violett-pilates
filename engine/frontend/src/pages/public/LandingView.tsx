@@ -167,13 +167,21 @@ export function LandingView() {
             <motion.p variants={fadeUp} className="font-sans max-w-2xl text-sm md:text-lg mb-10 opacity-80 leading-relaxed text-balance">
               Lejos del ruido del mundo, existe un espacio donde el tiempo parece detenerse. Un lugar impecable, envuelto en una suave fragancia floral, diseñado para la mujer que elige dedicarse tiempo a sí misma con sofisticación. En Violett, el entrenamiento físico se transforma en una expresión de belleza. Es una pausa delicada donde cada respiración y cada movimiento en el Reformer te acercan a esa figura armónica que deseás, mientras tu mente encuentra una serenidad absoluta.
             </motion.p>
-            <motion.div variants={fadeUp}>
-              <Link 
-                to="/login"
+            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center gap-4">
+              <a 
+                href="#membresias"
                 className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-base md:text-lg rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-primary-main/20"
               >
-                ✦ Descubrir mi espacio
-              </Link>
+                ✦ Conocer Planes y Horarios
+              </a>
+              <a 
+                href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Vi%20la%20web%20de%20Violett%20Pilates%20y%20me%20gustar%C3%ADa%20consultar%20disponibilidad%20para%20empezar%20🌸"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center bg-white/90 backdrop-blur-md text-primary-main border border-primary-main/20 font-sans font-medium px-7 py-3.5 md:px-9 md:py-4 text-base md:text-lg rounded-full hover:bg-white hover:border-primary-main transition-all duration-300 shadow-sm"
+              >
+                🌸 Hablar con Débora
+              </a>
             </motion.div>
           </motion.div>
         </motion.div>
@@ -292,13 +300,13 @@ export function LandingView() {
             </motion.div>
           ))}
         </div>
-        <motion.div variants={fadeUp} className="text-center">
-          <Link 
-            to="/login"
+        <motion.div variants={fadeUp} className="text-center space-y-3">
+          <a 
+            href="#membresias"
             className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-lg shadow-primary-main/20 text-sm md:text-base"
           >
-            ✦ Acceder a mi agenda personal
-          </Link>
+            ✦ Ver planes y reservar lugar
+          </a>
         </motion.div>
       </Section>
 
@@ -373,13 +381,18 @@ export function LandingView() {
               <span className="opacity-90"><strong className="text-primary-main">Membresía Glow:</strong> Garantizá tu espacio en nuestra comunidad exclusiva, manteniendo la constancia que tu cuerpo merece.</span>
             </motion.li>
           </ul>
-          <motion.div variants={fadeUp}>
-            <Link 
-              to="/login"
+          <motion.div variants={fadeUp} className="text-center space-y-2">
+            <a 
+              href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Quisiera%20asegurar%20mi%20lugar%20en%20Violett%20Pilates%20🌸"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-base md:text-lg rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-primary-main/20"
             >
-              ✦ Asegurar mi lugar hoy
-            </Link>
+              ✦ Asegurar mi lugar hoy por WhatsApp
+            </a>
+            <p className="text-xs text-primary-main/60">
+              Coordinamos tu primera sesión directamente con Débora en recepción.
+            </p>
           </motion.div>
         </div>
       </Section>
@@ -399,9 +412,44 @@ export function LandingView() {
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-2 leading-relaxed opacity-80 text-balance max-w-3xl mx-auto">
             El amor propio se construye con constancia. Elegí la frecuencia que mejor se adapte a tu estilo de vida y comenzá a esculpir tu figura en nuestro refugio.
           </motion.p>
-          <motion.p variants={fadeUp} className="font-sans text-center mb-10 md:mb-16 text-sm md:text-base italic opacity-60">
+          <motion.p variants={fadeUp} className="font-sans text-center mb-8 md:mb-10 text-sm md:text-base italic opacity-60">
             (Los valores se actualizan en tiempo real)
           </motion.p>
+
+          {/* BANNER TRIAL CLASS / CLASE DE BIENVENIDA */}
+          <motion.div 
+            variants={fadeUp}
+            className="mb-10 p-6 md:p-8 rounded-3xl bg-gradient-to-r from-violett-100/90 via-white to-violett-50 border border-violett-200/80 shadow-md relative overflow-hidden text-left"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-2 text-left max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violett-600 text-white text-xs font-bold uppercase tracking-wider">
+                  ✦ Para Nuevas Alumnas
+                </span>
+                <h3 className="font-marcellus text-2xl md:text-3xl text-primary-main">
+                  Clase de Bienvenida & Diagnóstico Postural
+                </h3>
+                <p className="font-sans text-sm md:text-base text-primary-main/80 leading-relaxed">
+                  ¿Es tu primera vez en Reformer? Viví una sesión guiada con evaluación personalizada de tu espalda y flexibilidad. 
+                  <strong className="text-violett-700"> ¡Si contratás tu abono mensual en esa misma semana, se te bonifica el 100% de esta clase!</strong>
+                </p>
+                <div className="text-xs text-violett-900/70 font-medium">
+                  ✦ Solo con reserva previa • Cupos reducidos de 3 personas por turno.
+                </div>
+              </div>
+              <div className="flex flex-col items-center sm:items-end shrink-0 w-full md:w-auto">
+                <a
+                  href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Quiero%20reservar%20mi%20Clase%20de%20Bienvenida%20con%20Diagn%C3%B3stico%20Postural%20🌸"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto text-center px-8 py-3.5 rounded-full bg-primary-main text-white font-bold hover:bg-violett-700 transition-all shadow-md hover:scale-105 active:scale-95"
+                >
+                  Reservar Clase de Bienvenida
+                </a>
+                <span className="text-xs text-primary-main/60 mt-2">Atención personalizada con Débora</span>
+              </div>
+            </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
             {/* Plan 1 */}
@@ -416,8 +464,16 @@ export function LandingView() {
                 <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-violett-400 shrink-0"></span> Acceso a plataforma de reservas.</li>
                 <li className="flex items-center gap-2 font-bold text-violett-700 mt-4"><span className="w-1 h-1 rounded-full bg-violett-700 shrink-0"></span> Valor: {getPrecio(4) ? `$${getPrecio(4).toLocaleString()}` : "Cargando..."}</li>
               </ul>
-              <Link to="/login" className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-base md:text-lg rounded-full hover:bg-primary-main hover:text-white transition-colors w-full">
+              <a 
+                href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Vi%20el%20plan%20Pausa%20Delicada%20(4%20clases)%20en%20la%20web%20y%20quiero%20empezar%20🌸" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-base md:text-lg rounded-full hover:bg-primary-main hover:text-white transition-colors w-full shadow-sm"
+              >
                 Elegir este plan
+              </a>
+              <Link to="/login" className="text-xs text-center text-primary-main/60 hover:text-primary-main hover:underline mt-2.5 block">
+                ¿Ya sos alumna registrada? Ingresar ↗
               </Link>
             </motion.div>
 
@@ -434,8 +490,16 @@ export function LandingView() {
                 <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span> Acompañamiento personalizado.</li>
                 <li className="flex items-center gap-2 font-bold mt-4"><span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span> Valor: {getPrecio(8) ? `$${getPrecio(8).toLocaleString()}` : "Cargando..."}</li>
               </ul>
-              <Link to="/login" className="block text-center bg-white text-primary-main font-bold py-3.5 text-base md:text-lg rounded-full hover:bg-opacity-90 hover:scale-[1.02] transition-all w-full shadow-lg">
+              <a 
+                href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Quiero%20el%20plan%20Equilibrio%20Radiante%20(8%20clases)%20y%20coordinar%20mis%20d%C3%ADas%20🌸" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center bg-white text-primary-main font-bold py-3.5 text-base md:text-lg rounded-full hover:bg-opacity-90 hover:scale-[1.02] transition-all w-full shadow-lg"
+              >
                 Quiero mi transformación
+              </a>
+              <Link to="/login" className="text-xs text-center text-white/70 hover:text-white hover:underline mt-2.5 block">
+                ¿Ya sos alumna registrada? Ingresar ↗
               </Link>
             </motion.div>
 
@@ -451,8 +515,16 @@ export function LandingView() {
                 <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-violett-400 shrink-0"></span> Máxima prioridad en nuestra agenda.</li>
                 <li className="flex items-center gap-2 font-bold text-violett-700 mt-4"><span className="w-1 h-1 rounded-full bg-violett-700 shrink-0"></span> Valor: {getPrecio(12) ? `$${getPrecio(12).toLocaleString()}` : "Cargando..."}</li>
               </ul>
-              <Link to="/login" className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-base md:text-lg rounded-full hover:bg-primary-main hover:text-white transition-colors w-full">
+              <a 
+                href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Quiero%20el%20plan%20Plenitud%20Total%20(12%20clases)%20y%20asegurar%20mi%20lugar%20🌸" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center border-2 border-primary-main text-primary-main font-bold py-3 text-base md:text-lg rounded-full hover:bg-primary-main hover:text-white transition-colors w-full shadow-sm"
+              >
                 Elegir inmersión total
+              </a>
+              <Link to="/login" className="text-xs text-center text-primary-main/60 hover:text-primary-main hover:underline mt-2.5 block">
+                ¿Ya sos alumna registrada? Ingresar ↗
               </Link>
             </motion.div>
           </div>
@@ -469,12 +541,14 @@ export function LandingView() {
             Porque sabemos que apreciás el orden y la exclusividad, creamos una experiencia digital a la altura de nuestro estudio. A través de nuestro sistema privado, podés coordinar tus momentos en Violett con total delicadeza, gestionando tu tiempo con la misma fluidez y armonía que experimentás en nuestras camas.
           </motion.p>
           <motion.div variants={fadeUp} className="text-center">
-            <Link 
-              to="/login"
+            <a 
+              href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Quisiera%20consultar%20por%20las%20clases%20en%20Violett%20Pilates%20🌸"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center bg-primary-main text-white font-sans font-medium px-8 py-3.5 md:px-10 md:py-4 text-base md:text-lg rounded-full hover:bg-violett-700 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-lg shadow-primary-main/20"
             >
-              ✦ Acceder a mi agenda personal
-            </Link>
+              ✦ Consultar con Débora por WhatsApp
+            </a>
           </motion.div>
         </Section>
       </div>
@@ -501,6 +575,30 @@ export function LandingView() {
           <p className="text-[10px] md:text-xs tracking-widest uppercase text-primary-main/60">© {new Date().getFullYear()} Violett.</p>
         </motion.div>
       </footer>
+      {/* Floating WhatsApp Concierge Widget */}
+      <motion.aside
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.5, ease: smoothEase }}
+        className="fixed bottom-5 right-5 z-50 flex items-center gap-2"
+        aria-label="Atención por WhatsApp"
+      >
+        <a
+          href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Estuve%20viendo%20la%20web%20de%20Violett%20Pilates%20y%20quer%C3%ADa%20hacerte%20una%20consulta%20🌸"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white pl-4 pr-5 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 border border-white/20"
+          title="Consultá con Débora por WhatsApp"
+        >
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+          </span>
+          <span className="text-sm font-bold tracking-wide font-sans">
+            ¿Dudas? Hablá con Débora ✦
+          </span>
+        </a>
+      </motion.aside>
     </div>
   );
 }
