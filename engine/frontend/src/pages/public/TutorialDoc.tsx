@@ -75,6 +75,26 @@ export function TutorialDoc() {
       respuesta: 'El asistente oficial de Violett en WhatsApp funciona las 24 horas. Podés consultar tus clases agendadas ("¿Cuándo tengo clases?"), ver horarios libres de la semana ("¿Hay lugar mañana a la tarde?"), reservar o cancelar turnos ("Reservame el jueves 19hs"), consultar tu saldo de créditos y enviar fotos de comprobantes de pago.'
     },
     {
+      categoria: 'reservas',
+      pregunta: '¿Cómo funciona la opción "Invitar a una amiga" / Duplas?',
+      respuesta: 'Cuando un turno tiene 2 o más camillas libres, verás el distintivo "✦ Ideal Dupla". Al tocar "👭 Invitar amiga", se genera un mensaje de WhatsApp automático para compartirle a tu amiga, hermana o mamá con la fecha y hora exacta, permitiéndoles reservar dos camillas juntas en el mismo turno para entrenar en compañía.'
+    },
+    {
+      categoria: 'cancelaciones',
+      pregunta: '¿Puedo reprogramar una clase para otro día en lugar de cancelarla?',
+      respuesta: '¡Sí! Al tocar una clase agendada, la app te sugiere "Reprogramar para otro día 📅". Al elegirla, liberás tu camilla actual para otra compañera e inmediatamente el sistema te lleva a la agenda para que elijas tu nuevo día y horario sin perder la constancia de tu semana.'
+    },
+    {
+      categoria: 'reservas',
+      pregunta: '¿Cómo funciona la opción "Invitar a una amiga" / Duplas?',
+      respuesta: 'Cuando un turno tiene 2 o más camillas libres, verás el distintivo "✦ Ideal Dupla". Al tocar "👭 Invitar amiga", se genera un mensaje de WhatsApp automático para compartirle a tu amiga, hermana o mamá con la fecha y hora exacta, permitiéndoles reservar dos camillas juntas en el mismo turno para entrenar en compañía.'
+    },
+    {
+      categoria: 'cancelaciones',
+      pregunta: '¿Puedo reprogramar una clase para otro día en lugar de cancelarla?',
+      respuesta: '¡Sí! Al tocar una clase agendada, la app te sugiere "Reprogramar para otro día 📅". Al elegirla, liberás tu camilla actual para otra compañera e inmediatamente el sistema te lleva a la agenda para que elijas tu nuevo día y horario sin perder la constancia de tu semana.'
+    },
+    {
       categoria: 'general',
       pregunta: '¿Qué debo llevar para mi primera clase de Reformer?',
       respuesta: 'Recomendamos asistir con ropa cómoda deportiva (calzas o pantalón elastizado y remera). Es obligatorio el uso de medias (preferentemente antideslizantes) para trabajar sobre el Reformer con total higiene y seguridad. En el estudio disponemos de dispensers de agua y un ambiente aromatizado diseñado para tu relajación.'
@@ -357,6 +377,28 @@ export function TutorialDoc() {
                 </div>
               </div>
 
+              {/* NUEVA FUNCIÓN: ENTRENÁ EN DUPLA */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-50 via-white to-pink-50/40 border border-purple-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span>✦ Nueva Función: Entrenar en Dupla ("Invitar amiga")</span>
+                </div>
+                <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                  ¿Querés venir acompañada por tu mejor amiga, tu hermana o tu mamá? En la agenda, cada turno que tenga 2 o más camillas libres mostrará el sello <b>"✦ Ideal Dupla"</b>. Tocando el botón <b>"👭 Invitar amiga"</b>, podés compartirle por WhatsApp la invitación lista con día y hora para que reserven juntas y compartan su hora de bienestar.
+                </p>
+              </div>
+
+              {/* NUEVA FUNCIÓN: ENTRENÁ EN DUPLA */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-purple-50 via-white to-pink-50/40 border border-purple-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span>✦ Nueva Función: Entrenar en Dupla ("Invitar amiga")</span>
+                </div>
+                <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                  ¿Querés venir acompañada por tu mejor amiga, tu hermana o tu mamá? En la agenda, cada turno que tenga 2 o más camillas libres mostrará el sello <b>"✦ Ideal Dupla"</b>. Tocando el botón <b>"👭 Invitar amiga"</b>, podés compartirle por WhatsApp la invitación lista con día y hora para que reserven juntas y compartan su hora de bienestar.
+                </p>
+              </div>
+
               {/* SIMULACIÓN VISUAL DE LOS BADGES */}
               <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -427,11 +469,37 @@ export function TutorialDoc() {
               </div>
             </div>
 
+            {/* NUEVO FLUJO REPROGRAMAR VS CANCELAR */}
+            <div className="bg-gradient-to-br from-violett-50/80 to-white rounded-2xl p-6 border border-purple-200 space-y-4">
+              <div className="flex items-center gap-2.5 text-[#34236F]">
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs">
+                  ✦
+                </div>
+                <div>
+                  <h4 className="font-bold text-base text-[#34236F]">¿No podés asistir? Te recomendamos "Reprogramar"</h4>
+                  <p className="text-xs text-muted">Para no perder tu ritmo de entrenamiento semanal</p>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                Cuando no puedas asistir a un turno, en vez de solo cancelar y dejar flotando tu crédito, la app te ofrece la opción <b>"Reprogramar para otro día 📅"</b>:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3.5 rounded-xl bg-white border border-purple-100 space-y-1">
+                  <span className="font-bold text-purple-900 block">1. Liberás tu camilla actual</span>
+                  <span className="text-muted leading-relaxed block">Tu lugar se desocupa en el acto para que otra compañera pueda aprovecharlo.</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white border border-purple-100 space-y-1">
+                  <span className="font-bold text-purple-900 block">2. Elegís tu nuevo día y hora</span>
+                  <span className="text-muted leading-relaxed block">El sistema te abre directamente la agenda semanal para asegurar tu nuevo turno.</span>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl p-5 border border-purple-100 flex items-center justify-between gap-4">
               <div className="space-y-1">
-                <h4 className="font-bold text-sm text-[#34236F]">¿Cómo cancelo una clase en la app?</h4>
+                <h4 className="font-bold text-sm text-[#34236F]">¿Cómo gestiono mi clase en la app?</h4>
                 <p className="text-xs text-muted">
-                  En Inicio, tocá tu botón de <b>"Clases agendadas"</b>, elegí la clase que no vas a poder tomar y seleccioná <b>"Cancelar Reserva"</b>.
+                  En Inicio, tocá tu botón de <b>"Clases agendadas"</b>, elegí la clase y seleccioná <b>"Reprogramar"</b> o <b>"Solo cancelar"</b>.
                 </p>
               </div>
               <Link 

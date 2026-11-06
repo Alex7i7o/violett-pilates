@@ -412,44 +412,9 @@ export function LandingView() {
           <motion.p variants={fadeUp} className="font-sans text-center text-base md:text-lg mb-2 leading-relaxed opacity-80 text-balance max-w-3xl mx-auto">
             El amor propio se construye con constancia. Elegí la frecuencia que mejor se adapte a tu estilo de vida y comenzá a esculpir tu figura en nuestro refugio.
           </motion.p>
-          <motion.p variants={fadeUp} className="font-sans text-center mb-8 md:mb-10 text-sm md:text-base italic opacity-60">
+          <motion.p variants={fadeUp} className="font-sans text-center mb-10 md:mb-16 text-sm md:text-base italic opacity-60">
             (Los valores se actualizan en tiempo real)
           </motion.p>
-
-          {/* BANNER TRIAL CLASS / CLASE DE BIENVENIDA */}
-          <motion.div 
-            variants={fadeUp}
-            className="mb-10 p-6 md:p-8 rounded-3xl bg-gradient-to-r from-violett-100/90 via-white to-violett-50 border border-violett-200/80 shadow-md relative overflow-hidden text-left"
-          >
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="space-y-2 text-left max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violett-600 text-white text-xs font-bold uppercase tracking-wider">
-                  ✦ Para Nuevas Alumnas
-                </span>
-                <h3 className="font-marcellus text-2xl md:text-3xl text-primary-main">
-                  Clase de Bienvenida & Diagnóstico Postural
-                </h3>
-                <p className="font-sans text-sm md:text-base text-primary-main/80 leading-relaxed">
-                  ¿Es tu primera vez en Reformer? Viví una sesión guiada con evaluación personalizada de tu espalda y flexibilidad. 
-                  <strong className="text-violett-700"> ¡Si contratás tu abono mensual en esa misma semana, se te bonifica el 100% de esta clase!</strong>
-                </p>
-                <div className="text-xs text-violett-900/70 font-medium">
-                  ✦ Solo con reserva previa • Cupos reducidos de 3 personas por turno.
-                </div>
-              </div>
-              <div className="flex flex-col items-center sm:items-end shrink-0 w-full md:w-auto">
-                <a
-                  href="https://wa.me/5491157691786?text=Hola%20Deby!%20✦%20Quiero%20reservar%20mi%20Clase%20de%20Bienvenida%20con%20Diagn%C3%B3stico%20Postural%20🌸"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto text-center px-8 py-3.5 rounded-full bg-primary-main text-white font-bold hover:bg-violett-700 transition-all shadow-md hover:scale-105 active:scale-95"
-                >
-                  Reservar Clase de Bienvenida
-                </a>
-                <span className="text-xs text-primary-main/60 mt-2">Atención personalizada con Débora</span>
-              </div>
-            </div>
-          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
             {/* Plan 1 */}
