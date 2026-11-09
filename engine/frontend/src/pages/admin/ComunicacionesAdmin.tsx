@@ -9,7 +9,8 @@ import {
   getEmailLogs, 
   getEmailLogDetail,
   getErroresIA,
-  toggleResolverErrorIA
+  toggleResolverErrorIA,
+  resolverTodosErroresIA
 } from '../../lib/comunicacionesApi';
 import type { ConversacionCRM, MensajeCRM, EmailLog, RegistroErrorIAItem } from '../../lib/comunicacionesApi';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -160,12 +161,28 @@ export function ComunicacionesAdmin() {
     try {
       const res = await toggleResolverErrorIA(errorId);
       toast.success(res.data.detail);
-      setErroresIA(prev => prev.map(item => item.id === errorId ? { ...item, resuelto: res.data.resuelto } : item));
-      if (!verResueltos) {
-        setErroresIA(prev => prev.filter(item => item.id !== errorId));
-      }
+      setErroresIA(prev => {
+        if (!verResueltos && res.data.resuelto) {
+          return prev.filter(item => item.id !== errorId);
+        }
+        return prev.map(item => item.id === errorId ? { ...item, resuelto: res.data.resuelto } : item);
+      });
     } catch (e) {
       toast.error('Error al actualizar estado del ticket');
+    }
+  };
+
+  const handleResolverTodos = async () => {
+    try {
+      const res = await resolverTodosErroresIA();
+      toast.success(res.data.detail);
+      if (!verResueltos) {
+        setErroresIA([]);
+      } else {
+        setErroresIA(prev => prev.map(item => ({ ...item, resuelto: true })));
+      }
+    } catch (e) {
+      toast.error('Error al resolver todos los tickets');
     }
   };
 
@@ -989,6 +1006,18 @@ export function ComunicacionesAdmin() {
                   <Download className="w-3.5 h-3.5 text-primary-main" />
                   <span>Exportar / Descargar</span>
                 </button>
+
+                {!verResueltos && erroresIA.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleResolverTodos}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 flex items-center gap-1.5 transition-all shadow-sm"
+                    title="Marcar todos los errores activos como resueltos"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Resolver todos ({erroresIA.length})</span>
+                  </button>
+                )}
 
                 <button
                   type="button"

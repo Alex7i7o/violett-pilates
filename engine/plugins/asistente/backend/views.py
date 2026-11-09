@@ -215,3 +215,14 @@ class ResolverErrorIAView(APIView):
             'resuelto': err.resuelto
         })
 
+
+
+class ResolverTodosErroresIAView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        total = RegistroErrorIA.objects.filter(resuelto=False).update(resuelto=True)
+        return Response({
+            'detail': f"Se marcaron como resueltos {total} errores activos.",
+            'total_resueltos': total
+        })

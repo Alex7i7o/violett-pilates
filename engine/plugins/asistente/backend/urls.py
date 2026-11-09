@@ -6,7 +6,8 @@ from .views import (
     EnviarMensajeManualAdminView,
     AsistenteConfigView,
     RegistroErrorIAView,
-    ResolverErrorIAView
+    ResolverErrorIAView,
+    ResolverTodosErroresIAView
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('admin/asistente/config/', AsistenteConfigView.as_view(), name='asistente-config'),
     path('admin/asistente/errores/', RegistroErrorIAView.as_view(), name='asistente-errores'),
     path('admin/asistente/errores/<uuid:error_id>/resolver/', ResolverErrorIAView.as_view(), name='asistente-resolver-error'),
+    path('admin/asistente/errores/resolver-todos/', ResolverTodosErroresIAView.as_view(), name='asistente-resolver-todos-errores'),
 ]

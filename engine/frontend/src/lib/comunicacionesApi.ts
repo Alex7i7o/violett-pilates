@@ -80,3 +80,6 @@ export const getErroresIA = (resueltos: boolean = false, q: string = '') =>
 
 export const toggleResolverErrorIA = (errorId: string) =>
   api.post<{ detail: string; resuelto: boolean }>(`/admin/asistente/errores/${errorId}/resolver/`);
+
+export const resolverTodosErroresIA = () =>
+  api.post<{ detail: string; total_resueltos: number }>('/admin/asistente/errores/resolver-todos/');
