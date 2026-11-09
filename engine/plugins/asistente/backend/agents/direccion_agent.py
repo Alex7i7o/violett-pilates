@@ -42,7 +42,8 @@ from ..tools.gestion_tools import (
     dar_baja_horario_esquema_semanal_duena,
     enviar_mensaje_whatsapp_alumna_duena,
     reprogramar_o_mover_reserva_alumna_duena,
-    mover_o_reprogramar_clase_completa_duena
+    mover_o_reprogramar_clase_completa_duena,
+    cancelar_o_eliminar_clase_agenda_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -83,7 +84,8 @@ DIRECCION_TOOLS = [
     dar_baja_horario_esquema_semanal_duena,
     enviar_mensaje_whatsapp_alumna_duena,
     reprogramar_o_mover_reserva_alumna_duena,
-    mover_o_reprogramar_clase_completa_duena
+    mover_o_reprogramar_clase_completa_duena,
+    cancelar_o_eliminar_clase_agenda_duena
 ]
 
 SYSTEM_PROMPT_DIRECCION = """Sos el Agente Ejecutivo de Dirección y Gestión Operativa de Violett Pilates ✦.

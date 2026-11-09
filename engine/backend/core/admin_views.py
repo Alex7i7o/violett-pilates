@@ -370,8 +370,10 @@ class ClaseViewSet(viewsets.ModelViewSet):
 
 class PlantillaTurnoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = PlantillaTurno.objects.all()
     serializer_class = PlantillaTurnoSerializer
+
+    def get_queryset(self):
+        return PlantillaTurno.objects.filter(is_active=True)
 
     def perform_create(self, serializer):
         instance = serializer.save()

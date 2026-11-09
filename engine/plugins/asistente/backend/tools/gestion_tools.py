@@ -1366,7 +1366,8 @@ def consultar_esquema_semanal_completo_duena(dia_semana_str: str = "") -> str:
 @tool
 def dar_baja_horario_esquema_semanal_duena(dia_semana_str: str, hora_str: str) -> str:
     """
-    Comando para la dueña: elimina o desactiva un horario fijo del ESQUEMA SEMANAL en la web.
+    Comando para la dueña: elimina definitivamente un horario fijo del ESQUEMA SEMANAL en la web
+    y cancela/elimina automáticamente todas las clases futuras generadas en la Agenda para ese horario.
     """
     dias_map = {
         'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
@@ -1380,20 +1381,67 @@ def dar_baja_horario_esquema_semanal_duena(dia_semana_str: str, hora_str: str) -
 
     hora_clean = normalizar_hora_str(hora_str, dia_semana_str)
     try:
-        from core.models import PlantillaTurno
+        from core.models import PlantillaTurno, Turno
+        from django.utils import timezone
         h_i, m_i = map(int, hora_clean.split(':'))
         t_inicio = datetime.time(h_i, m_i)
-        plantilla = PlantillaTurno.objects.filter(dia_semana=dia_num, hora_inicio=t_inicio, is_active=True).first()
-        if not plantilla:
-            return f"✦ No encontré una clase activa en el Esquema Semanal para el {dia_semana_str} a las {hora_clean} hs."
+        
+        # Buscar plantilla (activa o inactiva)
+        plantilla = PlantillaTurno.objects.filter(dia_semana=dia_num, hora_inicio=t_inicio).first()
+        now = timezone.localdate()
+        clase_id = plantilla.clase_id if plantilla else None
 
-        plantilla.is_active = False
-        plantilla.save(update_fields=['is_active'])
+        from backend_core.hooks import registry
+        
+        # 1. Hook para desactivar recurrencias de alumnas
+        if clase_id:
+            try:
+                registry.execute(
+                    "after_slot_destroyed", 
+                    {}, 
+                    clase_id=clase_id, 
+                    dia_semana=dia_num, 
+                    hora_inicio=t_inicio
+                )
+            except Exception as eh:
+                logger.warning(f"Error en hook after_slot_destroyed: {eh}")
+
+        # 2. Eliminar o cancelar todas las clases futuras en la Agenda para ese día y horario
+        future_filter = {'fecha__gte': now, 'hora_inicio': t_inicio}
+        if clase_id:
+            future_filter['clase_id'] = clase_id
+        target_turnos = [t for t in Turno.objects.filter(**future_filter) if t.fecha.isoweekday() == dia_num]
+        
+        total_turnos_borrados = 0
+        total_reservas_devueltas = 0
+        for t in target_turnos:
+            for r in t.reservas.filter(estado__in=['CONFIRMADA', 'PENDIENTE']):
+                r.estado = 'CANCELADA_TIEMPO'
+                r.save(update_fields=['estado'])
+                total_reservas_devueltas += 1
+                try:
+                    registry.execute('reserva_cancelada_a_tiempo', r)
+                except Exception:
+                    pass
+            t.delete()
+            total_turnos_borrados += 1
+
+        # 3. Eliminar físicamente la plantilla para que desaparezca del frontend de Esquema
+        if plantilla:
+            plantilla.delete()
+        else:
+            PlantillaTurno.objects.filter(dia_semana=dia_num, hora_inicio=t_inicio).delete()
 
         dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
         dia_nom = dias_es.get(dia_num, dia_semana_str)
-        return f"✦ ¡Listo Deby! Di de baja el horario del Esquema Semanal para los *{dia_nom}s a las {hora_clean} hs*."
+        return (
+            f"✦ ¡Listo Deby! Di de baja el horario del Esquema Semanal para los *{dia_nom}s a las {hora_clean} hs* ✦\n\n"
+            f"• *Esquema web:* Se eliminó del molde fijo (ya no aparece en la pantalla de Esquema).\n"
+            f"• *Agenda diaria:* Se eliminaron {total_turnos_borrados} clase(s) futuras generadas para ese horario (ya no figuran en la Agenda).\n"
+            f"• *Alumnas:* Se cancelaron y devolvieron los créditos de {total_reservas_devueltas} reserva(s) que estaban inscriptas."
+        )
     except Exception as e:
+        logger.error(f"Error dando de baja horario del esquema: {e}", exc_info=True)
         return f"✦ Ocurrió un error al dar de baja el horario del esquema: {e}"
 
 
@@ -1828,3 +1876,108 @@ def mover_o_reprogramar_clase_completa_duena(
         res_final += f"• Se les envió aviso por WhatsApp a: {', '.join(notificadas)} 🌸"
 
     return res_final
+
+
+@tool
+def cancelar_o_eliminar_clase_agenda_duena(fecha_str: str, hora_str: str, cancelar_futuras_recurrentes: bool = False) -> str:
+    """
+    Comando exclusivo de la dueña (Deby) para cancelar, suspender o borrar una clase puntual o recurrente directamente de la AGENDA diaria.
+    Úsalo cuando Deby pida borrar, suspender o cancelar una clase de un día específico o todas de acá en adelante
+    (ej: 'borrá la clase del sábado 21 a las 17hs', 'cancelá la clase de hoy a las 18hs',
+    'cancelá todas las clases de las 17hs de acá en adelante que se hayan generado en automático',
+    'borrá las clases de los sábados a las 5').
+    
+    Parámetros:
+    - fecha_str: Fecha de la clase ('hoy', 'mañana', 'lunes', 'sábado 21/11', '21/11/2026', '2026-11-21', etc.)
+    - hora_str: Horario de la clase ('17:00', '18hs', '5 de la tarde', etc.)
+    - cancelar_futuras_recurrentes: Si es True (o si Deby dijo 'todas las clases de acá en adelante', 'de los sábados', 'las que se generaron en automático'),
+      cancela/elimina no solo esta fecha sino todas las fechas futuras de ese mismo día y horario.
+    """
+    try:
+        from core.models import Turno, PlantillaTurno
+        from django.utils import timezone
+        from backend_core.hooks import registry
+        
+        target_date = resolver_fecha(fecha_str)
+        hora_clean = normalizar_hora_str(hora_str, fecha_str)
+        h_i, m_i = map(int, hora_clean.split(':'))
+        t_inicio = datetime.time(h_i, m_i)
+
+        dias_es = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
+        dia_nom = dias_es.get(target_date.isoweekday(), 'Día')
+        fecha_display = target_date.strftime('%d/%m/%Y')
+
+        # Si Deby pidió borrar todas las clases de acá en adelante que coincidan con ese día y horario
+        if cancelar_futuras_recurrentes:
+            target_weekday = target_date.isoweekday()
+            future_turnos = [
+                t for t in Turno.objects.filter(fecha__gte=target_date, hora_inicio=t_inicio)
+                if t.fecha.isoweekday() == target_weekday
+            ]
+
+            total_turnos = 0
+            total_devueltas = 0
+            for t in future_turnos:
+                for r in t.reservas.filter(estado__in=['CONFIRMADA', 'PENDIENTE']):
+                    r.estado = 'CANCELADA_TIEMPO'
+                    r.save(update_fields=['estado'])
+                    total_devueltas += 1
+                    try:
+                        registry.execute('reserva_cancelada_a_tiempo', r)
+                    except Exception:
+                        pass
+                t.delete()
+                total_turnos += 1
+
+            # También dar de baja la plantilla del esquema para que no se autogeneren de nuevo
+            plantillas = PlantillaTurno.objects.filter(dia_semana=target_weekday, hora_inicio=t_inicio)
+            for p in plantillas:
+                try:
+                    registry.execute(
+                        "after_slot_destroyed", 
+                        {}, 
+                        clase_id=p.clase_id, 
+                        dia_semana=p.dia_semana, 
+                        hora_inicio=p.hora_inicio
+                    )
+                except Exception:
+                    pass
+                p.delete()
+
+            return (
+                f"✦ ¡Listo Deby! Cancelé y eliminé todas las clases de los *{dia_nom}s a las {hora_clean} hs* de acá en adelante ✦\n\n"
+                f"• *Agenda diaria:* Se eliminaron {total_turnos} clase(s) futuras (ya no figuran en la pantalla de Agenda).\n"
+                f"• *Esquema semanal:* Se dio de baja el molde fijo para que no se sigan autogenerando turnos.\n"
+                f"• *Alumnas:* Se cancelaron y devolvieron los créditos de {total_devueltas} reserva(s) registradas."
+            )
+
+        # Cancelación puntual de una única fecha
+        turno = Turno.objects.filter(fecha=target_date, hora_inicio=t_inicio).first()
+        if not turno:
+            # Buscar coincidencia aproximada de hora
+            turno = Turno.objects.filter(fecha=target_date, hora_inicio__hour=t_inicio.hour).first()
+
+        if not turno:
+            return f"✦ No encontré ninguna clase en la Agenda para el {dia_nom} {fecha_display} a las {hora_clean} hs."
+
+        total_devueltas = 0
+        for r in turno.reservas.filter(estado__in=['CONFIRMADA', 'PENDIENTE']):
+            r.estado = 'CANCELADA_TIEMPO'
+            r.save(update_fields=['estado'])
+            total_devueltas += 1
+            try:
+                registry.execute('reserva_cancelada_a_tiempo', r)
+            except Exception:
+                pass
+
+        # Eliminar el turno para que desaparezca de la Agenda del panel web
+        turno.delete()
+
+        msg_alumnas = f"\n• Se reintegraron los créditos de {total_devueltas} alumna(s) inscripta(s)." if total_devueltas > 0 else ""
+        return (
+            f"✦ ¡Listo Deby! Cancelé y eliminé la clase del *{dia_nom} {fecha_display} a las {hora_clean} hs* de la Agenda ✦\n\n"
+            f"• La clase fue retirada de la Agenda diaria y ya no figurará activa en el panel web.{msg_alumnas}"
+        )
+    except Exception as e:
+        logger.error(f"Error cancelando clase de agenda: {e}", exc_info=True)
+        return f"✦ Ocurrió un error al cancelar la clase de la agenda: {e}"

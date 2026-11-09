@@ -60,6 +60,7 @@ from ..tools.gestion_tools import (
     agregar_horario_esquema_semanal_duena,
     consultar_esquema_semanal_completo_duena,
     dar_baja_horario_esquema_semanal_duena,
+    cancelar_o_eliminar_clase_agenda_duena,
     enviar_mensaje_whatsapp_alumna_duena,
     normalizar_hora_str,
     set_conversacion_activa,
