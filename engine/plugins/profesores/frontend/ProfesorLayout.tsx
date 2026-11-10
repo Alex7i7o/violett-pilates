@@ -65,7 +65,7 @@ export function ProfesorLayout() {
     <div className="flex flex-col min-h-[100dvh] bg-background font-sans">
       
       {/* Mobile Header */}
-      <header className="lg:hidden flex items-center justify-between px-4 py-4 bg-white/80 backdrop-blur-[20px] saturate-[180%] border-b border-primary-light/40 sticky top-0 z-40">
+      <header className="lg:hidden flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3.5 bg-white/85 backdrop-blur-[20px] saturate-[180%] border-b border-primary-light/40 sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary-main flex items-center justify-center text-white font-bold italic text-sm">V</div>
           <span className="font-bold text-lg text-primary-main tracking-tight">Staff</span>

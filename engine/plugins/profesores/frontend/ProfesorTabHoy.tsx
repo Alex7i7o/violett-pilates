@@ -22,7 +22,7 @@ export function ProfesorTabHoy({ data, formatFecha }: Props) {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const handleAsistencia = async (reservaId: number, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => {
+  const handleAsistencia = async (reservaId: string | number, estado: 'TOMADA' | 'AUSENTE' | 'CONFIRMADA') => {
     try {
       await api.put(`/profesor/reservas/${reservaId}/asistencia/`, { estado });
       toast.success('Asistencia actualizada');

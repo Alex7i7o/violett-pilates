@@ -147,8 +147,8 @@ class ProfesorDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.rol != 'PROFESOR':
-            return Response({"detail": "No tienes permiso."}, status=403)
+        if request.user.rol not in ['PROFESOR', 'ADMIN']:
+            return Response({"detail": "No tienes permiso para acceder al panel de staff."}, status=403)
             
         month = request.query_params.get('month')
         year = request.query_params.get('year')
@@ -159,73 +159,129 @@ class ProfesorDashboardView(APIView):
             month = now.month
             year = now.year
         else:
-            month = int(month)
-            year = int(year)
+            try:
+                month = int(month)
+                year = int(year)
+            except (ValueError, TypeError):
+                month = now.month
+                year = now.year
 
-        if not hasattr(request.user, 'profesor_plugin_profile'): return Response({'detail': 'Perfil no encontrado.'}, status=404)
-        profesor = request.user.profesor_plugin_profile
+        # Resolver profesor de manera segura y auto-vincular si falta la relación
+        profesor = None
+        try:
+            profesor = getattr(request.user, 'profesor_plugin_profile', None)
+        except Exception:
+            profesor = None
+
+        if not profesor and request.user.email:
+            clean_email = request.user.email.strip().lower()
+            profesor = Profesor.objects.filter(email__iexact=clean_email).first()
+            if profesor and not profesor.usuario:
+                profesor.usuario = request.user
+                profesor.save(update_fields=['usuario'])
+
+        # Si entra un Administrador/Dueña a auditar el panel, usar el primer profesor activo
+        if not profesor and request.user.rol == 'ADMIN':
+            profesor = Profesor.objects.filter(is_active=True).first()
+
+        if not profesor:
+            return Response({'detail': 'Perfil de profesor no encontrado para este usuario.'}, status=404)
+
         from django.db.models import Q
-        turnos = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), estado='PROGRAMADO').prefetch_related('reservas__usuario').distinct().order_by('fecha', 'hora_inicio')
+        turnos = Turno.objects.filter(
+            Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)),
+            estado='PROGRAMADO'
+        ).select_related('clase', 'plantilla').prefetch_related('reservas__usuario').distinct().order_by('fecha', 'hora_inicio')
+
         turnos_hoy = [t for t in turnos if t.fecha == now.date()]
         turnos_semana = [t for t in turnos if t.fecha > now.date() and t.fecha <= now.date() + datetime.timedelta(days=7)]
         current_time = now.time()
-        turnos_historial = Turno.objects.filter(Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)), fecha__lte=now.date()).prefetch_related('reservas__usuario').distinct().order_by('-fecha', '-hora_inicio')
+
+        turnos_historial = Turno.objects.filter(
+            Q(profesor_asignado__profesor=profesor) | (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profesor)),
+            fecha__lte=now.date()
+        ).select_related('clase').prefetch_related('reservas__usuario').distinct().order_by('-fecha', '-hora_inicio')
+
         dictados_mes = []
         for t in turnos_historial:
             if t.fecha.month == month and t.fecha.year == year:
                 if t.fecha < now.date() or (t.fecha == now.date() and t.hora_inicio <= current_time):
                     dictados_mes.append(t)
 
-        plantillas = PlantillaTurno.objects.filter(is_active=True, profesor_asignado__profesor=profesor).order_by('dia_semana', 'hora_inicio')
+        plantillas = PlantillaTurno.objects.filter(
+            is_active=True,
+            profesor_asignado__profesor=profesor
+        ).select_related('clase').order_by('dia_semana', 'hora_inicio')
 
         def serialize_turno(t):
             reservas = t.reservas.exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA'])
+            reservas_data = []
+            for r in reservas:
+                if r.usuario:
+                    alumno_id = str(r.usuario.id)
+                    nombre = r.usuario.nombre
+                    apellido = r.usuario.apellido
+                else:
+                    alumno_id = f"manual-{r.id}"
+                    nombre = r.nombre_temporal or 'Alumna Manual'
+                    apellido = ''
+
+                reservas_data.append({
+                    "id": str(r.id),
+                    "alumno_id": alumno_id,
+                    "alumno_nombre": nombre,
+                    "alumno_apellido": apellido,
+                    "estado": r.estado,
+                    "es_recurrente": getattr(r, 'es_recurrente', False),
+                    "tipo_reserva": getattr(r, 'tipo_reserva', 'REGISTRADO')
+                })
+
             return {
                 "id": str(t.id),
                 "fecha": t.fecha.isoformat(),
                 "hora_inicio": t.hora_inicio.strftime('%H:%M'),
                 "hora_fin": t.hora_fin.strftime('%H:%M'),
-                "clase_nombre": t.clase.nombre,
+                "clase_nombre": t.clase.nombre if t.clase else 'Pilates Reformer',
                 "estado": t.estado,
-                "reservas_list": [{
-                    "id": r.id,
-                    "alumno_id": str(r.usuario.id),
-                    "alumno_nombre": r.usuario.nombre,
-                    "alumno_apellido": r.usuario.apellido,
-                    "estado": r.estado,
-                    "es_recurrente": r.es_recurrente
-                } for r in reservas]
+                "reservas_list": reservas_data
             }
 
+        # Cache de asignaciones de plantillas para serialización ultra-rápida y a prueba de errores
+        plantilla_prof_map = {
+            pp.plantilla_id: str(pp.profesor_id)
+            for pp in PlantillaProfesor.objects.all().only('plantilla_id', 'profesor_id')
+        }
+
         def serialize_plantilla(p):
-            prof_id = None
-            if hasattr(p, 'profesor_asignado') and p.profesor_asignado and p.profesor_asignado.profesor:
-                prof_id = str(p.profesor_asignado.profesor.id)
-                
+            prof_id = plantilla_prof_map.get(p.id, None)
             return {
                 "id": str(p.id),
                 "dia_semana": p.dia_semana,
                 "hora_inicio": p.hora_inicio.strftime('%H:%M'),
                 "hora_fin": p.hora_fin.strftime('%H:%M'),
-                "clase_nombre": p.clase.nombre,
+                "clase_nombre": p.clase.nombre if p.clase else 'Pilates Reformer',
                 "profesor_id": prof_id
             }
 
-        # Real Bolsa logic
-        profesor_id = None
-        if hasattr(request.user, 'profesor_plugin_profile'):
-            profesor_id = request.user.profesor_plugin_profile.id
-            
-        unassigned_turnos = Turno.objects.filter(profesor_asignado__isnull=True, plantilla__profesor_asignado__isnull=True, fecha__gte=now.date()).prefetch_related('reservas__usuario').distinct()
-        unassigned_plantillas = PlantillaTurno.objects.filter(profesor_asignado__isnull=True)
+        unassigned_turnos = Turno.objects.filter(
+            profesor_asignado__isnull=True,
+            plantilla__profesor_asignado__isnull=True,
+            fecha__gte=now.date()
+        ).select_related('clase').prefetch_related('reservas__usuario').distinct()
+
+        unassigned_plantillas = PlantillaTurno.objects.filter(
+            is_active=True,
+            profesor_asignado__isnull=True
+        ).select_related('clase')
         
         turnos_libres = [serialize_turno(t) for t in unassigned_turnos]
         plantillas_libres = [serialize_plantilla(p) for p in unassigned_plantillas]
         
-        todas_plantillas = PlantillaTurno.objects.filter(is_active=True).order_by('dia_semana', 'hora_inicio')
+        todas_plantillas = PlantillaTurno.objects.filter(is_active=True).select_related('clase').order_by('dia_semana', 'hora_inicio')
         
         return Response({
-            "profesor_id": str(profesor_id) if profesor_id else None,
+            "profesor_id": str(profesor.id) if profesor else None,
+            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}".strip() if profesor else "",
             "mis_plantillas": [serialize_plantilla(p) for p in plantillas],
             "todas_plantillas": [serialize_plantilla(p) for p in todas_plantillas],
             "horas_mes": len(dictados_mes),
@@ -235,6 +291,8 @@ class ProfesorDashboardView(APIView):
             "turnos_libres": turnos_libres,
             "plantillas_libres": plantillas_libres
         })
+
+
 from rest_framework import status
 from django.db import transaction
 
@@ -244,10 +302,20 @@ class AssignPlantillaView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         try:
-            profesor = request.user.profesor_plugin_profile
+            profesor = None
+            try:
+                profesor = getattr(request.user, 'profesor_plugin_profile', None)
+            except Exception:
+                profesor = None
+
+            if not profesor and request.user.email:
+                profesor = Profesor.objects.filter(email__iexact=request.user.email.strip()).first()
+
+            if not profesor:
+                return Response({"detail": "Perfil de profesor no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
             plantilla = PlantillaTurno.objects.get(id=pk)
             
-            # Create or update assignment
             PlantillaProfesor.objects.update_or_create(
                 plantilla=plantilla,
                 defaults={'profesor': profesor}
@@ -256,13 +324,25 @@ class AssignPlantillaView(APIView):
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class AssignTurnoView(APIView):
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic
     def post(self, request, pk):
         try:
-            profesor = request.user.profesor_plugin_profile
+            profesor = None
+            try:
+                profesor = getattr(request.user, 'profesor_plugin_profile', None)
+            except Exception:
+                profesor = None
+
+            if not profesor and request.user.email:
+                profesor = Profesor.objects.filter(email__iexact=request.user.email.strip()).first()
+
+            if not profesor:
+                return Response({"detail": "Perfil de profesor no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
             turno = Turno.objects.get(id=pk)
             
             TurnoProfesor.objects.update_or_create(
@@ -274,4 +354,28 @@ class AssignTurnoView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class ProfesorReservaAsistenciaView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def put(self, request, pk):
+        if request.user.rol not in ['PROFESOR', 'ADMIN']:
+            return Response({"detail": "No tienes permiso."}, status=403)
+
+        estado = request.data.get('estado')
+        if estado not in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
+            return Response({"detail": "Estado no válido."}, status=400)
+
+        try:
+            from core.models import Reserva
+            reserva = Reserva.objects.get(id=pk)
+            reserva.estado = estado
+            reserva.save(update_fields=['estado'])
+            return Response({
+                "detail": f"Asistencia actualizada a {estado}",
+                "reserva_id": str(reserva.id),
+                "estado": estado
+            })
+        except Reserva.DoesNotExist:
+            return Response({"detail": "Reserva no encontrada."}, status=404)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=400)

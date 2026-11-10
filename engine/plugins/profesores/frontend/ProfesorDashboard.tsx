@@ -168,7 +168,18 @@ export function ProfesorDashboard() {
           </div>
         </motion.div>
       ) : !data ? (
-        <motion.p key="error" className="text-muted p-4">Error cargando el panel.</motion.p>
+        <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center p-8 text-center space-y-4 max-w-md mx-auto my-12 bg-white rounded-3xl border border-primary-light/50 shadow-soft">
+          <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-2xl font-bold">
+            !
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-semibold text-lg text-foreground">No pudimos conectar con el panel</h3>
+            <p className="text-sm text-muted">Asegúrate de tener un usuario de profesor o administrador vinculado a la cuenta.</p>
+          </div>
+          <Button onClick={fetchDashboard} variant="default" size="sm" className="px-6 rounded-xl">
+            Reintentar conexión
+          </Button>
+        </motion.div>
       ) : (
         <motion.div 
           key="content"
