@@ -43,7 +43,8 @@ from ..tools.gestion_tools import (
     enviar_mensaje_whatsapp_alumna_duena,
     reprogramar_o_mover_reserva_alumna_duena,
     mover_o_reprogramar_clase_completa_duena,
-    cancelar_o_eliminar_clase_agenda_duena
+    cancelar_o_eliminar_clase_agenda_duena,
+    responder_propuesta_cancelacion_duena
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -85,7 +86,8 @@ DIRECCION_TOOLS = [
     enviar_mensaje_whatsapp_alumna_duena,
     reprogramar_o_mover_reserva_alumna_duena,
     mover_o_reprogramar_clase_completa_duena,
-    cancelar_o_eliminar_clase_agenda_duena
+    cancelar_o_eliminar_clase_agenda_duena,
+    responder_propuesta_cancelacion_duena
 ]
 
 SYSTEM_PROMPT_DIRECCION = """Sos el Agente Ejecutivo de Dirección y Gestión Operativa de Violett Pilates ✦.
@@ -130,6 +132,15 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
      -> Usá 'cancelar_reserva_alumna_duena'.
    * Si Deby pide ver la agenda, saber qué alumnas hay en cada clase o quiénes asisten a un horario puntual (ej: "¿Quiénes vienen hoy?", "Pasame la agenda de hoy/mañana", "¿Qué alumnas hay en cada clase?", "¿Quiénes están anotadas a las 18 hs?"):
      -> Usá 'consultar_agenda_completa_dia' (pasando 'hora_str' si preguntó por un horario específico).
+
+
+10. CONFIRMACIÓN Y RESPUESTA A PROPUESTAS DE CANCELACIÓN DE CLASES POR BAJO CUPO:
+   * Si el sistema le envió un mensaje a Deby consultándole si desea cancelar una clase vacía o con 1 alumna (o si Deby responde a la consulta diciendo "cancelar", "cancelala", "sí cancelala", "dale de baja", "cancelá esa clase", "ok cancelá", etc.):
+     -> Usá 'responder_propuesta_cancelacion_duena(decision="CANCELAR", fecha_str=..., hora_str=...)'.
+     Esto cancelará formalmente el turno, reintegrará el crédito a la alumna inscripta (si había), avisará a la profesora por WhatsApp para que no viaje y confirmará a Deby.
+   * Si Deby responde "mantener", "no", "no la canceles", "dejala", "dejala abierta", "que se haga igual", etc.:
+     -> Usá 'responder_propuesta_cancelacion_duena(decision="MANTENER", fecha_str=..., hora_str=...)'.
+     Esto mantendrá la clase activa en la grilla y confirmará a Deby que no se dará de baja.
 
 3. FACTURACIÓN Y MÉTRICAS CONTABLES:
    * Si Deby pide facturación, resumen, ingresos o recaudación:

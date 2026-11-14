@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = (
-        "Revisa turnos en las próximas 24 horas y cancela automáticamente aquellos "
-        "que estén vacíos (0 alumnas) o tengan 1 sola alumna inscripta, reintegrando "
-        "el crédito y notificando por WhatsApp."
+        "Revisa turnos en las próximas 24 horas con bajo cupo (menos de 2 alumnas) y, "
+        "en lugar de cancelar automáticamente, le envía una consulta a Deby (la dueña) "
+        "por WhatsApp para que ella confirme o mantenga la clase."
     )
 
     def add_arguments(self, parser):
@@ -48,7 +48,7 @@ class Command(BaseCommand):
         limite_dt = now + datetime.timedelta(hours=horas_limite)
 
         self.stdout.write(
-            f"✦ [AUTO-CANCELACIÓN] Buscando turnos entre {now.strftime('%d/%m %H:%M')} "
+            f"✦ [EVALUACIÓN BAJO CUPO] Buscando turnos entre {now.strftime('%d/%m %H:%M')} "
             f"y {limite_dt.strftime('%d/%m %H:%M')} hs con menos de {min_alumnas} alumnas..."
         )
 
@@ -59,19 +59,20 @@ class Command(BaseCommand):
         ).select_related('clase').order_by('fecha', 'hora_inicio')
 
         client = WhatsAppClient()
-        clases_vacias_canceladas = 0
-        clases_1_alumna_canceladas = 0
-        alumnas_notificadas = 0
-        profesores_notificados = 0
+        consultas_enviadas = 0
+        clases_en_espera = 0
+        clases_mantenidas_por_duena = 0
 
         dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        clean_duena = "5491157691786"
+        conversacion_duena, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_duena)
 
         for turno in turnos:
             clase_dt = datetime.datetime.combine(turno.fecha, turno.hora_inicio)
             if timezone.is_naive(clase_dt):
                 clase_dt = timezone.make_aware(clase_dt, tz)
 
-            # Evaluar solo turnos que caigan dentro de la ventana de < 24hs y que aún no hayan empezado
+            # Evaluar solo turnos dentro de la ventana próxima (<24hs) y que no hayan empezado
             if not (now < clase_dt <= limite_dt):
                 continue
 
@@ -87,142 +88,109 @@ class Command(BaseCommand):
             fecha_str = turno.fecha.strftime('%d/%m')
 
             prof_obj = obtener_profesor_de_turno(turno)
+            prof_nombre = prof_obj.nombre if prof_obj else 'Sin asignar'
             profe_phone = None
             if prof_obj:
                 profe_phone = getattr(prof_obj, 'telefono', None)
                 if not profe_phone and getattr(prof_obj, 'usuario', None):
                     profe_phone = prof_obj.usuario.telefono
 
-            # ==========================================
-            # ESCENARIO A: CLASE COMPLETAMENTE VACÍA (0)
-            # ==========================================
+            # Verificar si ya existe una propuesta de cancelación previa para este turno
+            propuesta_existente = RegistroAccionIA.objects.filter(
+                tipo_accion='PROPUESTA_CANCELACION_BAJO_CUPO',
+                metadata__turno_id=str(turno.id)
+            ).order_by('-created_at').first()
+
+            if propuesta_existente:
+                if propuesta_existente.resultado == 'PENDIENTE':
+                    self.stdout.write(
+                        f"  ⏳ Esperando confirmación de Deby para {dia_nom} {fecha_str} {hora_str} hs ({inscriptas} inscriptas)."
+                    )
+                    clases_en_espera += 1
+                    continue
+                elif propuesta_existente.resultado == 'RECHAZADA':
+                    self.stdout.write(
+                        f"  🛡️ Deby indicó MANTENER clase {dia_nom} {fecha_str} {hora_str} hs activa. No se toca."
+                    )
+                    clases_mantenidas_por_duena += 1
+                    continue
+                elif propuesta_existente.resultado == 'CONFIRMADA':
+                    continue
+
+            # ==============================================================
+            # NO CANCELAR DIRECTO: CONSULTAR A DEBY POR WHATSAPP PRIMERO
+            # ==============================================================
             if inscriptas == 0:
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"• Cancelando clase vacía: {dia_nom} {fecha_str} a las {hora_str} hs ({turno.clase.nombre})"
-                    )
-                )
-
-                if not dry_run:
-                    turno.estado = 'CANCELADO'
-                    turno.save()
-
-                    # Notificar a la profesora para que no viaje al estudio
-                    if profe_phone:
-                        clean_profe = str(profe_phone).replace('+', '').replace(' ', '').replace('-', '')
-                        msg_profe = (
-                            f"¡Hola {prof_obj.nombre}! ✦ Te avisamos que el turno de {turno.clase.nombre} "
-                            f"del {dia_nom} {fecha_str} a las {hora_str} hs fue cancelado automáticamente "
-                            f"al encontrarse sin alumnas inscriptas a menos de 24 hs. ¡Que tengas lindo día!"
-                        )
-                        client.send_text_message(clean_profe, msg_profe)
-                        profesores_notificados += 1
-
-                    RegistroAccionIA.objects.create(
-                        tipo_accion='TURNO_CANCELADO',
-                        descripcion=f"Turno vacío del {fecha_str} {hora_str}hs cancelado automáticamente (<24hs)."
-                    )
-
-                clases_vacias_canceladas += 1
-
-            # ==============================================
-            # ESCENARIO B: CLASE CON 1 SOLA ALUMNA (< min)
-            # ==============================================
-            elif inscriptas == 1:
+                detalle_cupo = "no tiene alumnas inscriptas (0 camillas ocupadas)"
+                nombre_display = None
+                alumna_id = None
+                reserva_id = None
+                alumna_tel = None
+            else:
                 reserva = reservas_confirmadas.first()
                 alumna = reserva.usuario
                 nombre_display = (f"{alumna.nombre} {alumna.apellido}").strip() if alumna else (reserva.nombre_temporal or 'Alumna Manual')
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"• Cancelando clase con 1 sola alumna ({nombre_display}): "
-                        f"{dia_nom} {fecha_str} a las {hora_str} hs ({turno.clase.nombre})"
-                    )
+                detalle_cupo = f"tiene solo 1 alumna inscripta ({nombre_display})"
+                alumna_id = str(alumna.id) if alumna else None
+                reserva_id = str(reserva.id)
+                alumna_tel = alumna.telefono if alumna else reserva.telefono_temporal
+
+            msg_duena = (
+                f"¡Hola Deby! ✦ Consulta de Agenda:\n\n"
+                f"El turno de *{turno.clase.nombre}* del *{dia_nom} {fecha_str} a las {hora_str} hs* (Prof. {prof_nombre}) "
+                f"{detalle_cupo} a menos de 24 hs.\n\n"
+                f"¿Confirmás cancelarla o la dejamos abierta?\n\n"
+                f"👉 Respondé *\"CANCELAR\"* para darla de baja y avisarles, o *\"MANTENER\"* para dejarla activa ✨."
+            )
+
+            self.stdout.write(
+                self.style.WARNING(
+                    f"• Consultando a Deby para clase con bajo cupo: {dia_nom} {fecha_str} {hora_str} hs ({inscriptas} inscriptas)"
                 )
+            )
 
-                if not dry_run:
-                    with transaction.atomic():
-                        turno.estado = 'CANCELADO'
-                        turno.save()
+            if not dry_run:
+                try:
+                    client.send_text_message(clean_duena, msg_duena)
 
-                        reserva.estado = 'CANCELADA_TIEMPO'
-                        reserva.save()
-
-                        # Reintegrar crédito a la alumna si es registrada
-                        if alumna:
-                            try:
-                                from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
-                                rm = ReservaMembresia.objects.filter(reserva=reserva).first()
-                                if rm:
-                                    sub = rm.suscripcion
-                                    sub.clases_restantes += 1
-                                    if sub.estado == 'AGOTADO':
-                                        sub.estado = 'ACTIVO'
-                                    sub.save()
-                                    rm.delete()
-                                else:
-                                    sub = Suscripcion.objects.filter(
-                                        usuario=alumna,
-                                        estado__in=['ACTIVO', 'AGOTADO']
-                                    ).order_by('-fecha_inicio').first()
-                                    if sub:
-                                        sub.clases_restantes += 1
-                                        if sub.estado == 'AGOTADO':
-                                            sub.estado = 'ACTIVO'
-                                        sub.save()
-                            except Exception as e:
-                                logger.error(f"Error reintegrando crédito a {alumna}: {e}")
-
-                        registry.execute('reserva_cancelada_a_tiempo', reserva)
-                        registry.execute('turno_cancelado_por_falta_cupo', turno)
-
-                    # Notificar a la alumna por WhatsApp con tono Pilates Princess
-                    tel_raw = alumna.telefono if alumna else reserva.telefono_temporal
-                    clean_phone = tel_raw.replace('+', '').replace(' ', '').replace('-', '') if tel_raw else ''
-                    if clean_phone and len(clean_phone) >= 8:
-                        conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
-                        nombre_alumna = alumna.nombre.strip() if (alumna and alumna.nombre) else (reserva.nombre_temporal.strip() if reserva.nombre_temporal else "Hermosa")
-
-                        msg_alumna = (
-                            f"¡Hola {nombre_alumna}! ✦ Te escribimos desde Violett Pilates.\n\n"
-                            f"Te contamos que para el turno de {turno.clase.nombre} del {dia_nom} {fecha_str} "
-                            f"a las {hora_str} hs no se alcanzó el cupo mínimo requerido para dictar la clase (mínimo 2 alumnas).\n\n"
-                            f"Por este motivo, la clase fue cancelada y tu crédito ya fue reintegrado automáticamente a tu abono ✦. "
-                            f"Tenés tu clase lista para reprogramar en el horario que más cómodo te quede.\n\n"
-                            f"Si querés, decime qué día y horario preferís y te paso las opciones disponibles para anotarte ✨."
-                        )
-                        client.send_text_message(clean_phone, msg_alumna)
-                        MensajeWhatsAppLog.objects.create(
-                            conversacion=conversacion,
-                            direccion='SALIENTE',
-                            agente_responsable='cancelacion_bajo_cupo',
-                            texto=msg_alumna,
-                            tools_ejecutadas=[f"cancelacion_turno_{turno.id}"]
-                        )
-                        alumnas_notificadas += 1
-
-                    # Notificar a la profesora
-                    if profe_phone:
-                        clean_profe = str(profe_phone).replace('+', '').replace(' ', '').replace('-', '')
-                        msg_profe = (
-                            f"¡Hola {prof_obj.nombre}! ✦ Te avisamos que el turno de {turno.clase.nombre} "
-                            f"del {dia_nom} {fecha_str} a las {hora_str} hs fue cancelado por no alcanzar el "
-                            f"cupo mínimo (1 sola alumna inscripta). La alumna fue notificada y su crédito reintegrado."
-                        )
-                        client.send_text_message(clean_profe, msg_profe)
-                        profesores_notificados += 1
+                    MensajeWhatsAppLog.objects.create(
+                        conversacion=conversacion_duena,
+                        direccion='SALIENTE',
+                        agente_responsable='consulta_cancelacion_duena',
+                        texto=msg_duena,
+                        tools_ejecutadas=[f"propuesta_cancelacion_turno_{turno.id}"]
+                    )
 
                     RegistroAccionIA.objects.create(
-                        tipo_accion='TURNO_CANCELADO',
-                        descripcion=f"Turno {fecha_str} {hora_str}hs cancelado por bajo cupo (1 alumna: {alumna.nombre}). Crédito devuelto."
+                        conversacion=conversacion_duena,
+                        tipo_accion='PROPUESTA_CANCELACION_BAJO_CUPO',
+                        resultado='PENDIENTE',
+                        descripcion=f"Consulta enviada a Deby para confirmar cancelación de {dia_nom} {fecha_str} {hora_str}hs ({inscriptas} inscriptas).",
+                        metadata={
+                            'turno_id': str(turno.id),
+                            'fecha': turno.fecha.strftime('%Y-%m-%d'),
+                            'hora': turno.hora_inicio.strftime('%H:%M'),
+                            'dia_nom': dia_nom,
+                            'fecha_str': fecha_str,
+                            'hora_str': hora_str,
+                            'clase_nombre': turno.clase.nombre,
+                            'inscriptas': inscriptas,
+                            'profesor_nombre': prof_nombre,
+                            'profesor_tel': profe_phone,
+                            'alumna_nombre': nombre_display,
+                            'alumna_id': alumna_id,
+                            'reserva_id': reserva_id,
+                            'alumna_tel': alumna_tel
+                        }
                     )
-
-                clases_1_alumna_canceladas += 1
+                    consultas_enviadas += 1
+                except Exception as e:
+                    logger.error(f"Error enviando consulta de cancelación a Deby: {e}")
 
         resumen = (
-            f"✦ [AUTO-CANCELACIÓN FINALIZADA] Clases vacías canceladas: {clases_vacias_canceladas} | "
-            f"Clases de 1 alumna canceladas: {clases_1_alumna_canceladas} | "
-            f"Alumnas notificadas y reintegradas: {alumnas_notificadas} | "
-            f"Profesores avisados: {profesores_notificados}"
+            f"✦ [EVALUACIÓN FINALIZADA] Nuevas consultas enviadas a Deby: {consultas_enviadas} | "
+            f"En espera de respuesta: {clases_en_espera} | "
+            f"Mantenidas por decisión de Deby: {clases_mantenidas_por_duena}"
         )
         self.stdout.write(self.style.SUCCESS(resumen))
         logger.info(resumen)

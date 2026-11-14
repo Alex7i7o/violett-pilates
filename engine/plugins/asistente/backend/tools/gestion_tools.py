@@ -1981,3 +1981,144 @@ def cancelar_o_eliminar_clase_agenda_duena(fecha_str: str, hora_str: str, cancel
     except Exception as e:
         logger.error(f"Error cancelando clase de agenda: {e}", exc_info=True)
         return f"✦ Ocurrió un error al cancelar la clase de la agenda: {e}"
+
+@tool
+def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", hora_str: str = "") -> str:
+    """
+    Usa esta herramienta cuando Deby responda a una consulta o propuesta del sistema sobre
+    si cancelar o mantener una clase con bajo cupo (0 o 1 alumna) en las próximas 24hs.
+
+    Parámetros:
+    - decision: "CANCELAR" para dar de baja la clase, reintegrar a la alumna (si había) y avisar a la profesora.
+                "MANTENER" para dejar la clase activa en la agenda tal como está.
+    - fecha_str: (Opcional) Fecha de la clase si Deby la menciona (ej: 'hoy', 'mañana', 'viernes').
+    - hora_str: (Opcional) Horario de la clase si Deby lo menciona (ej: '18hs', '10:00').
+    """
+    try:
+        from core.models import Turno, Reserva
+        from plugins.asistente.backend.models import RegistroAccionIA, ConversacionWhatsApp, MensajeWhatsAppLog
+        from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
+        from backend_core.hooks import registry
+
+        # 1. Buscar propuestas pendientes de respuesta de Deby
+        propuestas = RegistroAccionIA.objects.filter(
+            tipo_accion='PROPUESTA_CANCELACION_BAJO_CUPO',
+            resultado='PENDIENTE'
+        ).order_by('-created_at')
+
+        if not propuestas.exists():
+            if decision.upper() in ['CANCELAR', 'BAJA', 'BORRAR', 'SI', 'SÍ'] and hora_str:
+                return cancelar_o_eliminar_clase_agenda_duena(fecha_str=fecha_str or 'hoy', hora_str=hora_str)
+            return (
+                "✦ No encontré ninguna propuesta de cancelación pendiente para confirmar. "
+                "Si querés cancelar o mantener una clase específica de la agenda, avisame el día y horario puntual."
+            )
+
+        propuesta_elegida = None
+        if hora_str:
+            hora_norm = hora_str.replace('hs', '').replace(':', '').strip()
+            for p in propuestas:
+                p_hora = p.metadata.get('hora', '').replace(':', '').strip()
+                if hora_norm in p_hora or p_hora in hora_norm:
+                    propuesta_elegida = p
+                    break
+        
+        if not propuesta_elegida:
+            propuesta_elegida = propuestas.first()
+
+        meta = propuesta_elegida.metadata or {}
+        turno_id = meta.get('turno_id')
+        dia_nom = meta.get('dia_nom', 'Día')
+        f_str = meta.get('fecha_str', meta.get('fecha', ''))
+        h_str = meta.get('hora_str', meta.get('hora', ''))
+        clase_nom = meta.get('clase_nombre', 'Pilates Reformer')
+        prof_nom = meta.get('profesor_nombre', 'la profesora')
+        prof_tel = meta.get('profesor_tel')
+        inscriptas = meta.get('inscriptas', 0)
+        alumna_nombre = meta.get('alumna_nombre')
+        alumna_tel = meta.get('alumna_tel')
+
+        client = WhatsAppClient()
+
+        # CASO 1: DEBY DECIDE CANCELAR LA CLASE
+        if decision.upper() in ['CANCELAR', 'BAJA', 'BORRAR', 'SI', 'SÍ']:
+            turno = Turno.objects.filter(id=turno_id).first() if turno_id else None
+            if turno and turno.estado != 'CANCELADO':
+                turno.estado = 'CANCELADO'
+                turno.save(update_fields=['estado'])
+
+                if inscriptas >= 1:
+                    reservas = turno.reservas.filter(estado='CONFIRMADA')
+                    for r in reservas:
+                        r.estado = 'CANCELADA_TIEMPO'
+                        r.save(update_fields=['estado'])
+                        alumna = r.usuario
+                        if alumna:
+                            try:
+                                from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+                                rm = ReservaMembresia.objects.filter(reserva=r).first()
+                                if rm:
+                                    sub = rm.suscripcion
+                                    sub.clases_restantes += 1
+                                    if sub.estado == 'AGOTADO':
+                                        sub.estado = 'ACTIVO'
+                                    sub.save()
+                                    rm.delete()
+                                else:
+                                    sub = Suscripcion.objects.filter(
+                                        usuario=alumna,
+                                        estado__in=['ACTIVO', 'AGOTADO']
+                                    ).order_by('-fecha_inicio').first()
+                                    if sub:
+                                        sub.clases_restantes += 1
+                                        if sub.estado == 'AGOTADO':
+                                            sub.estado = 'ACTIVO'
+                                        sub.save()
+                            except Exception as e:
+                                logger.error(f"Error reintegrando credito a alumna: {e}")
+
+                        try:
+                            registry.execute('reserva_cancelada_a_tiempo', r)
+                        except Exception:
+                            pass
+
+                        tel_alumna_clean = alumna_tel.replace('+', '').replace(' ', '').replace('-', '') if alumna_tel else ''
+                        if tel_alumna_clean and len(tel_alumna_clean) >= 8:
+                            msg_alumna = (
+                                f"¡Hola {alumna_nombre or 'hermosa'}! ✦ Te escribimos desde Violett Pilates.\n\n"
+                                f"Te contamos que para el turno de {clase_nom} del {dia_nom} {f_str} a las {h_str} hs "
+                                f"no se alcanzó el cupo mínimo requerido (mínimo 2 alumnas).\n\n"
+                                f"La clase fue cancelada y tu crédito ya fue reintegrado automáticamente a tu abono ✦. "
+                                f"Tenés tu clase disponible para reprogramar en el horario que prefieras ✨."
+                            )
+                            client.send_text_message(tel_alumna_clean, msg_alumna)
+
+                if prof_tel:
+                    clean_prof_tel = str(prof_tel).replace('+', '').replace(' ', '').replace('-', '')
+                    msg_prof = (
+                        f"¡Hola {prof_nom}! ✦ Te avisamos que el turno de {clase_nom} del {dia_nom} {f_str} "
+                        f"a las {h_str} hs fue cancelado por baja inscripción. ¡Que tengas lindo día!"
+                    )
+                    client.send_text_message(clean_prof_tel, msg_prof)
+
+            propuesta_elegida.resultado = 'CONFIRMADA'
+            propuesta_elegida.save(update_fields=['resultado'])
+
+            detalle_alumna_res = f"\n• Le reintegramos el crédito a *{alumna_nombre}* y le enviamos el aviso por WhatsApp." if inscriptas >= 1 else "\n• La clase estaba sin alumnas."
+            return (
+                f"✦ ¡Listo Deby! Confirmé la cancelación de la clase de *{clase_nom}* del *{dia_nom} {f_str} a las {h_str} hs* ✦\n"
+                f"{detalle_alumna_res}\n"
+                f"• Le avisamos a la profe {prof_nom} para que no viaje al estudio."
+            )
+
+        # CASO 2: DEBY DECIDE MANTENER LA CLASE
+        else:
+            propuesta_elegida.resultado = 'RECHAZADA'
+            propuesta_elegida.save(update_fields=['resultado'])
+            return (
+                f"✦ ¡Perfecto Deby! La clase de *{clase_nom}* del *{dia_nom} {f_str} a las {h_str} hs* "
+                f"queda *MANTENIDA* y activa en la grilla. No se cancelará ✨."
+            )
+    except Exception as e:
+        logger.error(f"Error procesando respuesta de cancelacion de Deby: {e}", exc_info=True)
+        return f"✦ Ocurrió un error al procesar tu decisión: {e}"
