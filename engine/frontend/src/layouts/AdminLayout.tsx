@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
 import { getPluginAdminSidebarItems } from '../core/pluginLoader';
 import { useClientConfig } from '../context/ClientConfigContext';
-import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings, MessageSquare, BarChart3 } from 'lucide-react';
+import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings, MessageSquare, BarChart3, Database } from 'lucide-react';
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -16,6 +16,41 @@ export function AdminLayout() {
   useEffect(() => { 
     setIsMoreMenuOpen(false); 
   }, [location.pathname]);
+
+    const [isDownloadingBackup, setIsDownloadingBackup] = useState(false);
+
+  const handleDownloadBackup = async () => {
+    setIsDownloadingBackup(true);
+    try {
+      const response = await api.get('/admin/backup/descargar/', {
+        responseType: 'blob'
+      });
+      
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `backup_violett_${new Date().toISOString().slice(0, 10)}.json.gz`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      const blob = new Blob([response.data], { type: 'application/gzip' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error al descargar backup:', error);
+      alert('No se pudo generar la copia de seguridad. Por favor, intente nuevamente.');
+    } finally {
+      setIsDownloadingBackup(false);
+    }
+  };
 
   const handleLogout = async () => {
     const baseUrl = import.meta.env.BASE_URL || '/';
@@ -124,7 +159,17 @@ export function AdminLayout() {
           <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett Isotipo" className="w-40 h-40 object-contain drop-shadow-lg" />
         </div>
 
-        <div className="p-4 border-t border-primary-light">
+        <div className="p-4 border-t border-primary-light flex flex-col gap-1.5">
+          <button 
+            onClick={handleDownloadBackup}
+            disabled={isDownloadingBackup}
+            className="flex items-center gap-3 w-full py-2.5 px-4 text-sm font-medium text-slate-700 hover:text-primary-main hover:bg-primary-light/50 rounded-xl transition-all text-left disabled:opacity-50"
+            title="Descargar copia de seguridad de la base de datos"
+          >
+            <Database className="w-5 h-5 text-primary-main shrink-0" />
+            <span>{isDownloadingBackup ? 'Generando Backup...' : 'Descargar Backup'}</span>
+          </button>
+          
           <button 
             onClick={handleLogout}
             className="flex items-center gap-3 w-full py-3 px-4 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left"
@@ -251,7 +296,21 @@ export function AdminLayout() {
                   );
                 })}
 
-                <div className="pt-4 mt-4 border-t border-primary-light/40">
+                <div className="pt-4 mt-4 border-t border-primary-light/40 flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      handleDownloadBackup();
+                      setIsMoreMenuOpen(false);
+                    }}
+                    disabled={isDownloadingBackup}
+                    className="flex items-center gap-4 w-full p-4 rounded-2xl bg-primary-light/30 text-primary-main font-medium active:scale-[0.98] transition-transform disabled:opacity-50"
+                  >
+                    <div className="p-2 rounded-xl bg-white shadow-sm">
+                      <Database className="w-5 h-5 text-primary-main" />
+                    </div>
+                    <span className="text-base">{isDownloadingBackup ? 'Generando Copia...' : 'Descargar Backup de BD'}</span>
+                  </button>
+
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-4 w-full p-4 rounded-2xl bg-rose-50 text-rose-600 font-medium active:scale-[0.98] transition-transform"

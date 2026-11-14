@@ -5,6 +5,7 @@ from .views import (
     TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, GoogleLogin, ClientHistoryView
 )
 from .admin_views import (
+    AdminBackupDownloadView,
     AdminAgendaView,
     DashboardStatsView,
     AdminTurnoViewSet,
@@ -39,6 +40,7 @@ urlpatterns = [
     path('reservas/historial/', ClientHistoryView.as_view(), name='client_history'),
     path('admin/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('admin/config/', ConfiguracionView.as_view(), name='admin-config'),
+    path('admin/backup/descargar/', AdminBackupDownloadView.as_view(), name='admin-backup-download'),
 
     # Meta Data Deletion & Ley 25.326 endpoints
     path('eliminar-datos/', DataDeletionCallbackView.as_view(), name='data_deletion_callback'),

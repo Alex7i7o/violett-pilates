@@ -602,3 +602,60 @@ class ConfiguracionView(views.APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
+
+
+class AdminBackupDownloadView(views.APIView):
+    """
+    Endpoint administrativo para descargar una copia de seguridad comprimida
+    de toda la base de datos de produccion (JSON.GZ) con un solo clic.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        import gzip
+        import io
+        from django.core.management import call_command
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        try:
+            buffer = io.StringIO()
+            try:
+                call_command(
+                    'dumpdata',
+                    natural_foreign=True,
+                    natural_primary=True,
+                    exclude=['contenttypes', 'auth.permission'],
+                    stdout=buffer
+                )
+            except Exception:
+                # Respaldo granular de aplicaciones del ecosistema FireSeed
+                apps_to_dump = [
+                    'core', 'membresias', 'pagos', 'recurrencias',
+                    'profesores', 'asistente', 'comunicaciones',
+                    'fichas_medicas', 'resenas'
+                ]
+                buffer = io.StringIO()
+                call_command(
+                    'dumpdata',
+                    *apps_to_dump,
+                    natural_foreign=True,
+                    natural_primary=True,
+                    stdout=buffer
+                )
+
+            raw_bytes = buffer.getvalue().encode('utf-8')
+            compressed_bytes = gzip.compress(raw_bytes)
+
+            timestamp = timezone.now().strftime('%Y-%m-%d_%H%M%S')
+            filename = f"backup_violett_{timestamp}.json.gz"
+
+            response = HttpResponse(compressed_bytes, content_type='application/gzip')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = len(compressed_bytes)
+            return response
+        except Exception as e:
+            return Response(
+                {'error': f'Error al generar la copia de seguridad: {str(e)}'},
+                status=500
+            )
