@@ -1,3 +1,4 @@
+import { RefreshCw, Calendar, Plus } from 'lucide-react';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { MultiSelectAlumnos } from '../../components/admin/MultiSelectAlumnos';
 import React, { useState, useEffect } from 'react';
@@ -6,6 +7,7 @@ import { toast } from "sonner";
 import { Modal } from '../../components/ui/Modal';
 import { 
   getAdminAgenda, 
+  sincronizarEsquemaTurnos,
   updateAsistencia, 
   createAdminTurno, 
   updateAdminTurno, 
@@ -28,6 +30,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function AgendaAdmin() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [turnos, setTurnos] = useState<TurnoAdmin[]>([]);
+  const [sincronizando, setSincronizando] = useState(false);
+
+  const handleSincronizarEsquema = async () => {
+    try {
+      setSincronizando(true);
+      const res = await sincronizarEsquemaTurnos();
+      toast.success(res.data.detail || 'Esquema sincronizado exitosamente');
+      await fetchAgenda();
+    } catch (e: any) {
+      toast.error('Error al sincronizar el esquema');
+    } finally {
+      setSincronizando(false);
+    }
+  };
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
   const toggleExpand = (id: string) => {
@@ -390,7 +406,21 @@ export function AgendaAdmin() {
           <h2 className="text-3xl font-bold text-primary-main">Agenda</h2>
           <p className="text-xs text-muted mt-0.5">Control diario de clases, asistencia y apartado de camillas.</p>
         </div>
-        <Button onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00", alumnos: [] }); setIsModalOpen(true); }}>+ Agregar Clase</Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleSincronizarEsquema} 
+            disabled={sincronizando} 
+            className="flex items-center gap-1.5 border-primary-light text-primary-main hover:bg-primary-light/40"
+            title="Sincronizar y generar turnos desde el Esquema Semanal"
+          >
+            <RefreshCw className={`w-4 h-4 ${sincronizando ? 'animate-spin' : ''}`} />
+            <span>{sincronizando ? 'Sincronizando...' : 'Sincronizar Esquema'}</span>
+          </Button>
+          <Button onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00", alumnos: [] }); setIsModalOpen(true); }}>
+            + Agregar Clase
+          </Button>
+        </div>
       </div>
       
       <Card>
@@ -414,7 +444,26 @@ export function AgendaAdmin() {
             {[1,2,3,4].map(i => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       ) : turnos.length === 0 ? (
-        <p className="text-muted py-4">No hay turnos para esta fecha.</p>
+        <Card className="border-dashed border-2 border-primary-light/60 my-4">
+          <CardContent className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-primary-light/40 flex items-center justify-center text-primary-main">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground text-base">No hay turnos creados para esta fecha</p>
+              <p className="text-xs text-muted max-w-sm">Si tienes clases configuradas en el Esquema Semanal para este día, puedes sincronizarlas al instante con un solo clic.</p>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={handleSincronizarEsquema} disabled={sincronizando} className="bg-primary-main text-white text-xs py-2 px-4 rounded-xl flex items-center gap-2">
+                <RefreshCw className={`w-3.5 h-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
+                {sincronizando ? 'Sincronizando...' : 'Generar clases desde Esquema'}
+              </Button>
+              <Button variant="outline" onClick={() => { setEditingTurnoId(null); setFormData({ clase: "", profesor: "", fecha: fecha, hora_inicio: "10:00", hora_fin: "11:00", alumnos: [] }); setIsModalOpen(true); }} className="text-xs py-2 px-4 rounded-xl">
+                + Crear Clase Manual
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="p-0">

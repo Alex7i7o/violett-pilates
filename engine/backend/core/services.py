@@ -105,6 +105,61 @@ def cancelar_reserva(turno_id, usuario):
         registry.execute('reserva_cancelada_tardia', reserva)
         return True, f"Reserva cancelada de forma tardia (<{horas_limite}hs)."
 
+def asegurar_turnos_para_fecha(target_date):
+    """
+    Garantiza de forma inmediata y bajo demanda que para una fecha dada (ej: hoy viernes 13/11/2026),
+    todos los horarios activos del Esquema Semanal existan en la Agenda
+    con sus profesores asignados, cupos y reservas fijas recurrentes.
+    """
+    import datetime
+    from .models import Turno, PlantillaTurno
+    
+    if isinstance(target_date, str):
+        from django.utils.dateparse import parse_date
+        target_date = parse_date(target_date)
+        
+    if not target_date:
+        return 0
+
+    dia_semana = target_date.isoweekday()  # 1=Lunes .. 7=Domingo
+    plantillas = PlantillaTurno.objects.filter(is_active=True, dia_semana=dia_semana).select_related('clase')
+    
+    nuevos = 0
+    for p in plantillas:
+        turnos_existentes = Turno.objects.filter(
+            clase=p.clase,
+            fecha=target_date,
+            hora_inicio=p.hora_inicio
+        )
+        
+        # Si fue cancelado puntualmente por la administración para esta fecha, respetar la cancelación
+        if turnos_existentes.filter(estado='CANCELADO').exists():
+            continue
+            
+        if not turnos_existentes.exists():
+            nuevo_turno = Turno.objects.create(
+                plantilla=p,
+                clase=p.clase,
+                fecha=target_date,
+                hora_inicio=p.hora_inicio,
+                hora_fin=p.hora_fin,
+                cupo_actual=p.clase.cupo_maximo,
+                estado='PROGRAMADO'
+            )
+            registry.execute('after_turno_created', {}, instance=nuevo_turno, plantilla=p)
+            registry.execute('turno_creado_desde_plantilla', nuevo_turno)
+            nuevos += 1
+        else:
+            t = turnos_existentes.first()
+            if not t.plantilla_id:
+                t.plantilla = p
+                t.save(update_fields=['plantilla'])
+                
+    if nuevos > 0:
+        print(f"[{timezone.now().strftime('%H:%M:%S')}] asegurar_turnos_para_fecha ({target_date}): {nuevos} turnos creados.")
+    return nuevos
+
+
 def generar_turnos_desde_plantillas():
     import datetime
     from .models import Turno, PlantillaTurno, Reserva
@@ -112,7 +167,7 @@ def generar_turnos_desde_plantillas():
     now = timezone.localdate()
     end_date = now + datetime.timedelta(days=30)
     
-    plantillas = PlantillaTurno.objects.filter(is_active=True)
+    plantillas = PlantillaTurno.objects.filter(is_active=True).select_related('clase')
     nuevos_turnos = 0
     
     for plantilla in plantillas:
@@ -152,6 +207,7 @@ def generar_turnos_desde_plantillas():
             
     if nuevos_turnos > 0:
         print(f"[{timezone.now().strftime('%H:%M:%S')}] Generador de Plantillas: {nuevos_turnos} turnos nuevos.")
+    return nuevos_turnos
 def enviar_email_bienvenida(usuario, raw_password):
     from django.core.mail import EmailMultiAlternatives
     from django.template.loader import render_to_string
