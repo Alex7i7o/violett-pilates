@@ -86,7 +86,7 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='sincronizar-esquema')
     def sincronizar_esquema(self, request):
         from .services import generar_turnos_desde_plantillas
-        nuevos = generar_turnos_desde_plantillas()
+        nuevos = generar_turnos_desde_plantillas(forzar=True)
         return Response({
             'detail': f'Esquema sincronizado exitosamente. Se generaron {nuevos} turnos en la agenda.',
             'nuevos_turnos': nuevos

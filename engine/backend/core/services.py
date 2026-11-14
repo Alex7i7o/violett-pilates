@@ -105,7 +105,7 @@ def cancelar_reserva(turno_id, usuario):
         registry.execute('reserva_cancelada_tardia', reserva)
         return True, f"Reserva cancelada de forma tardia (<{horas_limite}hs)."
 
-def asegurar_turnos_para_fecha(target_date):
+def asegurar_turnos_para_fecha(target_date, forzar: bool = False):
     """
     Garantiza de forma inmediata y bajo demanda que para una fecha dada (ej: hoy viernes 13/11/2026),
     todos los horarios activos del Esquema Semanal existan en la Agenda
@@ -132,8 +132,16 @@ def asegurar_turnos_para_fecha(target_date):
             hora_inicio=p.hora_inicio
         )
         
-        # Si fue cancelado puntualmente por la administración para esta fecha, respetar la cancelación
-        if turnos_existentes.filter(estado='CANCELADO').exists():
+        # Si fue cancelado puntualmente por la administración para esta fecha
+        t_cancelados = turnos_existentes.filter(estado='CANCELADO')
+        if t_cancelados.exists():
+            if forzar:
+                t_canc = t_cancelados.first()
+                t_canc.estado = 'PROGRAMADO'
+                t_canc.cupo_actual = p.clase.cupo_maximo
+                t_canc.save(update_fields=['estado', 'cupo_actual'])
+                registry.execute('after_turno_created', {}, instance=t_canc, plantilla=p)
+                nuevos += 1
             continue
             
         if not turnos_existentes.exists():
@@ -160,7 +168,7 @@ def asegurar_turnos_para_fecha(target_date):
     return nuevos
 
 
-def generar_turnos_desde_plantillas(dias: int = 30):
+def generar_turnos_desde_plantillas(dias: int = 30, forzar: bool = False):
     import datetime
     from .models import Turno, PlantillaTurno, Reserva
     
@@ -180,9 +188,15 @@ def generar_turnos_desde_plantillas(dias: int = 30):
                     hora_inicio=plantilla.hora_inicio
                 )
                 
-                if turnos_existentes.filter(estado='CANCELADO').exists():
-                    # Turno puntual explícitamente cancelado por administración.
-                    # No regenerar ni reactivar para esta fecha específica.
+                t_cancelados = turnos_existentes.filter(estado='CANCELADO')
+                if t_cancelados.exists():
+                    if forzar:
+                        t_canc = t_cancelados.first()
+                        t_canc.estado = 'PROGRAMADO'
+                        t_canc.cupo_actual = plantilla.clase.cupo_maximo
+                        t_canc.save(update_fields=['estado', 'cupo_actual'])
+                        registry.execute('after_turno_created', {}, instance=t_canc, plantilla=plantilla)
+                        nuevos_turnos += 1
                     pass
                 elif turnos_existentes.exists():
                     turno_existente = turnos_existentes.first()
