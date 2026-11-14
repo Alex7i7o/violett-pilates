@@ -160,12 +160,12 @@ def asegurar_turnos_para_fecha(target_date):
     return nuevos
 
 
-def generar_turnos_desde_plantillas():
+def generar_turnos_desde_plantillas(dias: int = 30):
     import datetime
     from .models import Turno, PlantillaTurno, Reserva
     
     now = timezone.localdate()
-    end_date = now + datetime.timedelta(days=30)
+    end_date = now + datetime.timedelta(days=dias)
     
     plantillas = PlantillaTurno.objects.filter(is_active=True).select_related('clase')
     nuevos_turnos = 0
