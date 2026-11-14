@@ -81,7 +81,6 @@ export const deleteAdminProfesor = (id: string) => api.delete(`/admin/profesores
 export const reenviarAccesoProfesor = (id: string) => api.post(`/admin/profesores/${id}/reenviar-acceso/`);
 
 export const getAdminAgenda = (fecha: string) => api.get<TurnoAdmin[]>(`/admin/agenda/?fecha=${fecha}`);
-export const sincronizarEsquemaTurnos = () => api.post<{ detail: string; nuevos_turnos: number }>('/admin/turnos/sincronizar-esquema/');
 export const createAdminTurno = (data: any) => api.post('/admin/turnos/', data);
 export const updateAdminTurno = (id: string, data: any) => api.patch(`/admin/turnos/${id}/`, data);
 export const deleteAdminTurno = (id: string, future?: boolean) => api.delete(`/admin/turnos/${id}/${future ? '?future=true' : ''}`);

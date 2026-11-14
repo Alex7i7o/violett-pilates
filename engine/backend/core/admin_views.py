@@ -83,15 +83,6 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                 
         return Response(status=204)
 
-    @action(detail=False, methods=['post'], url_path='sincronizar-esquema')
-    def sincronizar_esquema(self, request):
-        from .services import generar_turnos_desde_plantillas
-        nuevos = generar_turnos_desde_plantillas(forzar=True)
-        return Response({
-            'detail': f'Esquema sincronizado exitosamente. Se generaron {nuevos} turnos en la agenda.',
-            'nuevos_turnos': nuevos
-        })
-
     @action(detail=True, methods=['post'], url_path='apartar-manual')
     def apartar_manual(self, request, pk=None):
         turno = self.get_object()
@@ -569,15 +560,6 @@ class AdminAgendaView(views.APIView):
             fecha = timezone.localdate()
         else:
             fecha = parse_date(fecha_str)
-
-        # Garantizar que los turnos del esquema semanal existan para esta fecha
-        if fecha:
-            from .services import asegurar_turnos_para_fecha
-            try:
-                asegurar_turnos_para_fecha(fecha)
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Error asegurando turnos para fecha {fecha}: {e}")
 
         turnos = Turno.objects.select_related('clase').prefetch_related('reservas__usuario').filter(fecha=fecha, estado__in=['PROGRAMADO', 'CONFIRMADO', 'COMPLETADO']).order_by('hora_inicio')
         serializer = AdminTurnoSerializer(turnos, many=True)

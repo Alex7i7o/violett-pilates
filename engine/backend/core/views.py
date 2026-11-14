@@ -68,13 +68,6 @@ class TurnosDisponiblesView(APIView):
         today = timezone.localdate(now)
         current_time = timezone.localtime(now).time()
         
-        # Asegurar generación de turnos desde el esquema para hoy si no existen aún
-        try:
-            from .services import asegurar_turnos_para_fecha
-            asegurar_turnos_para_fecha(today)
-        except Exception:
-            pass
-
         from django.db.models import Q
         turnos = Turno.objects.select_related('clase').prefetch_related('reservas').filter(
             Q(fecha__gt=today) | Q(fecha=today, hora_inicio__gt=current_time),
