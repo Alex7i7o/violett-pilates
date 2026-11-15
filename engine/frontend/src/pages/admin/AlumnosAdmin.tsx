@@ -14,7 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { InputField } from '../../components/ui/InputField';
 import { SelectField } from '../../components/ui/SelectField';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users } from 'lucide-react';
+import { Users, Pencil, CalendarCheck } from 'lucide-react';
 import { EditStudentModal } from './components/EditStudentModal';
 
 export function AlumnosAdmin() {
@@ -35,6 +35,7 @@ export function AlumnosAdmin() {
   const [creating, setCreating] = useState(false);
   
   const [selectedAlumno, setSelectedAlumno] = useState<any>(null);
+  const [modalTabGroup, setModalTabGroup] = useState<'edicion' | 'clases' | 'all'>('edicion');
   const [alumnoToDelete, setAlumnoToDelete] = useState<string | null>(null);
   
   const [planes, setPlanes] = useState<any[]>([]);
@@ -192,7 +193,7 @@ export function AlumnosAdmin() {
                 >
                   <Card 
                     className="h-full flex flex-col justify-between hover:shadow-glow transition-shadow cursor-pointer" 
-                    onClick={() => setSelectedAlumno(alumno)}
+                    onClick={() => { setModalTabGroup('edicion'); setSelectedAlumno(alumno); }}
                   >
                     <CardContent className="pt-6">
                       <h3 className="text-xl font-bold text-foreground">{alumno.nombre || 'Sin Nombre'} {alumno.apellido || ''}</h3>
@@ -260,9 +261,33 @@ export function AlumnosAdmin() {
                         })()}
                       </div>
                     </CardContent>
-                    <div className="p-6 pt-0">
-                      <Button variant="outline" className="w-full">
-                        Ficha Completa / Asignar Plan
+                    <div className="p-6 pt-0 grid grid-cols-2 gap-2" onClick={e => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalTabGroup('edicion');
+                          setSelectedAlumno(alumno);
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl border border-neutral-200 hover:border-primary-main hover:bg-primary-light/10 hover:text-primary-main transition-all font-semibold text-xs shadow-2xs"
+                        title="Editar Perfil y Plan"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-primary-main shrink-0" />
+                        <span>Editar</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalTabGroup('clases');
+                          setSelectedAlumno(alumno);
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl border border-neutral-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-900 transition-all font-semibold text-xs shadow-2xs"
+                        title="Ver Horarios Fijos y Clases Asistidas"
+                      >
+                        <CalendarCheck className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                        <span className="truncate">Horarios y Clases</span>
                       </Button>
                     </div>
                   </Card>
@@ -279,6 +304,7 @@ export function AlumnosAdmin() {
         isOpen={!!selectedAlumno}
         onClose={() => setSelectedAlumno(null)}
         alumno={selectedAlumno}
+        tabGroup={modalTabGroup}
         onUpdate={(shouldClose: boolean = false) => {
           fetchAlumnos();
           if (shouldClose) {
