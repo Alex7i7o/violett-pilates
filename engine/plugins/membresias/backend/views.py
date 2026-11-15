@@ -203,26 +203,28 @@ class CancelarClasesFuturasView(APIView):
         canceladas = 0
         with transaction.atomic():
             for r in futuras:
-                r.estado = 'CANCELADA_TIEMPO'
+                r.estado = 'CANCELADA_TIEMPO' if devolver_creditos else 'CANCELADA_TARDIA'
                 r.save()
                 turno = r.turno
                 turno.cupo_actual += 1
                 turno.save()
+
+                if devolver_creditos:
+                    try:
+                        registry.execute('reserva_cancelada_a_tiempo', r)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        registry.execute('reserva_cancelada_tardia', r)
+                    except Exception:
+                        pass
+                
                 ReservaMembresia.objects.filter(reserva=r).delete()
-
-                if devolver_creditos and sub:
-                    sub.clases_restantes += 1
-                    if sub.estado == 'AGOTADO':
-                        sub.estado = 'ACTIVO'
-
-                try:
-                    registry.execute('reserva_cancelada_a_tiempo', r)
-                except Exception:
-                    pass
                 canceladas += 1
 
-            if sub and devolver_creditos:
-                sub.save()
+            if sub:
+                sub.refresh_from_db()
 
         return Response({
             'detail': f'Se cancelaron {canceladas} clases futuras.',

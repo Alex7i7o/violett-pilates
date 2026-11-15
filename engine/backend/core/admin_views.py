@@ -334,7 +334,7 @@ class AdminReservaViewSet(viewsets.ModelViewSet):
         devolver_credito = devolver_credito_param.lower() != 'false' if devolver_credito_param else True
         with transaction.atomic():
             if reserva.estado == 'CONFIRMADA':
-                reserva.estado = 'CANCELADA_TIEMPO'
+                reserva.estado = 'CANCELADA_TIEMPO' if devolver_credito else 'CANCELADA_TARDIA'
                 reserva.save()
                 
                 turno = reserva.turno
@@ -342,21 +342,13 @@ class AdminReservaViewSet(viewsets.ModelViewSet):
                 turno.save()
                 
                 from backend_core.hooks import registry
+                hook_name = 'reserva_cancelada_a_tiempo' if devolver_credito else 'reserva_cancelada_tardia'
                 try:
-                    registry.execute('reserva_cancelada_a_tiempo', reserva)
+                    registry.execute(hook_name, reserva)
                 except Exception:
                     pass
-                
                 try:
-                    rm = getattr(reserva, 'consumo_suscripcion', None)
-                    if rm:
-                        sub = rm.suscripcion
-                        rm.delete()
-                        if devolver_credito:
-                            sub.clases_restantes += 1
-                            if sub.estado == 'AGOTADO':
-                                sub.estado = 'ACTIVO'
-                            sub.save()
+                    registry.execute('reserva_cancelada', reserva)
                 except Exception:
                     pass
             else:
