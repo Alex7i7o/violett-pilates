@@ -639,6 +639,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
 
                 <div className="text-xs text-emerald-800 space-y-2 bg-emerald-100/40 p-3 rounded-lg border border-emerald-200/60">
                   <p><strong>Créditos disponibles para reservar:</strong> {alumno.plan_activo.clases_restantes}</p>
+                  <p><strong>Clases tomadas / asistidas:</strong> {alumno.plan_activo.clases_tomadas ?? 0}</p>
                   <div className="flex items-center justify-between">
                     <p><strong>Clases agendadas por tomar:</strong> {alumno.plan_activo.clases_pendientes ?? 0}</p>
                     {Boolean(alumno.plan_activo.clases_pendientes && alumno.plan_activo.clases_pendientes > 0) && (
@@ -894,7 +895,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                             <button 
                               onClick={() => {
                                 setReservaParaCancelar(r);
-                                setDevolverCreditoReserva(false);
+                                setDevolverCreditoReserva(true);
                                 setShowCancelarReservaModal(true);
                               }}
                               title="Cancelar este turno y liberar camilla"

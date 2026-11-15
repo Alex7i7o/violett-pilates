@@ -7,7 +7,7 @@ def on_profile_data(data, request=None, user=None):
     if not user:
         return data
         
-    suscripcion = Suscripcion.objects.filter(usuario=user).order_by('-fecha_inicio').first()
+    suscripcion = Suscripcion.objects.filter(usuario=user, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
     if suscripcion:
         expiration_date = suscripcion.fecha_vencimiento
         days_until_expiration = (expiration_date - timezone.localdate()).days
@@ -21,26 +21,44 @@ def on_profile_data(data, request=None, user=None):
         today = now.date()
         now_time = now.time()
 
-        # Solo turnos estrictamente a futuro se computan como pendientes por tomar
+        # Solo turnos estrictamente a futuro se computan como pendientes por tomar dentro de la vigencia
         clases_pendientes = Reserva.objects.filter(
             usuario=user,
-            estado='CONFIRMADA'
+            estado='CONFIRMADA',
+            turno__fecha__lte=suscripcion.fecha_vencimiento
         ).filter(
             Q(turno__fecha__gt=today) |
             Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
         ).count()
 
-        clases_tomadas = Reserva.objects.filter(
+        clases_tomadas_qs = Reserva.objects.filter(
             usuario=user,
-            estado='TOMADA'
-        ).count()
+            estado='TOMADA',
+            turno__fecha__lte=suscripcion.fecha_vencimiento
+        )
+        if suscripcion.fecha_inicio:
+            clases_tomadas_qs = clases_tomadas_qs.filter(turno__fecha__gte=suscripcion.fecha_inicio - datetime.timedelta(days=7))
+        clases_tomadas = clases_tomadas_qs.count()
+
+        # Reconciliación matemática: total = tomadas + pendientes + restantes
+        clases_totales = suscripcion.plan.cantidad_clases
+        creditos_reales = max(0, clases_totales - (clases_tomadas + clases_pendientes))
+        clases_pendientes_efectivas = min(clases_pendientes, max(0, clases_totales - clases_tomadas))
+
+        if suscripcion.clases_restantes != creditos_reales:
+            suscripcion.clases_restantes = creditos_reales
+            if creditos_reales > 0 and suscripcion.estado == 'AGOTADO':
+                suscripcion.estado = 'ACTIVO'
+            elif creditos_reales == 0 and suscripcion.estado == 'ACTIVO':
+                suscripcion.estado = 'AGOTADO'
+            suscripcion.save(update_fields=['clases_restantes', 'estado'])
 
         data.update({
             "activePlan": suscripcion.plan.nombre,
             "remainingClasses": suscripcion.clases_restantes,
-            "pendingClasses": clases_pendientes,
+            "pendingClasses": clases_pendientes_efectivas,
             "takenClasses": clases_tomadas,
-            "totalClasses": suscripcion.plan.cantidad_clases,
+            "totalClasses": clases_totales,
             "expirationDate": expiration_date.strftime("%d/%m/%Y"),
             "daysUntilExpiration": max(0, days_until_expiration)
         })
@@ -62,28 +80,48 @@ def on_enrich_admin_usuario(data, instance=None, **kwargs):
             today = now.date()
             now_time = now.time()
 
-            # Clases agendadas que aun no ocurrieron
+            # Clases agendadas que aun no ocurrieron dentro de la vigencia del plan
             clases_pendientes = Reserva.objects.filter(
                 usuario=instance,
-                estado='CONFIRMADA'
+                estado='CONFIRMADA',
+                turno__fecha__lte=suscripcion.fecha_vencimiento
             ).filter(
                 Q(turno__fecha__gt=today) |
                 Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
             ).count()
 
-            # Clases ya ocurridas o tomadas
-            clases_tomadas = Reserva.objects.filter(
+            # Clases ya ocurridas o tomadas durante este ciclo de membresía
+            clases_tomadas_qs = Reserva.objects.filter(
                 usuario=instance,
-                estado='TOMADA'
-            ).count()
+                estado='TOMADA',
+                turno__fecha__lte=suscripcion.fecha_vencimiento
+            )
+            if suscripcion.fecha_inicio:
+                clases_tomadas_qs = clases_tomadas_qs.filter(turno__fecha__gte=suscripcion.fecha_inicio - datetime.timedelta(days=7))
+            clases_tomadas = clases_tomadas_qs.count()
+
+            # Reconciliación automática inteligente:
+            # clases_totales = tomadas + pendientes + libres
+            # Las canceladas no restan cupos, se transforman en créditos disponibles!
+            clases_totales = suscripcion.plan.cantidad_clases
+            creditos_reales = max(0, clases_totales - (clases_tomadas + clases_pendientes))
+            clases_pendientes_efectivas = min(clases_pendientes, max(0, clases_totales - clases_tomadas))
+
+            if suscripcion.clases_restantes != creditos_reales:
+                suscripcion.clases_restantes = creditos_reales
+                if creditos_reales > 0 and suscripcion.estado == 'AGOTADO':
+                    suscripcion.estado = 'ACTIVO'
+                elif creditos_reales == 0 and suscripcion.estado == 'ACTIVO':
+                    suscripcion.estado = 'AGOTADO'
+                suscripcion.save(update_fields=['clases_restantes', 'estado'])
 
             data['plan_activo'] = {
                 'id': str(suscripcion.id),
                 'plan_id': str(suscripcion.plan.id),
                 'plan_nombre': suscripcion.plan.nombre,
-                'clases_totales': suscripcion.plan.cantidad_clases,
+                'clases_totales': clases_totales,
                 'clases_restantes': suscripcion.clases_restantes,
-                'clases_pendientes': clases_pendientes,
+                'clases_pendientes': clases_pendientes_efectivas,
                 'clases_tomadas': clases_tomadas,
                 'fecha_vencimiento': suscripcion.fecha_vencimiento.strftime("%Y-%m-%d"),
                 'estado': suscripcion.estado
@@ -139,15 +177,20 @@ registry.register('post_book_action', on_post_book_action)
 def on_reserva_cancelada_a_tiempo(data, **kwargs):
     reserva = data
     if reserva:
-        from .models import ReservaMembresia
+        from .models import ReservaMembresia, Suscripcion
         rm = ReservaMembresia.objects.filter(reserva=reserva).first()
+        sub = None
         if rm:
             sub = rm.suscripcion
+            rm.delete()
+        elif getattr(reserva, 'usuario', None):
+            sub = Suscripcion.objects.filter(usuario=reserva.usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+
+        if sub:
             sub.clases_restantes += 1
             if sub.estado == 'AGOTADO':
                 sub.estado = 'ACTIVO'
-            sub.save()
-            rm.delete()
+            sub.save(update_fields=['clases_restantes', 'estado'])
     return data
 
 registry.register('reserva_cancelada_a_tiempo', on_reserva_cancelada_a_tiempo)
