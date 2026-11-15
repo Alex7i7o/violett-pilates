@@ -83,6 +83,11 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
   const [reactivarClases, setReactivarClases] = useState<number>(8);
   const [reactivarVencimiento, setReactivarVencimiento] = useState<string>('');
   const [reactivarAutoAgendar, setReactivarAutoAgendar] = useState<boolean>(true);
+  
+  // Historial de Suscripciones y Filtros de Clases
+  const [suscripcionesHistorial, setSuscripcionesHistorial] = useState<any[]>([]);
+  const [filtroModo, setFiltroModo] = useState<'plan' | 'mes'>('plan');
+  const [selectedSuscripcionId, setSelectedSuscripcionId] = useState<string>('actual');
   const [loadingReactivar, setLoadingReactivar] = useState(false);
   
   // Recurrencias State
@@ -137,6 +142,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       fetchRecurrencias();
       fetchPlantillas();
       fetchClases();
+      fetchSuscripcionesHistorial();
       setActiveTab('perfil');
     }
   }, [alumno, isOpen]);
@@ -176,12 +182,36 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     }
   };
 
+  const fetchSuscripcionesHistorial = async () => {
+    if (!alumno?.id || isEstetica) return;
+    try {
+      const res = await api.get(`/admin/alumnos/${alumno.id}/suscripciones/`);
+      const subs = res.data || [];
+      setSuscripcionesHistorial(subs);
+      if (subs.length > 0) {
+        const actual = subs.find((s: any) => s.es_actual);
+        setSelectedSuscripcionId(actual ? actual.id : subs[0].id);
+        setFiltroModo('plan');
+      } else {
+        setFiltroModo('mes');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchAlumnoReservas = async () => {
     if (!alumno?.id) return;
     try {
       setLoadingReservas(true);
-      const res = await api.get(`/admin/alumnos/${alumno.id}/clases/?month=${selectedMonth}&year=${selectedYear}`);
-      setReservas(res.data);
+      let url = `/admin/alumnos/${alumno.id}/clases/`;
+      if (filtroModo === 'plan') {
+        url += `?suscripcion_id=${selectedSuscripcionId}`;
+      } else {
+        url += `?month=${selectedMonth}&year=${selectedYear}`;
+      }
+      const res = await api.get(url);
+      setReservas(res.data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -193,7 +223,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
     if (alumno?.id && isOpen) {
       fetchAlumnoReservas();
     }
-  }, [alumno?.id, isOpen, selectedMonth, selectedYear]);
+  }, [alumno?.id, isOpen, filtroModo, selectedSuscripcionId, selectedMonth, selectedYear]);
 
   const handleUpdateReservaStatus = async (reservaId: string, nuevoEstado: string) => {
     try {
@@ -770,29 +800,77 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
 
         {activeTab === 'asistencia' && (
           <div className="space-y-4">
-            {/* Selector de Mes / Año */}
-            <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Mes a consultar:</span>
-              <div className="flex gap-2">
-                <select 
-                  value={selectedMonth} 
-                  onChange={e => setSelectedMonth(Number(e.target.value))}
-                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+            {/* Selector Switcher: Por Plan vs Por Mes */}
+            <div className="space-y-2">
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setFiltroModo('plan')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    filtroModo === 'plan' ? 'bg-white text-primary-main shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, idx) => (
-                    <option key={idx + 1} value={idx + 1}>{m}</option>
-                  ))}
-                </select>
-                <select 
-                  value={selectedYear} 
-                  onChange={e => setSelectedYear(Number(e.target.value))}
-                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                  ✦ Por Plan de Membresía
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroModo('mes')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    filtroModo === 'mes' ? 'bg-white text-primary-main shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  {[2025, 2026, 2027].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                  Por Mes Calendario
+                </button>
               </div>
+
+              {filtroModo === 'plan' ? (
+                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
+                    Seleccionar Plan / Ciclo:
+                  </label>
+                  {suscripcionesHistorial.length === 0 ? (
+                    <p className="text-xs text-muted">No se registran planes para este alumno.</p>
+                  ) : (
+                    <select
+                      value={selectedSuscripcionId}
+                      onChange={e => setSelectedSuscripcionId(e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
+                    >
+                      <option value="actual">✦ Plan Actual (Vigente / Activo)</option>
+                      {suscripcionesHistorial.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.es_actual ? '✦ ' : ''}{s.plan_nombre} ({s.fecha_inicio} al {s.fecha_vencimiento}) • {s.estado}
+                        </option>
+                      ))}
+                      <option value="todas">Todos los planes combinados</option>
+                    </select>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Mes a consultar:</span>
+                  <div className="flex gap-2">
+                    <select 
+                      value={selectedMonth} 
+                      onChange={e => setSelectedMonth(Number(e.target.value))}
+                      className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                    >
+                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, idx) => (
+                        <option key={idx + 1} value={idx + 1}>{m}</option>
+                      ))}
+                    </select>
+                    <select 
+                      value={selectedYear} 
+                      onChange={e => setSelectedYear(Number(e.target.value))}
+                      className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                    >
+                      {[2025, 2026, 2027].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tarjetas Resumen */}
@@ -878,15 +956,40 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
                   };
 
                   return (
-                    <div key={r.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-foreground capitalize">{formatFecha(r.fecha)} {r.hora_inicio} hs</p>
+                    <div key={r.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm gap-2">
+                      <div className="space-y-1">
+                        {/* Badges de Numero de Clase y Diferenciacion de Plan */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {r.numero_clase ? (
+                            <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[11px] font-bold px-2 py-0.5 rounded-md">
+                              Clase {r.numero_clase} de {r.total_clases_plan || 8}
+                            </span>
+                          ) : r.estado?.startsWith('CANCELADA') ? (
+                            <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-md">
+                              Cancelada (Crédito liberado)
+                            </span>
+                          ) : null}
+
+                          {r.es_plan_actual ? (
+                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              Plan Actual
+                            </span>
+                          ) : r.plan_nombre && r.plan_nombre !== 'Sin Plan' ? (
+                            <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-full" title={`Plan anterior: ${r.plan_fechas}`}>
+                              Plan Anterior ({r.plan_fechas ? r.plan_fechas.split(' ')[0] : 'Previo'})
+                            </span>
+                          ) : null}
+
                           <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">
                             {r.es_recurrente ? 'Fija' : 'Puntual'}
                           </span>
                         </div>
-                        <p className="text-xs text-primary-main font-medium mt-0.5">{r.clase_nombre}</p>
+
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-foreground capitalize">{formatFecha(r.fecha)} {r.hora_inicio} hs</p>
+                          <span className="text-xs text-primary-main font-medium">• {r.clase_nombre}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {getEstadoBadge(r.estado)}

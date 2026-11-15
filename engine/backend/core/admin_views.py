@@ -510,22 +510,122 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
         registry.execute('post_admin_usuario_save', data=self.request.data, user=user)
 
     @action(detail=True, methods=['get'])
+    def suscripciones(self, request, pk=None):
+        usuario = self.get_object()
+        from plugins.membresias.backend.models import Suscripcion
+        subs = Suscripcion.objects.filter(usuario=usuario).select_related('plan').order_by('-fecha_inicio')
+        sub_actual = subs.filter(estado__in=['ACTIVO', 'AGOTADO']).first()
+        data = []
+        for s in subs:
+            data.append({
+                'id': str(s.id),
+                'plan_id': str(s.plan.id),
+                'plan_nombre': s.plan.nombre,
+                'cantidad_clases': s.plan.cantidad_clases,
+                'fecha_inicio': s.fecha_inicio.isoformat(),
+                'fecha_vencimiento': s.fecha_vencimiento.isoformat(),
+                'clases_restantes': s.clases_restantes,
+                'estado': s.estado,
+                'es_actual': bool(sub_actual and s.id == sub_actual.id)
+            })
+        return Response(data)
+
+    @action(detail=True, methods=['get'])
     def clases(self, request, pk=None):
         usuario = self.get_object()
         from core.services import actualizar_reservas_pasadas_a_tomadas
         actualizar_reservas_pasadas_a_tomadas(usuario=usuario)
         from core.models import Reserva
+        from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+
         month = request.query_params.get('month')
         year = request.query_params.get('year')
-        
-        reservas = Reserva.objects.filter(usuario=usuario).select_related('turno__clase').order_by('-turno__fecha', '-turno__hora_inicio')
-        
-        if month and year:
-            reservas = reservas.filter(turno__fecha__month=int(month), turno__fecha__year=int(year))
-            
+        suscripcion_id = request.query_params.get('suscripcion_id')
+
+        subs = list(Suscripcion.objects.filter(usuario=usuario).select_related('plan').order_by('fecha_inicio'))
+        sub_actual = Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+
+        todas_reservas = list(Reserva.objects.filter(usuario=usuario).select_related('turno__clase').order_by('turno__fecha', 'turno__hora_inicio'))
+
+        # Mapeo de reservas a suscripciones para numerar clases
+        reserva_sub_map = {}
+        for r in todas_reservas:
+            rm = ReservaMembresia.objects.filter(reserva=r).select_related('suscripcion__plan').first()
+            if rm:
+                reserva_sub_map[r.id] = rm.suscripcion
+            else:
+                sub_matched = None
+                for s in reversed(subs):
+                    if s.fecha_inicio <= r.turno.fecha <= s.fecha_vencimiento:
+                        sub_matched = s
+                        break
+                if not sub_matched and subs:
+                    for s in reversed(subs):
+                        if s.fecha_inicio <= r.turno.fecha:
+                            sub_matched = s
+                            break
+                    if not sub_matched:
+                        sub_matched = subs[0]
+                reserva_sub_map[r.id] = sub_matched
+
+        # Contabilizar numero_clase cronologicamente dentro de cada plan
+        plan_counters = {}
+        reserva_info = {}
+        for r in todas_reservas:
+            sub = reserva_sub_map.get(r.id)
+            if sub:
+                sub_id_str = str(sub.id)
+                current_cnt = plan_counters.get(sub_id_str, 0)
+                num_clase = None
+                if r.estado in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
+                    current_cnt += 1
+                    plan_counters[sub_id_str] = current_cnt
+                    num_clase = current_cnt
+
+                es_actual = bool(sub_actual and sub.id == sub_actual.id)
+                reserva_info[r.id] = {
+                    'suscripcion_id': sub_id_str,
+                    'plan_nombre': sub.plan.nombre,
+                    'plan_estado': sub.estado,
+                    'es_plan_actual': es_actual,
+                    'total_clases_plan': sub.plan.cantidad_clases,
+                    'numero_clase': num_clase,
+                    'plan_fechas': f"{sub.fecha_inicio.strftime('%d/%m/%Y')} al {sub.fecha_vencimiento.strftime('%d/%m/%Y')}",
+                    'plan_fecha_inicio': sub.fecha_inicio.isoformat(),
+                    'plan_fecha_vencimiento': sub.fecha_vencimiento.isoformat()
+                }
+            else:
+                reserva_info[r.id] = {
+                    'suscripcion_id': None,
+                    'plan_nombre': 'Sin Plan',
+                    'plan_estado': None,
+                    'es_plan_actual': False,
+                    'total_clases_plan': None,
+                    'numero_clase': None,
+                    'plan_fechas': '',
+                    'plan_fecha_inicio': None,
+                    'plan_fecha_vencimiento': None
+                }
+
+        # Filtrar segun lo solicitado
+        reservas_filtradas = todas_reservas
+        if suscripcion_id and suscripcion_id not in ['all', 'todos', '']:
+            if suscripcion_id == 'actual':
+                if sub_actual:
+                    target_id = str(sub_actual.id)
+                    reservas_filtradas = [r for r in reservas_filtradas if reserva_info[r.id]['suscripcion_id'] == target_id]
+            else:
+                reservas_filtradas = [r for r in reservas_filtradas if reserva_info[r.id]['suscripcion_id'] == str(suscripcion_id)]
+        elif month and year and str(month) not in ['all', 'todos', ''] and str(year) not in ['all', 'todos', '']:
+            reservas_filtradas = [r for r in reservas_filtradas if r.turno.fecha.month == int(month) and r.turno.fecha.year == int(year)]
+
+        # Orden inverso para lista de visualizacion (mas reciente primero)
+        reservas_filtradas.sort(key=lambda r: (r.turno.fecha, r.turno.hora_inicio), reverse=True)
+
         data = []
-        for r in reservas:
+        for r in reservas_filtradas:
             t = r.turno
+            info = reserva_info[r.id]
             data.append({
                 'id': str(r.id),
                 'turno_id': str(t.id),
@@ -534,7 +634,16 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
                 'hora_fin': t.hora_fin.strftime('%H:%M'),
                 'clase_nombre': t.clase.nombre,
                 'estado': r.estado,
-                'es_recurrente': r.es_recurrente
+                'es_recurrente': r.es_recurrente,
+                'numero_clase': info['numero_clase'],
+                'total_clases_plan': info['total_clases_plan'],
+                'suscripcion_id': info['suscripcion_id'],
+                'plan_nombre': info['plan_nombre'],
+                'plan_estado': info['plan_estado'],
+                'es_plan_actual': info['es_plan_actual'],
+                'plan_fechas': info['plan_fechas'],
+                'plan_fecha_inicio': info['plan_fecha_inicio'],
+                'plan_fecha_vencimiento': info['plan_fecha_vencimiento'],
             })
         return Response(data)
 
