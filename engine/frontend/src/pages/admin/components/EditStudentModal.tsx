@@ -14,10 +14,13 @@ interface EditStudentModalProps {
   onClose: () => void;
   alumno: any;
   onUpdate: (shouldClose?: boolean) => void;
+  tabGroup?: 'edicion' | 'clases' | 'all';
 }
 
-export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate }: EditStudentModalProps) {
-  const [activeTab, setActiveTab] = useState<'perfil' | 'plan' | 'fijos' | 'asistencia'>('perfil');
+export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate, tabGroup = 'all' }: EditStudentModalProps) {
+  const [activeTab, setActiveTab] = useState<'perfil' | 'plan' | 'fijos' | 'asistencia'>(
+    tabGroup === 'clases' ? 'asistencia' : 'perfil'
+  );
   const [reservas, setReservas] = useState<any[]>([]);
   const [loadingReservas, setLoadingReservas] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -143,7 +146,7 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
       fetchPlantillas();
       fetchClases();
       fetchSuscripcionesHistorial();
-      setActiveTab('perfil');
+      setActiveTab(tabGroup === 'clases' ? 'asistencia' : 'perfil');
     }
   }, [alumno, isOpen]);
 
@@ -424,25 +427,37 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate 
 
   if (!alumno) return null;
 
+  const modalTitle = tabGroup === 'clases'
+    ? `Horarios y Clases • ${alumno.nombre} ${alumno.apellido || ''}`
+    : (isEstetica ? `Editar Paciente • ${alumno.nombre} ${alumno.apellido || ''}` : `Editar Alumna • ${alumno.nombre} ${alumno.apellido || ''}`);
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Editar Alumno">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
       <div className="flex border-b mb-4">
-        <button 
-          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'perfil' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
-          onClick={() => setActiveTab('perfil')}
-        >Perfil</button>
-        <button 
-          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'plan' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
-          onClick={() => setActiveTab('plan')}
-        >{isEstetica ? 'Billeteras' : 'Plan'}</button>
-        <button 
-          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'fijos' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
-          onClick={() => setActiveTab('fijos')}
-        >Horarios Fijos</button>
-        <button 
-          className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'asistencia' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
-          onClick={() => setActiveTab('asistencia')}
-        >Clases / Asistencia</button>
+        {tabGroup !== 'clases' && (
+          <>
+            <button 
+              className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'perfil' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+              onClick={() => setActiveTab('perfil')}
+            >Perfil</button>
+            <button 
+              className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'plan' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+              onClick={() => setActiveTab('plan')}
+            >{isEstetica ? 'Billeteras' : 'Plan'}</button>
+          </>
+        )}
+        {tabGroup !== 'edicion' && (
+          <>
+            <button 
+              className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'fijos' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+              onClick={() => setActiveTab('fijos')}
+            >Horarios Fijos</button>
+            <button 
+              className={`flex-1 py-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${activeTab === 'asistencia' ? 'border-primary-main text-primary-main' : 'border-transparent text-muted'}`}
+              onClick={() => setActiveTab('asistencia')}
+            >Clases / Asistencia</button>
+          </>
+        )}
       </div>
 
       <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
