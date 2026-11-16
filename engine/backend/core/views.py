@@ -69,10 +69,24 @@ class TurnosDisponiblesView(APIView):
         current_time = timezone.localtime(now).time()
         
         from django.db.models import Q
-        turnos = Turno.objects.select_related('clase').prefetch_related('reservas').filter(
+        turnos = Turno.objects.select_related(
+            'clase',
+            'profesor_asignado__profesor',
+            'plantilla__profesor_asignado__profesor'
+        ).prefetch_related('reservas').filter(
             Q(fecha__gt=today) | Q(fecha=today, hora_inicio__gt=current_time),
             estado='PROGRAMADO'
         ).order_by('fecha', 'hora_inicio')
+
+        # Si el usuario es alumno/cliente, las clases sin profesor asignado son invisibles
+        # (salvo que ya tenga una reserva confirmada previa en esa clase para permitirle verla en sus turnos)
+        if not (request.user.is_staff or request.user.is_superuser):
+            turnos = turnos.filter(
+                Q(profesor_asignado__profesor__is_active=True) |
+                (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor__is_active=True)) |
+                Q(reservas__usuario=request.user, reservas__estado='CONFIRMADA')
+            ).distinct()
+
         serializer = TurnoSerializer(turnos, many=True, context={'request': request})
         return Response(serializer.data)
 

@@ -41,14 +41,22 @@ def consultar_turnos_disponibles(fecha_str: str) -> str:
     dia_nombre = dias_semana[target_date.weekday()]
 
     resultado = [f"✦ Turnos disponibles para el {dia_nombre} {target_date.strftime('%d/%m')}:"]
+    turnos_visibles_count = 0
     for t in turnos:
         prof_obj = obtener_profesor_de_turno(t)
+        # Ocultar clases que no tengan profesor confirmado a las alumnas
+        if not prof_obj or not getattr(prof_obj, 'is_active', True):
+            continue
         profe = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
         camillas_libres = t.cupo_actual
         resultado.append(
             f"• {t.hora_inicio.strftime('%H:%M')} hs - {t.clase.nombre}{profe} "
             f"({camillas_libres} camilla{'s' if camillas_libres > 1 else ''} libre{'s' if camillas_libres > 1 else ''})"
         )
+        turnos_visibles_count += 1
+
+    if turnos_visibles_count == 0:
+        return f"No hay turnos con profesor confirmado disponibles para el {dia_nombre} {target_date.strftime('%d/%m')}."
 
     return "\n".join(resultado)
 
@@ -92,6 +100,11 @@ def reservar_camilla_turno(usuario_id: str, fecha_o_dia: str = "", hora_str: str
 
     if not turno:
         return f"No se encontró ningún turno programado para {fecha_o_dia} a las {hora_str} hs."
+
+    # Validar que la clase tenga profesor asignado
+    prof_obj = obtener_profesor_de_turno(turno)
+    if not prof_obj or not getattr(prof_obj, 'is_active', True):
+        return f"Ese horario ({turno.hora_inicio.strftime('%H:%M')} hs) aún no tiene profesor asignado confirmado, por lo que no está disponible para reservar. Por favor elegí otro de los horarios con profe confirmado."
 
     # 2. Validar suscripción activa y créditos
     suscripcion = None
@@ -468,6 +481,11 @@ def reprogramar_reserva_alumna(usuario_id: str = "", fecha_origen: str = "", hor
 
     if not turno_destino:
         return "No pude identificar con certeza a qué nuevo horario querés mover la clase. Por favor indicame el día y horario al que te querés anotar (por ejemplo: 'el viernes a las 18 hs')."
+
+    # Validar que el turno destino tenga profesor confirmado
+    prof_dest = obtener_profesor_de_turno(turno_destino)
+    if not prof_dest or not getattr(prof_dest, 'is_active', True):
+        return f"El turno de las {turno_destino.hora_inicio.strftime('%H:%M')} hs aún no tiene profesor asignado confirmado, por lo que no está disponible para reprogramar. Por favor elegí otro de los horarios disponibles."
 
     # 2. Buscar turno de origen de la alumna
     reservas_futuras = list(Reserva.objects.filter(

@@ -36,6 +36,16 @@ def process_booking(turno_id, user, is_recurring=False, request=None):
         
     if turno.cupo_actual <= 0:
         return False, "El turno está lleno."
+
+    # Las clases sin profesor asignado no son reservables por alumnas
+    if not (user.is_staff or user.is_superuser):
+        tiene_profe = False
+        if hasattr(turno, 'profesor_asignado') and turno.profesor_asignado and getattr(turno.profesor_asignado.profesor, 'is_active', True):
+            tiene_profe = True
+        elif turno.plantilla and hasattr(turno.plantilla, 'profesor_asignado') and turno.plantilla.profesor_asignado and getattr(turno.plantilla.profesor_asignado.profesor, 'is_active', True):
+            tiene_profe = True
+        if not tiene_profe:
+            return False, "Esta clase aún no tiene un profesor asignado confirmado y no está disponible para reservas."
         
     if is_recurring:
         result = registry.execute('book_turno_recurrente', {'success': False, 'detail': 'La función de reservas fijas no está activa.'}, request=request, user=user, turno=turno)
@@ -358,6 +368,16 @@ def reprogramar_reserva(usuario, turno_origen_id, turno_destino_id):
 
     if turno_destino.cupo_actual <= 0:
         return False, "La clase de destino no tiene camillas disponibles."
+
+    # Las clases sin profesor asignado no son reservables por alumnas
+    if not (usuario.is_staff or usuario.is_superuser):
+        tiene_profe = False
+        if hasattr(turno_destino, 'profesor_asignado') and turno_destino.profesor_asignado and getattr(turno_destino.profesor_asignado.profesor, 'is_active', True):
+            tiene_profe = True
+        elif turno_destino.plantilla and hasattr(turno_destino.plantilla, 'profesor_asignado') and turno_destino.plantilla.profesor_asignado and getattr(turno_destino.plantilla.profesor_asignado.profesor, 'is_active', True):
+            tiene_profe = True
+        if not tiene_profe:
+            return False, "La clase de destino aún no tiene un profesor asignado confirmado y no está disponible para reservas."
 
     if Reserva.objects.filter(turno=turno_destino, usuario=usuario, estado='CONFIRMADA').exists():
         return False, "Ya tienes una reserva confirmada en la clase de destino."
