@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
-import { getPluginAdminSidebarItems } from '../core/pluginLoader';
+import { getPluginAdminSidebarItems } from '@/core/pluginLoader';
 import { useClientConfig } from '../context/ClientConfigContext';
 import { Calendar, Users, LayoutList, Menu, X, CreditCard, UserSquare, Layers, LogOut, Settings, MessageSquare, BarChart3, Database } from 'lucide-react';
 
@@ -75,13 +75,11 @@ export function AdminLayout() {
     { name: 'Planes', path: '/admin/planes', icon: CreditCard },
     { name: 'Esquema', path: '/admin/esquema', icon: Layers },
     { name: 'Comunicaciones', path: '/admin/comunicaciones', icon: MessageSquare },
-    { name: 'Reglas de Negocio', path: '/admin/reglas', icon: Settings }
+    { name: 'Configuración', path: '/admin/configuracion', icon: Settings }
   ];
 
   if (isEstetica) {
     baseNavItems = baseNavItems.filter(item => !['Disciplinas', 'Profesores', 'Planes', 'Esquema'].includes(item.name));
-  } else {
-    baseNavItems = baseNavItems.filter(item => !['Reglas de Negocio'].includes(item.name));
   }
 
   const resolvePluginIcon = (item: { name: string; path: string; icon?: any }) => {

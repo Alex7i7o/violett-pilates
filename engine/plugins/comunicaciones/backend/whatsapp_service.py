@@ -378,14 +378,16 @@ def notificar_horario_fijo_alumna(usuario, dia_semana: int, hora_str: str, clase
     client.send_text_message(phone, texto)
     _registrar_log_saliente(phone, usuario, texto, "notificacion_horario_fijo_alumna")
 
-def obtener_telefono_duena():
+def obtener_telefonos_staff_alertas():
     try:
-        from plugins.asistente.backend.config_loader import get_asistente_config
-        config = get_asistente_config()
-        tel = config.get('telefono_duena', '5491157691786')
-        return str(tel).replace('+', '').replace('-', '').replace(' ', '')
+        from plugins.asistente.backend.config_loader import obtener_telefonos_alertas_staff
+        return obtener_telefonos_alertas_staff()
     except Exception:
-        return '5491157691786'
+        return ['5491157691786']
+
+def obtener_telefono_duena():
+    tels = obtener_telefonos_staff_alertas()
+    return tels[0] if tels else '5491157691786'
 
 def notificar_duena_reserva(usuario, turno):
     tel_duena = obtener_telefono_duena()
@@ -422,8 +424,14 @@ def notificar_duena_reserva(usuario, turno):
     )
 
     client = WhatsAppClient()
-    client.send_text_message(tel_duena, msg_duena)
-    _registrar_log_saliente(tel_duena, None, msg_duena, "notificacion_duena")
+    for t_dest in obtener_telefonos_staff_alertas():
+        if tel_user and (t_dest == str(tel_user).replace('+', '').replace('-', '').replace(' ', '') or t_dest.endswith(str(tel_user)[-8:])):
+            continue
+        try:
+            client.send_text_message(t_dest, msg_duena)
+            _registrar_log_saliente(t_dest, None, msg_duena, "notificacion_duena")
+        except Exception:
+            pass
 
 def notificar_duena_cancelacion(usuario, turno, motivo=""):
     tel_duena = obtener_telefono_duena()
@@ -451,8 +459,14 @@ def notificar_duena_cancelacion(usuario, turno, motivo=""):
     )
 
     client = WhatsAppClient()
-    client.send_text_message(tel_duena, msg_duena)
-    _registrar_log_saliente(tel_duena, None, msg_duena, "notificacion_duena")
+    for t_dest in obtener_telefonos_staff_alertas():
+        if tel_user and (t_dest == str(tel_user).replace('+', '').replace('-', '').replace(' ', '') or t_dest.endswith(str(tel_user)[-8:])):
+            continue
+        try:
+            client.send_text_message(t_dest, msg_duena)
+            _registrar_log_saliente(t_dest, None, msg_duena, "notificacion_duena")
+        except Exception:
+            pass
 
 def notificar_duena_reprogramacion(usuario, turno_nuevo, turno_anterior=None):
     tel_duena = obtener_telefono_duena()
@@ -486,5 +500,11 @@ def notificar_duena_reprogramacion(usuario, turno_nuevo, turno_anterior=None):
     )
 
     client = WhatsAppClient()
-    client.send_text_message(tel_duena, msg_duena)
-    _registrar_log_saliente(tel_duena, None, msg_duena, "notificacion_duena")
+    for t_dest in obtener_telefonos_staff_alertas():
+        if tel_user and (t_dest == str(tel_user).replace('+', '').replace('-', '').replace(' ', '') or t_dest.endswith(str(tel_user)[-8:])):
+            continue
+        try:
+            client.send_text_message(t_dest, msg_duena)
+            _registrar_log_saliente(t_dest, None, msg_duena, "notificacion_duena")
+        except Exception:
+            pass

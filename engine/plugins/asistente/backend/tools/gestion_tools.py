@@ -2514,13 +2514,17 @@ def confirmar_sincronizacion_ficha_duena(decision: str = "CONFIRMAR", correccion
     conversacion = get_conversacion_activa()
     if not conversacion or not getattr(conversacion, 'metadata', None) or not conversacion.metadata.get('propuesta_ficha_alumna'):
         from ..models import ConversacionWhatsApp
-        from ..config_loader import get_asistente_config
-        config = get_asistente_config()
-        tel_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '')
-        if tel_duena:
-            conv_d = ConversacionWhatsApp.objects.filter(telefono=tel_duena).first()
-            if conv_d and conv_d.metadata.get('propuesta_ficha_alumna'):
-                conversacion = conv_d
+        from ..config_loader import get_asistente_config, obtener_todos_telefonos_staff
+        telefonos_staff = obtener_todos_telefonos_staff()
+        conv_cands = ConversacionWhatsApp.objects.filter(telefono__in=telefonos_staff).exclude(metadata={}).order_by('-updated_at')
+        for c in conv_cands:
+            if c.metadata.get('propuesta_ficha_alumna'):
+                conversacion = c
+                break
+        if not conversacion or not conversacion.metadata.get('propuesta_ficha_alumna'):
+            conv_duena = ConversacionWhatsApp.objects.filter(rol_detectado='DUENA').exclude(metadata={}).order_by('-updated_at').first()
+            if conv_duena and conv_duena.metadata.get('propuesta_ficha_alumna'):
+                conversacion = conv_duena
 
     if not conversacion or not conversacion.metadata.get('propuesta_ficha_alumna'):
         return "✦ No tengo ninguna propuesta de ficha física pendiente de confirmación en este momento. Si enviaste una foto recién, aguardá unos segundos o volvé a enviarla."

@@ -807,31 +807,79 @@ class ConfiguracionView(views.APIView):
     permission_classes = [IsAdminUser]
     
     def get_config_path(self):
-        # engine/config/client-config.json
         from django.conf import settings
-        return os.path.join(settings.BASE_DIR, 'config', 'client-config.json')
+        primary = os.path.join(settings.BASE_DIR, 'config', 'client-config.json')
+        if os.path.exists(primary):
+            return primary
+        fallback = os.path.join(settings.BASE_DIR.parent.parent, 'config_pilates', 'client-config.json')
+        if os.path.exists(fallback):
+            return fallback
+        return primary
 
     def get(self, request):
         try:
-            with open(self.get_config_path(), 'r') as f:
-                return Response(json.load(f))
+            with open(self.get_config_path(), 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+                
+            # Garantizar que staff_telefonos exista con la dueña principal como mínimo
+            asistente_cfg = cfg.setdefault('plugin_config', {}).setdefault('asistente', {})
+            staff_list = asistente_cfg.get('staff_telefonos', [])
+            if not staff_list:
+                tel_duena = asistente_cfg.get('telefono_duena', '5491157691786')
+                nombre_duena = asistente_cfg.get('reglas_operativas', {}).get('nombre_duena', 'Débora Zárate (Deby)')
+                asistente_cfg['staff_telefonos'] = [
+                    {
+                        "id": "staff_deby_1",
+                        "nombre": f"{nombre_duena} (Principal)",
+                        "telefono": tel_duena,
+                        "rol": "DUENA",
+                        "activo": True,
+                        "recibe_alertas": True,
+                        "notas": "Línea oficial de la dueña"
+                    }
+                ]
+            return Response(cfg)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
     def post(self, request):
         try:
             config_path = self.get_config_path()
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
                 
-            # Allow updating specific fields safely
-            # Only update plugin_config
             new_plugin_config = request.data.get('plugin_config')
             if new_plugin_config:
                 cfg['plugin_config'] = new_plugin_config
                 
-            with open(config_path, 'w') as f:
-                json.dump(cfg, f, indent=2)
+            new_contact_phone = request.data.get('contact_phone')
+            if new_contact_phone:
+                cfg['contact_phone'] = new_contact_phone
+
+            # Si viene staff_telefonos en la raíz de request.data, actualizarlo en asistente
+            if 'staff_telefonos' in request.data:
+                cfg.setdefault('plugin_config', {}).setdefault('asistente', {})['staff_telefonos'] = request.data['staff_telefonos']
+
+            # Sincronizar telefono_duena principal con el primer miembro activo del staff
+            asistente_cfg = cfg.get('plugin_config', {}).get('asistente', {})
+            staff_list = asistente_cfg.get('staff_telefonos', [])
+            if staff_list:
+                primer_activo = next((s for s in staff_list if s.get('activo', True)), staff_list[0])
+                if primer_activo and primer_activo.get('telefono'):
+                    asistente_cfg['telefono_duena'] = primer_activo.get('telefono')
+                
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+            # Mantener sincronizado también config_pilates si existe
+            try:
+                from django.conf import settings
+                backup_config_path = os.path.join(settings.BASE_DIR.parent.parent, 'config_pilates', 'client-config.json')
+                if os.path.exists(backup_config_path) and os.path.abspath(backup_config_path) != os.path.abspath(config_path):
+                    with open(backup_config_path, 'w', encoding='utf-8') as f_bak:
+                        json.dump(cfg, f_bak, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
                 
             return Response(cfg)
         except Exception as e:

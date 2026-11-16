@@ -60,7 +60,18 @@
         "gestion_profesores": true,
         "asistente_duena": true,
         "llenado_proactivo_camillas": true
-      }
+      },
+      "staff_telefonos": [
+        {
+          "id": "staff_deby_1",
+          "nombre": "Débora Zárate (Principal)",
+          "telefono": "5491157691786",
+          "rol": "DUENA",
+          "activo": true,
+          "recibe_alertas": true,
+          "notas": "Línea oficial de la dueña"
+        }
+      ]
     }
   }
 }

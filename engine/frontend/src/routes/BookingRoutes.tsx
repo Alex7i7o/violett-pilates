@@ -6,9 +6,6 @@ import { useClientProfile } from '../hooks/useClientProfile';
 import { useClientConfig } from '../context/ClientConfigContext';
 import { api } from '../lib/api';
 
-
-
-
 import { Dashboard } from '../pages/Dashboard';
 import { ClientLayout } from './ClientLayout';
 import { InicioView } from '../pages/client/InicioView';
@@ -16,7 +13,6 @@ import { LandingView } from '../pages/public/LandingView';
 import { ResenasView } from '../pages/public/ResenasView';
 import { ReservasView } from '../pages/client/ReservasView';
 import { PerfilView } from '../pages/client/PerfilView';
-
 
 import { AdminLayout } from '../layouts/AdminLayout';
 import { AgendaAdmin } from '../pages/admin/AgendaAdmin';
@@ -26,9 +22,10 @@ import { ProfesoresAdmin } from '../pages/admin/ProfesoresAdmin';
 import { PlanesAdmin } from '../pages/admin/PlanesAdmin';
 import { ClasesAdmin } from '../pages/admin/ClasesAdmin';
 import { ReglasNegocioAdmin } from '../pages/admin/ReglasNegocioAdmin';
+import { ConfiguracionAdmin } from '../pages/admin/ConfiguracionAdmin';
 import { ComunicacionesAdmin } from '../pages/admin/ComunicacionesAdmin';
 
-import { getPluginAdminRoutes, getPluginRoleRoute, getPluginPublicRoutes } from '../core/pluginLoader';
+import { getPluginAdminRoutes, getPluginRoleRoute, getPluginPublicRoutes } from '@/core/pluginLoader';
 
 export function BookingRoutes() {
   const location = useLocation();
@@ -70,14 +67,15 @@ export function BookingRoutes() {
   }
 
   if (error || !profile) {
+    const isEstetica = config.client_id === 'violett_estetica';
     return (
       <Routes>
-        <Route path="/" element={<LandingView />} />
-        <Route path="/resenas" element={<ResenasView />} />
-        {console.log('PUBLIC ROUTES:', getPluginPublicRoutes(config.active_plugins || []))} {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
+        <Route path="/" element={isEstetica ? <Navigate to="/login" replace /> : <LandingView />} />
+        {!isEstetica && <Route path="/resenas" element={<ResenasView />} />}
+        {getPluginPublicRoutes(config.active_plugins || []).map((route, i) => (
           <Route key={i} path={route.path} element={route.path === '/login' || route.path === 'login' ? React.cloneElement(route.element as React.ReactElement, { onLoginSuccess: refetch }) : route.element} />
         ))}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={isEstetica ? "/login" : "/"} replace />} />
       </Routes>
     );
   }
@@ -85,12 +83,14 @@ export function BookingRoutes() {
   // Rutas exclusivas para el Staff / Admin
   if (profile.rol === 'ADMIN') {
     const adminPluginRoutes = getPluginAdminRoutes(config.active_plugins);
+    const hasPluginAgenda = adminPluginRoutes.some(pr => pr.path === 'agenda');
     return (
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="agenda" replace />} />
-          <Route path="reglas" element={<ReglasNegocioAdmin />} />
-          <Route path="agenda" element={<AgendaAdmin />} />
+          <Route path="configuracion" element={<ConfiguracionAdmin />} />
+          <Route path="reglas" element={<ConfiguracionAdmin />} />
+          {!hasPluginAgenda && <Route path="agenda" element={<AgendaAdmin />} />}
           <Route path="esquema" element={<PlantillasAdmin />} />
           <Route path="alumnos" element={<AlumnosAdmin />} />
           <Route path="profesores" element={<ProfesoresAdmin />} />
@@ -115,7 +115,6 @@ export function BookingRoutes() {
     return <>{pluginRoleRoute}</>;
   }
 
-  
   // Rutas exclusivas para Clientes
   return (
     <Routes>
@@ -127,6 +126,4 @@ export function BookingRoutes() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
-
 }
-

@@ -214,14 +214,22 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
     """
     Procesa los datos extraídos de una FICHA ALUMNA física en papel.
     Arma la propuesta de sincronización, la almacena en los metadatos de la conversación
-    y le envía a Débora el resumen detallado para que dé su confirmación ('Confirmar' / 'Sí').
+    y le envía al emisor (Débora o Staff) el resumen detallado para su confirmación ('Confirmar' / 'Sí').
     """
+    from ..config_loader import obtener_nombre_staff
+    nombre_staff = obtener_nombre_staff(clean_phone)
+    if "(" in nombre_staff:
+        nombre_staff = nombre_staff.split("(")[0].strip()
+    if " " in nombre_staff:
+        nombre_staff = nombre_staff.split()[0].strip()
+    nombre_staff = nombre_staff or "Deby"
+
     nombre_raw = datos_ficha.get('nombre_alumna', '').strip()
     from ..tools.gestion_tools import buscar_alumna_flexible
     alumna, matches, err = buscar_alumna_flexible(nombre_raw)
 
     if not alumna:
-        msg = f"✦ Deby, leí la ficha física de *'{nombre_raw}'*, pero no encontré ninguna alumna registrada con ese nombre en la base de datos para asociar sus clases.\n\n¿Está anotada con otro nombre o apellido en el sistema?"
+        msg = f"✦ {nombre_staff}, leí la ficha física de *'{nombre_raw}'*, pero no encontré ninguna alumna registrada con ese nombre en la base de datos para asociar sus clases.\n\n¿Está anotada con otro nombre o apellido en el sistema?"
         client.send_text_message(clean_phone, msg)
         return
 
@@ -229,7 +237,7 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
     total_clases = sum(len(c.get('clases', [])) for c in ciclos)
 
     if total_clases == 0:
-        msg = f"✦ Deby, identifiqué la ficha de *{alumna.nombre} {alumna.apellido}*, pero no logré leer ninguna clase o fecha anotada con claridad en la cuadrícula."
+        msg = f"✦ {nombre_staff}, identifiqué la ficha de *{alumna.nombre} {alumna.apellido}*, pero no logré leer ninguna clase o fecha anotada con claridad en la cuadrícula."
         client.send_text_message(clean_phone, msg)
         return
 
@@ -246,7 +254,7 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
 
     # Construir mensaje de previsualización para confirmación
     lineas = [
-        f"✦ **¡Hola Deby! Leí la ficha física de {alumna.nombre} {alumna.apellido}:**\n",
+        f"✦ **¡Hola {nombre_staff}! Leí la ficha física de {alumna.nombre} {alumna.apellido}:**\n",
         f"📋 Encontré **{total_clases} clases** registradas en el papel:\n"
     ]
 
@@ -341,8 +349,9 @@ def _atender_imagen_fallback(conversacion, clean_phone: str, client: WhatsAppCli
     usuario = conversacion.usuario
     nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Alumna"
 
-    # Si el remitente es la dueña, orientarla
-    if clean_phone == telefono_duena:
+    # Si el remitente es la dueña o staff autorizado, orientarla
+    from ..config_loader import es_telefono_staff_o_duena
+    if es_telefono_staff_o_duena(clean_phone) or getattr(conversacion, 'rol_detectado', '') == 'DUENA':
         msg = "✦ Deby, recibí la imagen. Para que la IA procese la ficha o comprobante de forma 100% automática, asegurate de tener configurada la API Key (GEMINI_API_KEY o OPENAI_API_KEY) en las variables del servidor."
         client.send_text_message(clean_phone, msg)
         return

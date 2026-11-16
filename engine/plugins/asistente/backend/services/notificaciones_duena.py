@@ -43,8 +43,11 @@ def notificar_duena_clase_con_una_alumna(turno, motivo='cancelacion', alumna_can
     if inscriptas != 1:
         return
 
-    config = get_asistente_config()
-    clean_duena = config.get('telefono_duena', '5491157691786')
+    from ..config_loader import obtener_telefonos_alertas_staff
+    telefonos_alertas = obtener_telefonos_alertas_staff()
+    if not telefonos_alertas:
+        return
+    clean_duena = telefonos_alertas[0]
     conversacion_duena, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_duena)
 
     # Si es por revisión periódica/semanal, evitar spam verificando si ya se le avisó en las últimas 24hs para este turno
