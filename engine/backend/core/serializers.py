@@ -40,6 +40,10 @@ class BookTurnoSerializer(serializers.Serializer):
 class CancelTurnoSerializer(serializers.Serializer):
     turno_id = serializers.UUIDField()
 
+class ReprogramarTurnoSerializer(serializers.Serializer):
+    turno_origen_id = serializers.UUIDField()
+    turno_destino_id = serializers.UUIDField()
+
 from dj_rest_auth.registration.serializers import RegisterSerializer
 import logging
 import threading

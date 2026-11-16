@@ -8,7 +8,7 @@ from django.utils import timezone
 import datetime
 from django.db import transaction
 from .models import Turno, Reserva
-from .serializers import TurnoSerializer, BookTurnoSerializer, CancelTurnoSerializer
+from .serializers import TurnoSerializer, BookTurnoSerializer, CancelTurnoSerializer, ReprogramarTurnoSerializer
 from .services import cancelar_reserva
 
 class ClientProfileView(APIView):
@@ -100,6 +100,8 @@ class BookTurnoView(APIView):
         )
         
         if not success:
+            if isinstance(message, dict):
+                return Response(message, status=status.HTTP_400_BAD_REQUEST)
             return Response({"detail": message}, status=status.HTTP_400_BAD_REQUEST)
             
         return Response({"detail": message})
@@ -134,6 +136,32 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = 'http://localhost:5173'
     client_class = OAuth2Client
+
+class ReprogramarTurnoView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'reserva'
+
+    def post(self, request):
+        serializer = ReprogramarTurnoSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        turno_origen_id = serializer.validated_data['turno_origen_id']
+        turno_destino_id = serializer.validated_data['turno_destino_id']
+
+        from .services import reprogramar_reserva
+        success, message = reprogramar_reserva(
+            usuario=request.user,
+            turno_origen_id=turno_origen_id,
+            turno_destino_id=turno_destino_id
+        )
+
+        if not success:
+            return Response({"detail": message}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": message})
+
 
 class ClientHistoryView(APIView):
     permission_classes = [IsAuthenticated]

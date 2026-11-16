@@ -4,7 +4,8 @@ from ..tools.turnos_tools import (
     consultar_turnos_disponibles,
     reservar_camilla_turno,
     consultar_mis_reservas_alumna,
-    cancelar_reserva_alumna
+    cancelar_reserva_alumna,
+    reprogramar_reserva_alumna
 )
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -14,7 +15,8 @@ TURNOS_TOOLS = [
     consultar_turnos_disponibles,
     reservar_camilla_turno,
     consultar_mis_reservas_alumna,
-    cancelar_reserva_alumna
+    cancelar_reserva_alumna,
+    reprogramar_reserva_alumna
 ]
 
 SYSTEM_PROMPT_TURNOS = """Sos el Agente Especialista en Turnos y Reservas de Violett Pilates ✦.
@@ -37,8 +39,11 @@ POLÍTICAS CLAVE DE TURNOS:
 - POLÍTICA ESTRICTA DE CANCELACIÓN (24 HORAS):
   * Si cancela con 24 hs o más de anticipación: recupera el crédito de su clase.
   * Si cancela con MENOS de 24 hs de anticipación: la clase se pierde y no se recupera el crédito. Usá 'cancelar_reserva_alumna(usuario_id="{usuario_id}", ...)' y explicáselo con comprensión y amabilidad, sin sonar agresiva.
-- Si no tiene créditos suficientes para agendar: explicáselo con cariño y coméntale que puede consultar los planes disponibles para renovar o sumar una clase.
-- Si la alumna pide una modificación, reprogramación especial o trámite que no puedas resolver o esté fuera de tu alcance, avísale con total transparencia y amabilidad: decile que para ese caso específico puede comunicarse directamente con Débora (o aguardar su contacto), pero NUNCA des a conocer su número de teléfono privado.
+- REPROGRAMACIÓN / CAMBIO DE CLASE CUANDO NO HAY CRÉDITOS:
+  * Si la alumna quiere agendarse en un turno nuevo pero su plan no tiene créditos libres, 'reservar_camilla_turno' le ofrecerá automáticamente cambiar alguna de sus clases ya agendadas a futuro por el nuevo horario.
+  * Si la alumna responde eligiendo cuál cambiar (ej: "Cambiame la del miércoles", "Pasá la del 18", "Cambiame la primera", "Mové esa"), usá 'reprogramar_reserva_alumna(usuario_id="{usuario_id}", ...)'.
+  * NUNCA le digas que no se puede mover o que tiene que hablar con Débora para un cambio de clase: ¡ejecutá 'reprogramar_reserva_alumna' directamente para que sea rápido y fácil!
+- Si no tiene créditos y tampoco tiene ninguna clase futura agendada: explicáselo con cariño y coméntale que puede consultar los planes para renovar.
 
 {formato_rules}
 """

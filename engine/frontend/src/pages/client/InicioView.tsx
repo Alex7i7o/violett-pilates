@@ -14,7 +14,7 @@ import { CancelModal } from '../../components/booking/CancelModal';
 
 export function InicioView() {
   const { profile } = useClientProfile();
-  const { turnos, loading, bookTurno, cancelTurno } = useBookings();
+  const { turnos, loading, bookTurno, reprogramarTurno, cancelTurno } = useBookings();
 
   // Estados para modales y acordeón
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
@@ -327,6 +327,7 @@ export function InicioView() {
                   turnos={turnos}
                   loading={loading}
                   onBook={bookTurno}
+                  onReprogramar={reprogramarTurno}
                   onCancel={cancelTurno}
                   hideTitle={true}
                 />

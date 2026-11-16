@@ -74,19 +74,7 @@ def reservar_camilla_turno(usuario_id: str, fecha_o_dia: str = "", hora_str: str
         Suscripcion = None
         ReservaMembresia = None
 
-    # Validar suscripción activa y créditos
-    suscripcion = None
-    if Suscripcion:
-        suscripcion = Suscripcion.objects.filter(
-            usuario=usuario,
-            estado__in=['ACTIVO', 'AGOTADO'],
-            fecha_vencimiento__gte=timezone.localdate()
-        ).order_by('-fecha_inicio').first()
-
-        if not suscripcion or suscripcion.clases_restantes <= 0:
-            return "No tenés créditos disponibles en tu plan actual para agendar esta clase. ¿Querés que te pase las opciones para renovar tu abono?"
-
-    # Buscar turno
+    # 1. Buscar turno destino solicitado primero
     turno = None
     if turno_id:
         try:
@@ -104,6 +92,58 @@ def reservar_camilla_turno(usuario_id: str, fecha_o_dia: str = "", hora_str: str
 
     if not turno:
         return f"No se encontró ningún turno programado para {fecha_o_dia} a las {hora_str} hs."
+
+    # 2. Validar suscripción activa y créditos
+    suscripcion = None
+    if Suscripcion:
+        suscripcion = Suscripcion.objects.filter(
+            usuario=usuario,
+            estado__in=['ACTIVO', 'AGOTADO'],
+            fecha_vencimiento__gte=timezone.localdate()
+        ).order_by('-fecha_inicio').first()
+
+        if not suscripcion or suscripcion.clases_restantes <= 0:
+            today = timezone.localdate()
+            now_time = timezone.localtime().time()
+            futuras = list(Reserva.objects.filter(
+                usuario=usuario,
+                estado='CONFIRMADA',
+                turno__fecha__gte=today
+            ).exclude(
+                turno__fecha=today,
+                turno__hora_inicio__lt=now_time
+            ).select_related('turno', 'turno__clase').order_by('turno__fecha', 'turno__hora_inicio'))
+
+            if futuras:
+                dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                lista_futuras = []
+                for r in futuras:
+                    t_item = r.turno
+                    dia_nom = dias_es[t_item.fecha.weekday()]
+                    p = obtener_profesor_de_turno(t_item)
+                    profe_str = f" - Profe: {p.nombre}" if p and hasattr(p, 'nombre') else ""
+                    lista_futuras.append(f"  • {dia_nom} {t_item.fecha.strftime('%d/%m')} a las {t_item.hora_inicio.strftime('%H:%M')} hs ({t_item.clase.nombre}{profe_str})")
+                
+                str_futuras = "\n".join(lista_futuras)
+                t_dia = dias_es[turno.fecha.weekday()]
+                target_str = f"*{t_dia} {turno.fecha.strftime('%d/%m')} a las {turno.hora_inicio.strftime('%H:%M')} hs*"
+
+                conv = get_conversacion_activa()
+                if conv:
+                    if not isinstance(conv.metadata, dict):
+                        conv.metadata = {}
+                    conv.metadata['reprogramacion_pendiente_destino_turno_id'] = str(turno.id)
+                    conv.metadata['reprogramacion_pendiente_destino_fecha'] = turno.fecha.strftime('%Y-%m-%d')
+                    conv.metadata['reprogramacion_pendiente_destino_hora'] = turno.hora_inicio.strftime('%H:%M')
+                    conv.save(update_fields=['metadata'])
+
+                return f"""✦ No te quedan créditos libres en tu abono en este momento, pero tenés estas clases ya agendadas a futuro:
+{str_futuras}
+
+¿Querés que cambiemos alguna de estas clases para pasarla al nuevo horario de {target_str}?
+Decime cuál te gustaría mover (por ejemplo: "Cambiame la del {dias_es[futuras[0].turno.fecha.weekday()]}" o "Pasá la del {futuras[0].turno.fecha.strftime('%d/%m')}") y te la paso directo ✨."""
+
+            return "No tenés créditos disponibles en tu plan actual para agendar esta clase. ¿Querés que te pase las opciones para renovar tu abono?"
 
     # Transacción atómica con lock para prevenir sobreventa de la 3era camilla
     with transaction.atomic():
@@ -376,3 +416,123 @@ def cancelar_reserva_alumna(usuario_id: str, fecha_o_dia: str, hora_str: str = "
             f"Tené en cuenta que, según la política oficial del estudio (cancelación con menos de 24 hs de anticipación), "
             f"el crédito de la clase no se recupera ✦."
         )
+
+
+@tool
+def reprogramar_reserva_alumna(usuario_id: str = "", fecha_origen: str = "", hora_origen: str = "", fecha_destino: str = "", hora_destino: str = "") -> str:
+    """
+    Permite a la alumna mover o reprogramar una clase que ya tiene agendada hacia un nuevo horario disponible,
+    sin consumir créditos adicionales ni costo extra (intercambio directo 1 a 1).
+    Especialmente útil cuando no tiene créditos libres pero sí clases agendadas y desea cambiarse de horario.
+    Parámetros:
+      - usuario_id: ID de la alumna.
+      - fecha_origen: Día o fecha de la clase que desea cambiar (ej: 'miércoles', '18/11', 'hoy').
+      - hora_origen: Opcional. Hora de la clase origen (ej: '19:00', '18hs').
+      - fecha_destino: Día o fecha del nuevo horario que desea tomar. Si se omite, se usa el turno consultado previamente.
+      - hora_destino: Hora del nuevo turno (ej: '18:00', '19hs'). Si se omite, se usa el turno consultado previamente.
+    """
+    usuario = None
+    if usuario_id:
+        try:
+            usuario = Usuario.objects.filter(id=usuario_id).first()
+        except Exception:
+            usuario = None
+
+    conv = get_conversacion_activa()
+    if not usuario and conv:
+        if conv.usuario:
+            usuario = conv.usuario
+        elif conv.telefono:
+            usuario = buscar_usuario_por_telefono(conv.telefono)
+        if not usuario:
+            usuario = get_ultima_alumna_activa()
+
+    if not usuario:
+        return "No estás identificada en el sistema para realizar la reprogramación."
+
+    today = timezone.localdate()
+    now_time = timezone.localtime().time()
+
+    # 1. Buscar turno de destino
+    turno_destino = None
+    meta = (conv.metadata or {}) if conv else {}
+    if fecha_destino:
+        t_dest_date = resolver_fecha(fecha_destino)
+        t_dest_time = resolver_hora(hora_destino) if hora_destino else None
+        qs_dest = Turno.objects.filter(fecha=t_dest_date, estado='PROGRAMADO')
+        if t_dest_time:
+            qs_dest = qs_dest.filter(hora_inicio__hour=t_dest_time.hour, hora_inicio__minute=t_dest_time.minute)
+        turno_destino = qs_dest.first()
+    elif meta.get('reprogramacion_pendiente_destino_turno_id'):
+        turno_destino = Turno.objects.filter(id=meta.get('reprogramacion_pendiente_destino_turno_id'), estado='PROGRAMADO').first()
+
+    if not turno_destino:
+        return "No pude identificar con certeza a qué nuevo horario querés mover la clase. Por favor indicame el día y horario al que te querés anotar (por ejemplo: 'el viernes a las 18 hs')."
+
+    # 2. Buscar turno de origen de la alumna
+    reservas_futuras = list(Reserva.objects.filter(
+        usuario=usuario,
+        estado='CONFIRMADA',
+        turno__fecha__gte=today
+    ).exclude(
+        turno__fecha=today,
+        turno__hora_inicio__lt=now_time
+    ).exclude(
+        turno=turno_destino
+    ).select_related('turno', 'turno__clase').order_by('turno__fecha', 'turno__hora_inicio'))
+
+    if not reservas_futuras:
+        return "No tenés ninguna clase agendada a futuro que puedas cambiar."
+
+    reserva_elegida = None
+    if fecha_origen:
+        f_orig_date = resolver_fecha(fecha_origen)
+        h_orig_time = resolver_hora(hora_origen) if hora_origen else None
+        for r in reservas_futuras:
+            if r.turno.fecha == f_orig_date:
+                if h_orig_time:
+                    if r.turno.hora_inicio.hour == h_orig_time.hour:
+                        reserva_elegida = r
+                        break
+                else:
+                    reserva_elegida = r
+                    break
+
+    # Si no especificó fecha origen o no hizo match exacto, pero solo tiene 1 reserva futura, elegir esa
+    if not reserva_elegida:
+        if len(reservas_futuras) == 1:
+            reserva_elegida = reservas_futuras[0]
+        else:
+            dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+            lista = [f"• {dias_es[r.turno.fecha.weekday()]} {r.turno.fecha.strftime('%d/%m')} a las {r.turno.hora_inicio.strftime('%H:%M')} hs" for r in reservas_futuras]
+            return f"Tenés varias clases agendadas. ¿Cuál de estas querés cambiar por el turno de las {turno_destino.hora_inicio.strftime('%H:%M')} hs?\n" + "\n".join(lista)
+
+    from core.services import reprogramar_reserva
+    exito, mensaje = reprogramar_reserva(
+        usuario=usuario,
+        turno_origen_id=str(reserva_elegida.turno.id),
+        turno_destino_id=str(turno_destino.id)
+    )
+
+    if not exito:
+        return f"No se pudo reprogramar la clase: {mensaje}"
+
+    # Limpiar metadata de reprogramación pendiente
+    if conv and conv.metadata:
+        conv.metadata.pop('reprogramacion_pendiente_destino_turno_id', None)
+        conv.metadata.pop('reprogramacion_pendiente_destino_fecha', None)
+        conv.metadata.pop('reprogramacion_pendiente_destino_hora', None)
+        conv.save(update_fields=['metadata'])
+
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_orig = dias_es[reserva_elegida.turno.fecha.weekday()]
+    dia_dest = dias_es[turno_destino.fecha.weekday()]
+    p_dest = obtener_profesor_de_turno(turno_destino)
+    profe_txt = f" (con la profe {p_dest.nombre})" if p_dest and hasattr(p_dest, 'nombre') else ""
+
+    nombre_display = usuario.nombre.split()[0] if usuario.nombre else ""
+    saludo = f"¡Listo {nombre_display}! ✦ " if nombre_display else "✦ "
+
+    return f"""{saludo}Moví tu clase del *{dia_orig} {reserva_elegida.turno.fecha.strftime('%d/%m')} de las {reserva_elegida.turno.hora_inicio.strftime('%H:%M')} hs* al nuevo horario del *{dia_dest} {turno_destino.fecha.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs*{profe_txt}.
+
+¡Ya quedó asegurado tu lugar en la camilla! ✨"""

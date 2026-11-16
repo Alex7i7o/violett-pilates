@@ -37,12 +37,14 @@ export function BookingGrid({
   loading,
   onBook,
   onCancel,
+  onReprogramar,
   hideTitle = false
 }: {
   turnos: Turno[],
   loading: boolean,
-  onBook: (id: string, recurring: boolean) => void,
-  onCancel: (id: string) => void,
+  onBook: (id: string, recurring: boolean) => Promise<any> | void,
+  onCancel: (id: string) => Promise<any> | void,
+  onReprogramar?: (turnoOrigenId: string, turnoDestinoId: string) => Promise<any> | void,
   hideTitle?: boolean
 }) {
   const [selectedTurnoToBook, setSelectedTurnoToBook] = useState<Turno | null>(null)
@@ -260,6 +262,7 @@ export function BookingGrid({
         onClose={() => setSelectedTurnoToBook(null)}
         turno={selectedTurnoToBook}
         onConfirm={handleConfirmBook}
+        onReprogramar={onReprogramar}
       />
 
       <CancelModal 

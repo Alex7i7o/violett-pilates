@@ -37,6 +37,7 @@ urlpatterns = [
     path('turnos/', TurnosDisponiblesView.as_view(), name='turnos_disponibles'),
     path('reservas/book/', BookTurnoView.as_view(), name='book_turno'),
     path('reservas/cancel/', CancelTurnoView.as_view(), name='cancel_turno'),
+    path('reservas/reprogramar/', ReprogramarTurnoView.as_view(), name='reprogramar_turno'),
     path('reservas/historial/', ClientHistoryView.as_view(), name='client_history'),
     path('admin/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('admin/config/', ConfiguracionView.as_view(), name='admin-config'),

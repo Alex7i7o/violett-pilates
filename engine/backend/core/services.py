@@ -26,7 +26,40 @@ def process_booking(turno_id, user, is_recurring=False, request=None):
     else:
         val_result = registry.execute('pre_book_validation', {'success': True, 'detail': ''}, user=user, turno=turno)
         if not val_result.get('success'):
-            return False, val_result.get('detail', 'Error de validación')
+            detail_msg = val_result.get('detail', 'Error de validación')
+            # Si el alumno no tiene créditos disponibles pero sí tiene clases agendadas a futuro, ofrecer reprogramación
+            today = timezone.localdate()
+            now_time = timezone.localtime().time()
+            futuras = Reserva.objects.filter(
+                usuario=user,
+                estado='CONFIRMADA',
+                turno__fecha__gte=today
+            ).exclude(
+                turno__fecha=today,
+                turno__hora_inicio__lt=now_time
+            ).select_related('turno__clase').order_by('turno__fecha', 'turno__hora_inicio')
+
+            if futuras.exists():
+                dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                futuras_list = []
+                for rf in futuras:
+                    t = rf.turno
+                    dia_nom = dias_es[t.fecha.weekday()]
+                    futuras_list.append({
+                        'reserva_id': str(rf.id),
+                        'turno_id': str(t.id),
+                        'fecha': t.fecha.isoformat(),
+                        'fecha_formateada': f"{dia_nom} {t.fecha.strftime('%d/%m')}",
+                        'hora': t.hora_inicio.strftime('%H:%M'),
+                        'clase_nombre': t.clase.nombre
+                    })
+                return False, {
+                    'detail': 'No tenés créditos libres en tu plan actual, pero podés cambiar una de tus clases ya agendadas por este nuevo horario.',
+                    'code': 'SIN_CREDITOS_CON_FUTURAS',
+                    'reservas_futuras': futuras_list
+                }
+
+            return False, detail_msg
 
         if reserva:
             reserva.es_recurrente = False
@@ -247,3 +280,62 @@ def enviar_email_bienvenida_profesor(usuario):
         except Exception as err:
             logger.error(f'Error al enviar email de bienvenida profesor: {err}')
             return False, str(err)
+
+
+@transaction.atomic
+def reprogramar_reserva(usuario, turno_origen_id, turno_destino_id):
+    """
+    Mueve de forma atómica la reserva de una alumna desde un turno de origen a un nuevo turno de destino.
+    Conserva los créditos de su abono intactos (cambio directo 1 a 1).
+    """
+    import datetime
+    try:
+        reserva_origen = Reserva.objects.select_for_update().get(
+            turno_id=turno_origen_id,
+            usuario=usuario,
+            estado='CONFIRMADA'
+        )
+    except Reserva.DoesNotExist:
+        return False, "No tienes una reserva activa en la clase de origen para reprogramar."
+
+    try:
+        turno_destino = Turno.objects.select_for_update().get(
+            id=turno_destino_id,
+            estado='PROGRAMADO'
+        )
+    except Turno.DoesNotExist:
+        return False, "La clase de destino no existe o no está disponible."
+
+    if turno_destino.cupo_actual <= 0:
+        return False, "La clase de destino no tiene camillas disponibles."
+
+    if Reserva.objects.filter(turno=turno_destino, usuario=usuario, estado='CONFIRMADA').exists():
+        return False, "Ya tienes una reserva confirmada en la clase de destino."
+
+    now = timezone.localtime()
+    clase_destino_dt = datetime.datetime.combine(turno_destino.fecha, turno_destino.hora_inicio)
+    if timezone.is_naive(clase_destino_dt):
+        clase_destino_dt = timezone.make_aware(clase_destino_dt, now.tzinfo)
+
+    if clase_destino_dt <= now:
+        return False, "No puedes reprogramar a una clase que ya comenzó o concluyó."
+
+    turno_origen = reserva_origen.turno
+
+    # Reasignar turno conservando la reserva
+    reserva_origen.turno = turno_destino
+    reserva_origen.save(update_fields=['turno'])
+
+    # Actualizar cupos atómicamente
+    turno_origen.cupo_actual += 1
+    turno_origen.save(update_fields=['cupo_actual'])
+
+    turno_destino.cupo_actual -= 1
+    turno_destino.save(update_fields=['cupo_actual'])
+
+    # Ejecutar hook de evento
+    registry.execute('reserva_reprogramada', reserva_origen, origen=turno_origen, destino=turno_destino)
+
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nom = dias_es[turno_destino.fecha.weekday()]
+    return True, f"¡Clase reprogramada con éxito al {dia_nom} {turno_destino.fecha.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs!"
