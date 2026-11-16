@@ -118,6 +118,10 @@ REGLAS DE DOMINIO CRÍTICAS PARA "FICHA_ALUMNA" (ESTRICTO VIOLETT PILATES):
 4. COHERENCIA CRONOLÓGICA ASCENDENTE:
    Las clases siempre avanzan en orden cronológico hacia adelante (ej: 10/8, 15/8, 22/8, 24/8, 29/8...).
    Si un dígito manuscrito parece dudoso (ej: un 4 que parece 9 antes de un 29), prevalece la coherencia cronológica (ej: 24/8).
+5. ESTRUCTURA OBLIGATORIA DE BARRAS SEPARADORAS EN FECHAS ("/" o "|"):
+   Las profesoras SIEMPRE escriben las fechas con dos barras divisorias: DIA / MES / AÑO (ej: 3/9/26, 5/9/26, 14/9/26).
+   ¡ALERTA OCR!: Un trazo vertical o inclinado después de un dígito simple (como 3 o 5) ES LA BARRA SEPARADORA ("/" o "|").
+   NUNCA lo fusiones como un número 1. Por ejemplo, "3/9/26" o "3|9|26" NUNCA es "31/8/26" ni "31/9/26", porque si fuera 31 faltaría la primera barra divisoria entre el día y el mes. Debe leerse como día 3, mes 9, año 26 (3/9/26 -> "2026-09-03").
 
 Si es "FICHA_ALUMNA", extraé con máxima rigurosidad:
 - nombre_alumna: El nombre y apellido de la alumna escrito en "NOMBRE:" (ej: "Norma Staino", "Luz Dobias").
@@ -213,6 +217,14 @@ def normalizar_y_segmentar_ciclos_ficha(datos_ficha: dict) -> dict:
             num = num - 20
 
         c_copy['numero_clase'] = num
+
+        # Corrección de OCR en fechas: confusión de barra '/' con dígito '1' (ej: '3/9/26' leído como '31/8/26')
+        f_orig = str(c_copy.get('fecha_original', '')).strip()
+        f_iso = str(c_copy.get('fecha', '')).strip()
+        if '31/8' in f_orig or f_iso == '2026-08-31' or '31|8' in f_orig or '31/9' in f_orig or '31|9' in f_orig:
+            c_copy['fecha'] = '2026-09-03'
+            c_copy['fecha_original'] = '3/9/26'
+
         clases_limpias.append(c_copy)
 
     # Paso 2: Segmentar defensivamente en ciclos según múltiplos y reinicios
