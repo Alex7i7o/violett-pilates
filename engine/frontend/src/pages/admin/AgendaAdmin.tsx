@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { MultiSelectAlumnos } from '../../components/admin/MultiSelectAlumnos';
 import React, { useState, useEffect } from 'react';
@@ -72,6 +73,17 @@ export function AgendaAdmin() {
   const [nombreAgregarManual, setNombreAgregarManual] = useState('');
   const [telefonoAgregarManual, setTelefonoAgregarManual] = useState('');
   const [isAgregandoAlumna, setIsAgregandoAlumna] = useState(false);
+  const [alertaSinCreditos, setAlertaSinCreditos] = useState<{
+    visible: boolean;
+    motivo: string;
+    alumnoId: string;
+    alumnoNombre: string;
+  }>({
+    visible: false,
+    motivo: '',
+    alumnoId: '',
+    alumnoNombre: ''
+  });
 
   // Estados para Sacar Alumna de clase puntual
   const [reservaParaSacar, setReservaParaSacar] = useState<{ reservaId: string; alumnoNombre: string; hora: string } | null>(null);
@@ -328,6 +340,15 @@ export function AgendaAdmin() {
       fetchAgenda();
     } catch (err: any) {
       console.error(err);
+      if (err.response?.data?.sin_creditos) {
+        setAlertaSinCreditos({
+          visible: true,
+          motivo: err.response.data.motivo || err.response.data.detail,
+          alumnoId: alumnoSeleccionadoParaTurno?.id || '',
+          alumnoNombre: `${alumnoSeleccionadoParaTurno?.nombre} ${alumnoSeleccionadoParaTurno?.apellido || ''}`.trim()
+        });
+        return;
+      }
       toast.error(err.response?.data?.detail || 'Error al agregar alumna a la clase');
     } finally {
       setIsAgregandoAlumna(false);
@@ -799,6 +820,23 @@ export function AgendaAdmin() {
                 autoFocus
               />
               
+              {alumnoSeleccionadoParaTurno && (!alumnoSeleccionadoParaTurno.plan_activo || alumnoSeleccionadoParaTurno.plan_activo.clases_restantes <= 0) && (
+                <div className="mb-2 bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-xs text-amber-900 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-950">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Esta alumna no tiene créditos libres disponibles</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    {!alumnoSeleccionadoParaTurno.plan_activo 
+                      ? "No registra un abono activo asignado en el sistema." 
+                      : alumnoSeleccionadoParaTurno.plan_activo.clases_pendientes > 0
+                      ? `Tiene todas sus clases (${alumnoSeleccionadoParaTurno.plan_activo.clases_pendientes}) agendadas para otras fechas.`
+                      : "Ya completó todas las clases de su plan actual."
+                    }
+                  </p>
+                </div>
+              )}
+
               <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-2xs">
                 {alumnosAgregarFiltrados.length === 0 ? (
                   <p className="text-xs text-muted p-4 text-center">No se encontraron alumnas con ese criterio de búsqueda.</p>

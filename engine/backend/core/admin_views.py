@@ -119,6 +119,9 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
         usuario_id = request.data.get('usuario_id')
         nombre = request.data.get('nombre', '').strip()
         telefono = request.data.get('telefono', '').strip()
+        forzar = request.data.get('forzar', False)
+        if isinstance(forzar, str):
+            forzar = forzar.lower() in ['true', '1', 'yes']
 
         if turno.cupo_actual <= 0:
             return Response({'detail': 'No hay cupos disponibles en este turno puntual.'}, status=400)
@@ -133,6 +136,17 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                 if Reserva.objects.filter(turno=turno, usuario=usuario, estado='CONFIRMADA').exists():
                     return Response({'detail': f'{usuario.nombre} ya está inscripta en este turno.'}, status=400)
 
+                from core.services import analizar_creditos_y_motivo_alumna, registrar_log_movimiento
+                tiene_creditos, creditos_libres, motivo_creditos, futuras_list, sub = analizar_creditos_y_motivo_alumna(usuario, target_date=turno.fecha)
+
+                if not tiene_creditos and not forzar:
+                    return Response({
+                        'sin_creditos': True,
+                        'detail': f"{usuario.nombre} no tiene créditos disponibles en su plan.",
+                        'motivo': motivo_creditos,
+                        'reservas_futuras': futuras_list
+                    }, status=400)
+
                 reserva = Reserva.objects.create(
                     turno=turno,
                     usuario=usuario,
@@ -141,23 +155,31 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                     estado='CONFIRMADA'
                 )
 
-                try:
-                    from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
-                    sub = Suscripcion.objects.filter(
-                        usuario=usuario,
-                        estado='ACTIVO',
-                        clases_restantes__gt=0,
-                        fecha_vencimiento__gte=turno.fecha
-                    ).order_by('fecha_vencimiento').first()
-                    if sub:
+                if sub:
+                    try:
+                        from plugins.membresias.backend.models import ReservaMembresia
                         ReservaMembresia.objects.create(reserva=reserva, suscripcion=sub)
-                        sub.clases_restantes -= 1
-                        if sub.clases_restantes <= 0:
-                            sub.estado = 'AGOTADO'
-                        sub.save()
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).warning(f'Error asociando membresia: {e}')
+                        if sub.clases_restantes > 0:
+                            sub.clases_restantes -= 1
+                            if sub.clases_restantes <= 0:
+                                sub.estado = 'AGOTADO'
+                            sub.save()
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f'Error asociando membresia: {e}')
+
+                realizado_por = getattr(request.user, 'nombre', '') or getattr(request.user, 'email', '') or 'Administración'
+                motivo_log = 'Inscripción autorizada desde administración sin créditos' if not tiene_creditos else 'Inscripción desde panel de agenda'
+                registrar_log_movimiento(
+                    usuario=usuario,
+                    turno=turno,
+                    tipo_movimiento='RESERVA_CREADA',
+                    reserva=reserva,
+                    estado_anterior='',
+                    estado_nuevo='CONFIRMADA',
+                    realizado_por=realizado_por,
+                    motivo=motivo_log
+                )
 
             elif nombre:
                 reserva = Reserva.objects.create(

@@ -665,13 +665,16 @@ def consultar_asistencias_alumna_duena(nombre_o_tel_alumna: str, filtro: str = "
 
 
 @tool
-def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, hora_str: str) -> str:
+def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, hora_str: str, forzar: bool = False) -> str:
     """
     Comando para la dueña: inscribe manualmente a una alumna en una camilla de un turno específico.
+    Si la alumna no tiene créditos disponibles, le avisa a Deby explicándole el motivo exacto (si el plan venció, si ya tomó todas las clases o si las tiene todas agendadas para otros días con sus fechas).
+    
     Parámetros:
-    - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Laila Marzzuck', 'Alejandra Rivarola').
-    - fecha_o_dia: 'hoy', 'mañana' o nombre del día (ej: 'lunes', 'martes', 'miércoles', 'jueves', 'viernes').
+    - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Luz Dobias', 'Laila Marzzuck', '1167437391').
+    - fecha_o_dia: 'hoy', 'mañana' o nombre del día / fecha (ej: 'lunes', 'viernes', '20/11/2026').
     - hora_str: Hora de inicio (ej: '15:30', '18:00', '19', '20').
+    - forzar: True únicamente si Deby explícitamente confirmó que la anote de todas formas aunque no tenga créditos libres o como cortesía.
     """
     target_date = resolver_fecha(fecha_o_dia)
     hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
@@ -735,9 +738,28 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
     if turno.cupo_actual <= 0:
         return f"La clase del {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
 
-    # Verificar membresía
+    # Verificar situación de créditos antes de agendar
+    from core.services import analizar_creditos_y_motivo_alumna, registrar_log_movimiento
+    tiene_creditos, creditos_libres, motivo_creditos, futuras_list, sub = analizar_creditos_y_motivo_alumna(alumna, target_date=target_date)
+
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nom = dias_es[target_date.weekday()]
+
+    if not tiene_creditos and not forzar:
+        opciones = []
+        if futuras_list:
+            prox = futuras_list[0]
+            opciones.append(f"1. **Moverle una clase ya agendada:** Puedo cambiarle su clase del {prox['fecha_str']} a las {prox['hora_str']} hs por este horario nuevo.")
+        opciones.append(f"2. **Renovarle el abono:** Asignarle o renovarle su plan mensual.")
+        opciones.append(f"3. **Inscribirla igual:** Si querés anotarla de cortesía o ajuste manual, decime *'anotale igual'* y la inscribo en la camilla.")
+
+        return (
+            f"✦ **Deby, {alumna.nombre} {alumna.apellido} no tiene créditos disponibles para la clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs.**\n\n"
+            f"📋 **Situación de su abono:**\n{motivo_creditos}\n\n"
+            f"💡 **¿Cómo querés resolverlo?**\n" + "\n".join(opciones)
+        )
+
     from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
-    sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).first()
 
     reserva = Reserva.objects.create(
         turno=turno,
@@ -755,6 +777,19 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
                 sub.estado = 'AGOTADO'
             sub.save()
 
+    # Log de auditoría
+    motivo_log = 'Inscripción autorizada por Débora sin créditos disponibles' if not tiene_creditos else 'Inscripción por WhatsApp'
+    registrar_log_movimiento(
+        usuario=alumna,
+        turno=turno,
+        tipo_movimiento='RESERVA_CREADA',
+        reserva=reserva,
+        estado_anterior='',
+        estado_nuevo='CONFIRMADA',
+        realizado_por='Débora (WhatsApp)',
+        motivo=motivo_log
+    )
+
     from backend_core.hooks import registry
     try:
         registry.execute('reserva_creada', reserva)
@@ -764,7 +799,9 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
     nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
     prof_obj = obtener_profesor_de_turno(turno)
     profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
-    return f"✦ ¡Listo Deby! Anoté a {nombre_completo} para el {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs{profe_str}. Quedan {turno.cupo_actual} camilla(s) libre(s) en ese bloque."
+    
+    nota_forzar = " (autorizada por vos sin créditos libres en su plan)" if not tiene_creditos else ""
+    return f"✦ ¡Listo Deby! Anoté a {nombre_completo} para el {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs{profe_str}{nota_forzar}. Quedan {turno.cupo_actual} camilla(s) libre(s) en ese bloque."
 
 
 @tool
@@ -887,7 +924,7 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy", hora_str: str = "") 
 
 
 @tool
-def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o_tel_alumna: str = "") -> str:
+def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o_tel_alumna: str = "", forzar: bool = False) -> str:
     """
     Comando exclusivo de la dueña (Deby) para ABRIR o CREAR una clase/turno nuevo fuera de la grilla habitual
     en una fecha y horario puntual, y opcionalmente dejar anotada a una alumna en el mismo paso.
@@ -956,6 +993,17 @@ def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o
 
         if turno.cupo_actual <= 0:
             return f"✦ La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
+
+        from core.services import analizar_creditos_y_motivo_alumna, registrar_log_movimiento
+        tiene_creditos, creditos_libres, motivo_creditos, futuras_list, sub = analizar_creditos_y_motivo_alumna(alumna, target_date=target_date)
+
+        if not tiene_creditos and not forzar:
+            accion_str = "Creé la nueva clase" if es_nueva else "Ya existía la clase"
+            return (
+                f"✦ **Deby, {accion_str} de {clase_obj.nombre} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ({turno.cupo_actual} camillas disponibles), pero NO anoté a {alumna.nombre} {alumna.apellido} porque no tiene créditos libres en su plan.**\n\n"
+                f"📋 **Situación de su abono:**\n{motivo_creditos}\n\n"
+                f"💡 ¿Querés que le renueve el abono, le cambie una clase agendada o la anoto de todas formas?"
+            )
 
         res_creada = Reserva.objects.create(
             turno=turno,

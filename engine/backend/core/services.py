@@ -566,3 +566,106 @@ def corregir_o_registrar_asistencia_retroactiva(usuario, fecha, hora_inicio=None
     )
 
     return True, f"Clase del {fecha.strftime('%d/%m')} a las {turno.hora_inicio.strftime('%H:%M')} registrada como tomada para {usuario.nombre}.", reserva
+
+
+def analizar_creditos_y_motivo_alumna(alumna, target_date=None):
+    """
+    Analiza la situación de créditos y abonos de una alumna registrada.
+    Determina si tiene créditos disponibles y, en caso contrario, explica exactamente el motivo:
+    - Plan terminado / agotado
+    - Plan vencido
+    - Sin créditos libres porque ya tiene todas sus clases agendadas para otros días (listando las fechas)
+    - Sin plan asignado
+    """
+    import datetime
+    from django.db.models import Q
+    actualizar_reservas_pasadas_a_tomadas(usuario=alumna)
+
+    from plugins.membresias.backend.models import Suscripcion
+    today = timezone.localdate()
+
+    if isinstance(target_date, str):
+        try:
+            target_date = datetime.date.fromisoformat(target_date)
+        except Exception:
+            pass
+
+    sub_activa = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+
+    if not sub_activa:
+        sub_pasada = Suscripcion.objects.filter(usuario=alumna).order_by('-fecha_vencimiento').first()
+        if sub_pasada:
+            motivo = f"Su último plan ({sub_pasada.plan.nombre}) finalizó el {sub_pasada.fecha_vencimiento.strftime('%d/%m/%Y')} y actualmente no registra una renovación activa."
+        else:
+            motivo = f"{alumna.nombre} no registra ningún plan de abono asignado en el sistema."
+        return False, 0, motivo, [], None
+
+    if sub_activa.fecha_vencimiento and sub_activa.fecha_vencimiento < today:
+        motivo = f"Su plan {sub_activa.plan.nombre} ({sub_activa.plan.cantidad_clases} clases) venció el {sub_activa.fecha_vencimiento.strftime('%d/%m/%Y')} y no tiene renovación activa."
+        return False, 0, motivo, [], sub_activa
+
+    if target_date and sub_activa.fecha_vencimiento and target_date > sub_activa.fecha_vencimiento:
+        motivo = f"La fecha solicitada ({target_date.strftime('%d/%m/%Y')}) es posterior al vencimiento de su plan actual ({sub_activa.fecha_vencimiento.strftime('%d/%m/%Y')})."
+        return False, 0, motivo, [], sub_activa
+
+    clases_totales = sub_activa.plan.cantidad_clases
+    now = timezone.localtime()
+    now_time = now.time()
+
+    futuras = Reserva.objects.filter(
+        usuario=alumna,
+        estado='CONFIRMADA',
+        turno__fecha__lte=sub_activa.fecha_vencimiento
+    ).filter(
+        Q(turno__fecha__gt=today) |
+        Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
+    ).select_related('turno__clase').order_by('turno__fecha', 'turno__hora_inicio')
+
+    dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    futuras_list = []
+    for rf in futuras:
+        t = rf.turno
+        dia_nom = dias_es[t.fecha.weekday()]
+        futuras_list.append({
+            'reserva_id': str(rf.id),
+            'turno_id': str(t.id),
+            'fecha': t.fecha.isoformat(),
+            'fecha_str': f"{dia_nom} {t.fecha.strftime('%d/%m')}",
+            'hora_str': t.hora_inicio.strftime('%H:%M'),
+            'clase_nombre': t.clase.nombre if t.clase else 'Pilates Reformer'
+        })
+
+    clases_tomadas_qs = Reserva.objects.filter(
+        usuario=alumna,
+        estado='TOMADA',
+        turno__fecha__lte=sub_activa.fecha_vencimiento
+    )
+    if sub_activa.fecha_inicio:
+        clases_tomadas_qs = clases_tomadas_qs.filter(turno__fecha__gte=sub_activa.fecha_inicio - datetime.timedelta(days=7))
+    clases_tomadas = clases_tomadas_qs.count()
+    clases_pendientes = len(futuras_list)
+
+    creditos_libres = max(0, clases_totales - (clases_tomadas + clases_pendientes))
+
+    if creditos_libres > 0:
+        return True, creditos_libres, f"Tiene {creditos_libres} crédito(s) libre(s)", futuras_list, sub_activa
+
+    # Motivo específico de por qué no tiene créditos:
+    if clases_pendientes > 0:
+        lineas_futuras = [f"• {f['fecha_str']} a las {f['hora_str']} hs ({f['clase_nombre']})" for f in futuras_list]
+        motivo = (
+            f"Tiene el plan **{sub_activa.plan.nombre}** ({clases_totales} clases, vence el {sub_activa.fecha_vencimiento.strftime('%d/%m/%Y')}), "
+            f"pero no tiene créditos libres porque ya tiene **todas sus clases agendadas para otros días**:\n"
+            + "\n".join(lineas_futuras)
+        )
+    elif clases_tomadas >= clases_totales:
+        motivo = (
+            f"Ya completó y asistió a las **{clases_tomadas} de {clases_totales} clases** de su plan **{sub_activa.plan.nombre}** "
+            f"(vence el {sub_activa.fecha_vencimiento.strftime('%d/%m/%Y')}), por lo que su abono se encuentra agotado."
+        )
+    else:
+        motivo = (
+            f"Su plan **{sub_activa.plan.nombre}** no cuenta con créditos libres disponibles (0 clases restantes)."
+        )
+
+    return False, 0, motivo, futuras_list, sub_activa
