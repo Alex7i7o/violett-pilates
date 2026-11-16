@@ -635,14 +635,16 @@ def analizar_creditos_y_motivo_alumna(alumna, target_date=None):
             'clase_nombre': t.clase.nombre if t.clase else 'Pilates Reformer'
         })
 
-    clases_tomadas_qs = Reserva.objects.filter(
-        usuario=alumna,
-        estado='TOMADA',
+    clases_tomadas = Reserva.objects.filter(usuario=alumna).filter(
+        Q(consumo_suscripcion__suscripcion=sub_activa) |
+        (
+            Q(consumo_suscripcion__isnull=True) &
+            Q(turno__fecha__gte=sub_activa.fecha_inicio, turno__fecha__lte=sub_activa.fecha_vencimiento)
+        )
+    ).filter(
+        estado__in=['TOMADA', 'AUSENTE'],
         turno__fecha__lte=sub_activa.fecha_vencimiento
-    )
-    if sub_activa.fecha_inicio:
-        clases_tomadas_qs = clases_tomadas_qs.filter(turno__fecha__gte=sub_activa.fecha_inicio - datetime.timedelta(days=7))
-    clases_tomadas = clases_tomadas_qs.count()
+    ).count()
     clases_pendientes = len(futuras_list)
 
     creditos_libres = max(0, clases_totales - (clases_tomadas + clases_pendientes))

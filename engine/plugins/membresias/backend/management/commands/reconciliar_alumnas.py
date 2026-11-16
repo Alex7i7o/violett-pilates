@@ -37,49 +37,25 @@ class Command(BaseCommand):
                 continue
             usuarios_procesados.add(usuario.id)
 
-            # 1. Actualizar reservas pasadas a TOMADAS
-            actualizar_reservas_pasadas_a_tomadas(usuario=usuario)
+            # Cálculo real y auditado de métricas
+            from plugins.membresias.backend.services import calcular_metricas_suscripcion
+            metricas = calcular_metricas_suscripcion(sub, usuario=usuario)
 
-            # 2. Clases tomadas en este ciclo
-            clases_tomadas_qs = Reserva.objects.filter(
-                usuario=usuario,
-                estado='TOMADA',
-                turno__fecha__lte=sub.fecha_vencimiento
-            )
-            if sub.fecha_inicio:
-                clases_tomadas_qs = clases_tomadas_qs.filter(turno__fecha__gte=sub.fecha_inicio - datetime.timedelta(days=7))
-            clases_tomadas = clases_tomadas_qs.count()
+            clases_totales = metricas['clases_totales']
+            clases_tomadas = metricas['clases_tomadas']
+            clases_pendientes_efectivas = metricas['clases_pendientes']
+            creditos_reales = metricas['creditos_reales']
 
-            # 3. Clases pendientes estrictamente a futuro dentro de la vigencia del plan
-            clases_pendientes = Reserva.objects.filter(
-                usuario=usuario,
-                estado='CONFIRMADA',
-                turno__fecha__lte=sub.fecha_vencimiento
-            ).filter(
-                Q(turno__fecha__gt=today) |
-                Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
-            ).count()
-
-            # 4. Clases canceladas en este ciclo (informativo)
             clases_canceladas = Reserva.objects.filter(
                 usuario=usuario,
                 estado__startswith='CANCELADA',
                 turno__fecha__lte=sub.fecha_vencimiento
             ).count()
 
-            # 5. Cálculo real de créditos
-            clases_totales = sub.plan.cantidad_clases
-            creditos_reales = max(0, clases_totales - (clases_tomadas + clases_pendientes))
-            clases_pendientes_efectivas = min(clases_pendientes, max(0, clases_totales - clases_tomadas))
-
             estado_original = sub.estado
             restantes_original = sub.clases_restantes
 
             nuevo_estado = 'ACTIVO' if creditos_reales > 0 else 'AGOTADO'
-
-            sub.clases_restantes = creditos_reales
-            sub.estado = nuevo_estado
-            sub.save(update_fields=['clases_restantes', 'estado'])
 
             self.stdout.write(self.style.SUCCESS(
                 f"[OK] {usuario.nombre} {usuario.apellido} ({usuario.email}):\n"

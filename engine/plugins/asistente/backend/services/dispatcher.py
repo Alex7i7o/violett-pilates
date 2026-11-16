@@ -151,12 +151,37 @@ def _ejecutar_ciclo_agente(data: dict):
         logger.info(f"[ASISTENTE] Conversación con {clean_phone} en ESPERANDO_HUMANO. No se genera respuesta automática.")
         return
 
+    # 5.1 Enviar mensaje inmediato de cortesía ("Ya te digo...") para que la usuaria
+    # sepa que estamos procesando su consulta y nunca sienta que se le clavó el visto.
+    ack_enviado = False
+    if not es_audio:
+        try:
+            if conversacion.rol_detectado == 'DUENA':
+                msg_ack = "¡Dale! ✦ Ya te digo, dame un segundito..."
+            else:
+                msg_ack = "¡Dale! ✦ Ya te digo, dame un segundito que me fijo..."
+            client_ack = WhatsAppClient()
+            client_ack.send_text_message(clean_phone, msg_ack)
+            MensajeWhatsAppLog.objects.create(
+                conversacion=conversacion,
+                direccion='SALIENTE',
+                agente_responsable='asistente_espera_activa',
+                texto=msg_ack
+            )
+            ack_enviado = True
+        except Exception as e_ack:
+            logger.warning(f"[ASISTENTE] No se pudo enviar acuse inmediato a {clean_phone}: {e_ack}")
+    else:
+        # En caso de audio, audio_service ya envió el acuse inmediato al recibir el mensaje de voz
+        ack_enviado = True
+
     # 6. Ejecutar Orquestador LangGraph (o simulador de tools)
     try:
         from ..graph.runner import ejecutar_grafo_asistente
         respuesta_texto, agente_responsable, tools_usadas = ejecutar_grafo_asistente(
             conversacion=conversacion,
-            mensaje_usuario=texto_para_agente
+            mensaje_usuario=texto_para_agente,
+            ack_enviado=ack_enviado
         )
     except Exception as e:
         print(f"[ASISTENTE ERROR GRAFO] Excepción para {clean_phone}: {e}", flush=True)

@@ -266,7 +266,7 @@ def _guardar_hitl_si_corresponde(conversacion, texto_respuesta: str, tipo_accion
             conversacion.save(update_fields=['metadata'])
 
 
-def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, str, List[str]]:
+def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str, ack_enviado: bool = False) -> Tuple[str, str, List[str]]:
     set_conversacion_activa(conversacion)
     """
     Ejecuta el ciclo de atención multi-agente con arquitectura de legos orquestada por LangGraph.
@@ -359,7 +359,7 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str) -> Tuple[str, s
             "agente_responsable": "asistente_recepcionista",
             "tools_usadas": [],
             "esperando_humano": False,
-            "ack_enviado": False
+            "ack_enviado": ack_enviado
         }
 
         t_inicio = time.time()

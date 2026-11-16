@@ -17,6 +17,20 @@ def procesar_audio_entrante_async(phone: str, audio_id: str, mime_type: str = "a
     conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
 
     client = WhatsAppClient()
+
+    # Enviar acuse de recibo inmediato para evitar que el usuario sienta que se clavó el visto
+    try:
+        msg_ack = "¡Recibido! ✦ Ya te digo, dame un segundito que escucho tu audio..."
+        client.send_text_message(clean_phone, msg_ack)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conversacion,
+            direccion='SALIENTE',
+            agente_responsable='asistente_espera_activa',
+            texto=msg_ack
+        )
+    except Exception as e_ack:
+        logger.warning(f"[ASISTENTE AUDIO] Error enviando acuse inmediato de audio: {e_ack}")
+
     audio_bytes = client.download_media_bytes(audio_id)
 
     groq_key = os.environ.get('GROQ_API_KEY')

@@ -217,6 +217,19 @@ def procesar_imagen_entrante(phone: str, image_id: str = None, caption: str = ""
         texto=f"📷 [Foto / Imagen enviada]{caption_txt}"
     )
 
+    # Enviar acuse de recibo inmediato para evitar que el usuario sienta que se clavó el visto
+    try:
+        msg_ack = "¡Recibido! ✦ Ya te digo, dame un segundito que analizo la imagen..."
+        client.send_text_message(clean_phone, msg_ack)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conversacion,
+            direccion='SALIENTE',
+            agente_responsable='asistente_espera_activa',
+            texto=msg_ack
+        )
+    except Exception as e_ack:
+        logger.warning(f"[VISION SERVICE] Error enviando acuse inmediato de imagen: {e_ack}")
+
     if not image_bytes and image_id:
         image_bytes = client.download_media_bytes(image_id)
 
