@@ -142,6 +142,10 @@ class Reserva(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='CONFIRMADA', db_index=True)
     es_recurrente = models.BooleanField(default=False)
+    modificada_manualmente = models.BooleanField(default=False)
+    motivo_modificacion = models.TextField(blank=True, default='')
+    modificada_por = models.CharField(max_length=150, blank=True, default='')
+    fecha_modificacion = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         db_table = 'reservas'
@@ -152,6 +156,26 @@ class Reserva(models.Model):
                 name='unique_turno_usuario_registrado'
             )
         ]
+
+
+class LogMovimientoClase(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    reserva = models.ForeignKey(Reserva, on_delete=models.SET_NULL, null=True, blank=True, related_name='logs_movimientos')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='logs_movimientos_clases')
+    turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name='logs_movimientos')
+    tipo_movimiento = models.CharField(max_length=50, default='MODIFICACION_MANUAL')
+    estado_anterior = models.CharField(max_length=30, blank=True, default='')
+    estado_nuevo = models.CharField(max_length=30, blank=True, default='')
+    realizado_por = models.CharField(max_length=150, default='Administración')
+    motivo = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'logs_movimientos_clases'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.tipo_movimiento} - {self.usuario.nombre} - {self.estado_anterior} -> {self.estado_nuevo} ({self.created_at})' 
 
 
 

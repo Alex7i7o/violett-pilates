@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views_auth import ThrottledLoginView
 from .views import (
-    TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, GoogleLogin, ClientHistoryView
+    TurnosDisponiblesView, BookTurnoView, CancelTurnoView, ClientProfileView, GoogleLogin, ClientHistoryView,
+    ReprogramarTurnoView
 )
 from .admin_views import (
     AdminBackupDownloadView,

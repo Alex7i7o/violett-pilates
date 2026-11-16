@@ -170,7 +170,9 @@ class AdminReservaSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'alumno_id', 'alumno_nombre', 'alumno_apellido',
             'estado', 'es_recurrente', 'tipo_reserva',
-            'nombre_temporal', 'telefono_temporal'
+            'nombre_temporal', 'telefono_temporal',
+            'modificada_manualmente', 'motivo_modificacion',
+            'modificada_por', 'fecha_modificacion'
         ]
 
     def get_alumno_nombre(self, obj):

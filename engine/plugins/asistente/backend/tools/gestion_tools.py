@@ -2317,3 +2317,137 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
     except Exception as e:
         logger.error(f"Error procesando respuesta de cancelacion de Deby: {e}", exc_info=True)
         return f"✦ Ocurrió un error al procesar tu decisión: {e}"
+
+
+@tool
+def corregir_asistencia_retroactiva_duena(
+    nombre_o_tel_alumna: str,
+    fecha_o_dia: str,
+    hora_str: str = "",
+    nuevo_estado: str = "ASISTIO",
+    motivo: str = "Corrección manual informada por Débora por WhatsApp"
+) -> str:
+    """
+    Comando para la dueña (Deby): Corrige o registra retroactivamente la asistencia de una alumna a una clase pasada
+    (por ejemplo, si se canceló por error una clase que sí se dio, o no se anotó a una alumna que vino a clase).
+    Anota que la alumna asistió (o el estado solicitado), descuenta automáticamente el crédito correspondiente de su plan
+    para mantener las cuentas al día, marca la clase como Modificada y guarda el log de auditoría con la justificación.
+
+    Parámetros:
+      - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Luz Dobias', 'Luz', '1167437391').
+      - fecha_o_dia: Fecha de la clase (ej: 'ayer', 'el viernes pasado', '11 de noviembre', '11/11', '2026-11-11').
+      - hora_str: Hora de la clase (ej: '19:00', '19', '18:00', '7 de la tarde'). Si se omite, buscará la clase de ese día.
+      - nuevo_estado: 'ASISTIO' (o 'TOMADA') por defecto. También permite 'CANCELADA', 'AUSENTE', 'CONFIRMADA'.
+      - motivo: Motivo o explicación del cambio (ej: 'Se canceló sin querer pero la alumna vino a clase').
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(
+            nombre_o_tel_alumna,
+            matches,
+            f"corregir o registrar su asistencia para el {fecha_o_dia}"
+        )
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada con '{nombre_o_tel_alumna}' en la base de datos."
+
+    registrar_alumna_activa(alumna)
+
+    # Interpretar fecha con soporte para pasado
+    today = timezone.localdate()
+    s_fecha = fecha_o_dia.strip().lower()
+
+    target_date = None
+    if s_fecha in ['hoy', 'today']:
+        target_date = today
+    elif s_fecha in ['ayer', 'yesterday']:
+        target_date = today - datetime.timedelta(days=1)
+    elif s_fecha in ['anteayer', 'ante ayer']:
+        target_date = today - datetime.timedelta(days=2)
+    else:
+        # Detectar "pasado" ej: "el viernes pasado"
+        dias_semana = {
+            'lunes': 0, 'lun': 0,
+            'martes': 1, 'mar': 1,
+            'miercoles': 2, 'miércoles': 2, 'mie': 2, 'mié': 2,
+            'jueves': 3, 'jue': 3,
+            'viernes': 4, 'vie': 4,
+            'sabado': 5, 'sábado': 5, 'sab': 5, 'sáb': 5,
+            'domingo': 6, 'dom': 6,
+        }
+        for dia_nom, dia_idx in dias_semana.items():
+            if dia_nom in s_fecha:
+                dias_atras = (today.weekday() - dia_idx) % 7
+                if dias_atras == 0 and ('pasado' in s_fecha or 'anterior' in s_fecha):
+                    dias_atras = 7
+                elif 'pasado' in s_fecha or 'anterior' in s_fecha:
+                    if dias_atras == 0:
+                        dias_atras = 7
+                target_date = today - datetime.timedelta(days=dias_atras)
+                break
+        
+        if not target_date:
+            try:
+                target_date = resolver_fecha(fecha_o_dia)
+            except Exception:
+                target_date = today
+
+    # Resolver hora
+    hora_clean = ""
+    if hora_str:
+        hora_clean = normalizar_hora_str(hora_str)
+
+    # Mapear estado
+    st = nuevo_estado.upper().strip()
+    if any(k in st for k in ['ASIST', 'TOMADA', 'VINO', 'PRESENTE', 'SI VINO', 'SÍ VINO']):
+        estado_code = 'TOMADA'
+        estado_label = 'Asistió'
+    elif any(k in st for k in ['AUSENTE', 'FALTO', 'FALTÓ', 'NO VINO']):
+        estado_code = 'AUSENTE'
+        estado_label = 'Ausente'
+    elif any(k in st for k in ['CANCEL', 'DEVUELVE', 'DEVOLVER']):
+        estado_code = 'CANCELADA_TIEMPO'
+        estado_label = 'Cancelada (Crédito devuelto)'
+    elif any(k in st for k in ['PENDIENTE', 'FUTURA', 'CONFIRMADA']):
+        estado_code = 'CONFIRMADA'
+        estado_label = 'Pendiente / Confirmada'
+    else:
+        estado_code = 'TOMADA'
+        estado_label = 'Asistió'
+
+    # Ejecutar la corrección en el servicio central
+    from core.services import corregir_o_registrar_asistencia_retroactiva
+    motivo_final = motivo or f"Corrección manual de Débora por WhatsApp ({estado_label})"
+
+    ok, msg, res_obj = corregir_o_registrar_asistencia_retroactiva(
+        usuario=alumna,
+        fecha=target_date,
+        hora_inicio=hora_clean if hora_clean else None,
+        nuevo_estado=estado_code,
+        realizado_por="Débora (WhatsApp)",
+        motivo=motivo_final,
+        ajustar_credito=True
+    )
+
+    if not ok:
+        return f"✦ No pude registrar la corrección: {msg}"
+
+    # Consultar estado del abono post-ajuste para devolver reporte detallado
+    from plugins.membresias.backend.models import Suscripcion
+    sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+    
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_es[target_date.weekday()]
+    hora_mostrada = res_obj.turno.hora_inicio.strftime('%H:%M') if res_obj and res_obj.turno else (hora_clean or "19:00")
+
+    detalles_plan = ""
+    if sub:
+        detalles_plan = f"\n• Plan: **{sub.plan.nombre}**\n• Clases restantes libres en su abono: **{sub.clases_restantes}**"
+    
+    return (
+        f"✦ **¡Listo Deby! Corregí la asistencia de {alumna.nombre} {alumna.apellido}.**\n\n"
+        f"• Clase: **{dia_nombre} {target_date.strftime('%d/%m/%Y')}** a las **{hora_mostrada} hs**\n"
+        f"• Estado actualizado: **{estado_label}**\n"
+        f"• Marca: ✦ **Modificada manualmente** (con badge en el panel web)\n"
+        f"• Auditoría: Quedó registrado en los logs del sistema con motivo: *\"{motivo_final}\"* {detalles_plan}\n\n"
+        f"El balance de clases y créditos de {alumna.nombre} ya quedó perfectamente sincronizado."
+    )

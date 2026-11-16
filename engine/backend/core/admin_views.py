@@ -276,12 +276,28 @@ class AdminReservaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch', 'post'], url_path='asistencia')
     def asistencia(self, request, pk=None):
         reserva = self.get_object()
-        estado = request.data.get('estado')
-        if estado not in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
-            return Response({'detail': 'Estado inválido.'}, status=400)
-        reserva.estado = estado
-        reserva.save()
-        return Response(AdminReservaSerializer(reserva).data)
+        estado = request.data.get('estado') or request.data.get('nuevo_estado')
+        motivo = request.data.get('motivo', 'Actualización manual de asistencia')
+        ajustar_credito = request.data.get('ajustar_credito', True)
+        if isinstance(ajustar_credito, str):
+            ajustar_credito = ajustar_credito.lower() != 'false'
+        
+        from core.services import corregir_asistencia_reserva
+        realizado_por = getattr(request.user, 'nombre', '') or getattr(request.user, 'email', '') or 'Administración'
+        ok, msg, res_obj = corregir_asistencia_reserva(
+            reserva=reserva,
+            nuevo_estado=estado,
+            realizado_por=realizado_por,
+            motivo=motivo,
+            ajustar_credito=ajustar_credito
+        )
+        if not ok:
+            return Response({'detail': msg}, status=400)
+        return Response(AdminReservaSerializer(res_obj).data)
+
+    @action(detail=True, methods=['post'], url_path='corregir-asistencia')
+    def corregir_asistencia(self, request, pk=None):
+        return self.asistencia(request, pk=pk)
 
     @action(detail=True, methods=['post'], url_path='vincular-usuario')
     def vincular_usuario(self, request, pk=None):
@@ -644,8 +660,66 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
                 'plan_fechas': info['plan_fechas'],
                 'plan_fecha_inicio': info['plan_fecha_inicio'],
                 'plan_fecha_vencimiento': info['plan_fecha_vencimiento'],
+                'modificada_manualmente': bool(r.modificada_manualmente),
+                'motivo_modificacion': r.motivo_modificacion or '',
+                'modificada_por': r.modificada_por or '',
+                'fecha_modificacion': r.fecha_modificacion.isoformat() if r.fecha_modificacion else None,
             })
         return Response(data)
+
+    @action(detail=True, methods=['get'], url_path='logs-movimientos')
+    def logs_movimientos(self, request, pk=None):
+        usuario = self.get_object()
+        from core.models import LogMovimientoClase
+        logs = LogMovimientoClase.objects.filter(usuario=usuario).select_related('turno__clase').order_by('-created_at')[:100]
+        data = []
+        for l in logs:
+            t = l.turno
+            data.append({
+                'id': str(l.id),
+                'tipo_movimiento': l.tipo_movimiento,
+                'estado_anterior': l.estado_anterior,
+                'estado_nuevo': l.estado_nuevo,
+                'realizado_por': l.realizado_por,
+                'motivo': l.motivo,
+                'created_at': l.created_at.isoformat(),
+                'reserva_id': str(l.reserva_id) if l.reserva_id else None,
+                'turno': {
+                    'fecha': t.fecha.isoformat() if t else None,
+                    'hora_inicio': t.hora_inicio.strftime('%H:%M') if t else None,
+                    'clase_nombre': t.clase.nombre if t and t.clase else None
+                } if t else None
+            })
+        return Response(data)
+
+    @action(detail=True, methods=['post'], url_path='anotar-clase-retroactiva')
+    def anotar_clase_retroactiva(self, request, pk=None):
+        usuario = self.get_object()
+        fecha = request.data.get('fecha')
+        hora_inicio = request.data.get('hora_inicio')
+        nuevo_estado = request.data.get('nuevo_estado', 'TOMADA')
+        motivo = request.data.get('motivo', 'Clase anotada retroactivamente desde administración')
+        ajustar_credito = request.data.get('ajustar_credito', True)
+        if isinstance(ajustar_credito, str):
+            ajustar_credito = ajustar_credito.lower() != 'false'
+
+        if not fecha:
+            return Response({'detail': 'La fecha es obligatoria (YYYY-MM-DD).'}, status=400)
+
+        from core.services import corregir_o_registrar_asistencia_retroactiva
+        realizado_por = getattr(request.user, 'nombre', '') or getattr(request.user, 'email', '') or 'Administración'
+        ok, msg, res_obj = corregir_o_registrar_asistencia_retroactiva(
+            usuario=usuario,
+            fecha=fecha,
+            hora_inicio=hora_inicio,
+            nuevo_estado=nuevo_estado,
+            realizado_por=realizado_por,
+            motivo=motivo,
+            ajustar_credito=ajustar_credito
+        )
+        if not ok:
+            return Response({'detail': msg}, status=400)
+        return Response({'detail': msg, 'reserva_id': str(res_obj.id)})
 
 
 

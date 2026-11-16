@@ -6,7 +6,7 @@ import { api } from '../../../lib/api';
 import { deleteAdminAlumno, asignarPlanAlumno, cancelarPlanAlumno, cancelarClasesFuturasAlumno, cancelarReservaAdmin } from '../../../lib/adminApi';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus, RotateCcw, XCircle, Calendar, AlertTriangle } from 'lucide-react';
+import { Trash2, Plus, Minus, RotateCcw, XCircle, Calendar, AlertTriangle, Pencil, History, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useClientConfig } from '../../../context/ClientConfigContext';
 
 interface EditStudentModalProps {
@@ -35,6 +35,17 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
 
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Estados de Corrección de Asistencia y Auditoría de Movimientos
+  const [reservaParaCorregir, setReservaParaCorregir] = useState<any>(null);
+  const [corregirNuevoEstado, setCorregirNuevoEstado] = useState<string>('TOMADA');
+  const [corregirMotivo, setCorregirMotivo] = useState<string>('');
+  const [corregirAjustarCredito, setCorregirAjustarCredito] = useState<boolean>(true);
+  const [guardandoCorreccion, setGuardandoCorreccion] = useState<boolean>(false);
+
+  const [showLogsModal, setShowLogsModal] = useState<boolean>(false);
+  const [logsMovimientos, setLogsMovimientos] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
 
   // Perfil State
   const [nombre, setNombre] = useState('');
@@ -228,14 +239,51 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
     }
   }, [alumno?.id, isOpen, filtroModo, selectedSuscripcionId, selectedMonth, selectedYear]);
 
+  const fetchLogsMovimientos = async () => {
+    if (!alumno?.id) return;
+    setLoadingLogs(true);
+    try {
+      const res = await api.get(`/admin/alumnos/${alumno.id}/logs-movimientos/`);
+      setLogsMovimientos(res.data || []);
+    } catch (err) {
+      console.error("Error al cargar logs", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleGuardarCorreccion = async () => {
+    if (!reservaParaCorregir) return;
+    try {
+      setGuardandoCorreccion(true);
+      await api.post(`/admin/reservas/${reservaParaCorregir.id}/corregir-asistencia/`, {
+        nuevo_estado: corregirNuevoEstado,
+        motivo: corregirMotivo.trim() || `Corrección manual de estado a ${corregirNuevoEstado}`,
+        ajustar_credito: corregirAjustarCredito
+      });
+      toast.success("Asistencia corregida y registrada con éxito");
+      setReservaParaCorregir(null);
+      fetchAlumnoReservas();
+      onUpdate();
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || "Error al corregir asistencia");
+    } finally {
+      setGuardandoCorreccion(false);
+    }
+  };
+
   const handleUpdateReservaStatus = async (reservaId: string, nuevoEstado: string) => {
     try {
-      await api.patch(`/admin/reservas/${reservaId}/`, { estado: nuevoEstado });
+      await api.post(`/admin/reservas/${reservaId}/corregir-asistencia/`, {
+        nuevo_estado: nuevoEstado,
+        motivo: `Actualización rápida desde panel (${nuevoEstado})`,
+        ajustar_credito: true
+      });
       toast.success('Asistencia actualizada');
       fetchAlumnoReservas();
       onUpdate();
-    } catch (e) {
-      toast.error('Error al actualizar asistencia');
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Error al actualizar asistencia');
     }
   };
 
@@ -937,6 +985,22 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
               </div>
             )}
 
+            {/* Barra de Acciones y Auditoría */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs font-bold text-slate-700 tracking-wide uppercase">Listado de Clases:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogsModal(true);
+                  fetchLogsMovimientos();
+                }}
+                className="text-xs font-bold text-primary-main hover:text-primary-dark bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>Auditoría / Logs de Clases</span>
+              </button>
+            </div>
+
             {/* Listado de Clases */}
             {loadingReservas ? (
               <p className="text-center py-6 text-xs text-muted">Cargando clases...</p>
@@ -999,6 +1063,16 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
                           <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">
                             {r.es_recurrente ? 'Fija' : 'Puntual'}
                           </span>
+
+                          {r.modificada_manualmente && (
+                            <span 
+                              className="bg-amber-100/90 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs"
+                              title={`Modificada manualmente por: ${r.modificada_por || 'Administración'}\nMotivo: ${r.motivo_modificacion || 'Sin motivo'}\nFecha: ${r.fecha_modificacion ? new Date(r.fecha_modificacion).toLocaleString() : ''}`}
+                            >
+                              <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                              ✦ Modificada
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1041,6 +1115,20 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
                               ✕
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReservaParaCorregir(r);
+                              setCorregirNuevoEstado(r.estado);
+                              setCorregirMotivo(r.motivo_modificacion || '');
+                              setCorregirAjustarCredito(true);
+                            }}
+                            title="Corregir asistencia, estado o créditos"
+                            className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ml-0.5"
+                          >
+                            <Pencil className="w-2.5 h-2.5 text-slate-600" />
+                            <span>Corregir</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1388,6 +1476,223 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
           </div>
         )}
       </AnimatePresence>
+      {/* Modal Corregir Asistencia de Clase */}
+      <AnimatePresence>
+        {reservaParaCorregir && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4"
+            >
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                  <Pencil className="w-5 h-5 text-primary-main" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Corregir Estado de Clase</h3>
+                  <p className="text-xs text-muted">
+                    {reservaParaCorregir.fecha} {reservaParaCorregir.hora_inicio} hs • {reservaParaCorregir.clase_nombre}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nuevo Estado de Asistencia:
+                  </label>
+                  <select
+                    value={corregirNuevoEstado}
+                    onChange={e => setCorregirNuevoEstado(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800"
+                  >
+                    <option value="TOMADA">✓ Asistió (Tomada) - Descuenta 1 clase del plan</option>
+                    <option value="CANCELADA_TIEMPO">✗ Cancelada a tiempo - Devuelve 1 clase libre</option>
+                    <option value="CANCELADA_TARDIA">✗ Cancelada tardía - No devuelve clase</option>
+                    <option value="AUSENTE">✕ Ausente - Consume clase del plan</option>
+                    <option value="CONFIRMADA">✦ Pendiente / Agendada por tomar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Motivo o Justificación del cambio:
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={corregirMotivo}
+                    onChange={e => setCorregirMotivo(e.target.value)}
+                    placeholder="Ej: Se canceló por error y la alumna asistió a clase con normalidad..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-primary-main"
+                  />
+                  <p className="text-[10px] text-muted mt-0.5">
+                    Este motivo quedará registrado en los logs de auditoría y visible en el badge de clase modificada.
+                  </p>
+                </div>
+
+                <div className="bg-purple-50/70 border border-purple-200 p-3 rounded-xl flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="chkAjustarCredito"
+                    checked={corregirAjustarCredito}
+                    onChange={e => setCorregirAjustarCredito(e.target.checked)}
+                    className="mt-0.5 rounded text-primary-main focus:ring-primary-main"
+                  />
+                  <label htmlFor="chkAjustarCredito" className="text-xs text-purple-950 select-none cursor-pointer">
+                    <span className="font-bold">Ajustar créditos del plan automáticamente</span>
+                    <span className="block text-[11px] text-purple-800/80 mt-0.5">
+                      Si se marca como Asistió, descuenta 1 crédito. Si se cancela a tiempo, devuelve 1 crédito.
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReservaParaCorregir(null)}
+                  disabled={guardandoCorreccion}
+                  className="flex-1 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGuardarCorreccion}
+                  disabled={guardandoCorreccion}
+                  className="flex-1 py-2 text-xs font-bold text-white bg-primary-main hover:bg-primary-dark rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {guardandoCorreccion ? 'Guardando...' : 'Guardar Corrección'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Historial y Logs de Auditoría */}
+      <AnimatePresence>
+        {showLogsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-xl w-full shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+                    <History className="w-5 h-5 text-primary-main" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">Auditoría y Movimientos de Clases</h3>
+                    <p className="text-xs text-muted">{alumno.nombre} {alumno.apellido}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                {loadingLogs ? (
+                  <p className="text-center py-8 text-xs text-muted">Cargando registros de auditoría...</p>
+                ) : logsMovimientos.length === 0 ? (
+                  <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                    <p className="text-xs text-muted">No se registran movimientos de clases aún para este alumno.</p>
+                  </div>
+                ) : (
+                  logsMovimientos.map(log => {
+                    const formatLogDate = (dStr: string) => {
+                      try {
+                        const d = new Date(dStr);
+                        return d.toLocaleString('es-AR', {
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        });
+                      } catch {
+                        return dStr;
+                      }
+                    };
+
+                    const getTipoBadge = (tipo: string) => {
+                      switch (tipo) {
+                        case 'CORRECCION_ASISTENCIA':
+                          return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Corrección Asistencia</span>;
+                        case 'RESERVA_CREADA':
+                          return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Reserva Creada</span>;
+                        case 'RESERVA_CANCELADA':
+                          return <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Cancelación</span>;
+                        case 'RESERVA_REPROGRAMADA':
+                          return <span className="bg-sky-100 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Reprogramación</span>;
+                        case 'ALUMNA_ANOTADA_RETROACTIVA':
+                          return <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Anotada Retroactiva</span>;
+                        default:
+                          return <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{tipo}</span>;
+                      }
+                    };
+
+                    return (
+                      <div key={log.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {getTipoBadge(log.tipo_movimiento)}
+                            <span className="text-[10px] text-muted">{formatLogDate(log.created_at)}</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
+                            Por: {log.realizado_por}
+                          </span>
+                        </div>
+
+                        {log.turno && (
+                          <div className="text-[11px] font-medium text-slate-700">
+                            Clase: <span className="font-bold text-slate-900">{log.turno.fecha} {log.turno.hora_inicio} hs</span> ({log.turno.clase_nombre || 'Pilates Reformer'})
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-slate-500">Transición:</span>
+                          <span className="font-semibold text-slate-700 bg-slate-200/70 px-1.5 py-0.5 rounded">
+                            {log.estado_anterior || 'Inicial'}
+                          </span>
+                          <span className="text-slate-400">→</span>
+                          <span className="font-bold text-primary-main bg-purple-100 px-1.5 py-0.5 rounded">
+                            {log.estado_nuevo || 'Actualizado'}
+                          </span>
+                        </div>
+
+                        {log.motivo && (
+                          <div className="bg-white p-2 rounded-lg border border-slate-200/80 text-[11px] text-slate-600 italic">
+                            "{log.motivo}"
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </Modal>
   );
 }
