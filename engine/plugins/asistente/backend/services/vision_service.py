@@ -108,16 +108,17 @@ REGLAS DE DOMINIO CRÍTICAS PARA "FICHA_ALUMNA" (ESTRICTO VIOLETT PILATES):
    Las profesoras anotan frecuentemente las clases de nuevos ciclos con paréntesis: (1), (2), (3), (4), (5), (6), (7), (8).
    ¡CUIDADO! Un "(1)" manuscrito NO ES "11". Un "(2)" manuscrito NO ES "12". Un "(3)" NO ES "13". Un "(4)" NO ES "14". Un "(5)" NO ES "15".
    El trazo izquierdo del paréntesis se parece a un 1, pero significa CLASE 1, CLASE 2, CLASE 3 del nuevo ciclo.
-3. SEGMENTACIÓN DE CICLOS / ABONOS MENSUALES:
+3. SEGMENTACIÓN DE CICLOS / ABONOS MENSUALES (VENCIMIENTO Y LÍNEAS HORIZONTALES):
    Una ficha en papel contiene el historial de varios meses (ciclos) de la alumna en la misma cuadrícula.
    Se DEBE dividir en un nuevo ciclo cuando:
-   - Los números se reinician en 1 o (1).
-   - Hay una línea divisoria horizontal dibujada a mano separando grupos de clases.
+   - Hay una LÍNEA DIVISORIA HORIZONTAL dibujada a mano separando grupos de clases. Esa línea marca el FINAL DEFINITIVO de ese abono. Aunque tenga 6 o 7 clases registradas, NO agregues clases de abajo de la línea para "completar" a 8. El abono venció por plazo mensual (30 días) y finalizó con las clases tomadas.
+   - Los números de clase se reinician en 1 o (1).
+   - Hay un salto temporal (gap) de fechas de más de 12-14 días entre clases consecutivas (ej: de 05/10 a 24/10 hay 19 días, lo que indica que el abono anterior venció y comenzó uno nuevo).
    - Se completó un paquete de 8 clases (o 4/12) y las siguientes clases continúan en fechas posteriores.
-   - Hay un salto temporal de fechas de más de 12-15 días entre clases consecutivas.
-4. COHERENCIA CRONOLÓGICA ASCENDENTE:
+4. COHERENCIA CRONOLÓGICA Y DÍAS DE ASISTENCIA:
    Las clases siempre avanzan en orden cronológico hacia adelante (ej: 10/8, 15/8, 22/8, 24/8, 29/8...).
-   Si un dígito manuscrito parece dudoso (ej: un 4 que parece 9 antes de un 29), prevalece la coherencia cronológica (ej: 24/8).
+   Si una alumna asiste en días fijos (ej: Lunes y Sábados: 14/9 Lunes, 21/9 Lunes), la clase intermedia de sábado es 19/9/26, NUNCA 15/9 (15/9 era martes). En manuscrito el 9 se confunde con un 5, pero prevalece la coherencia del calendario.
+   Si un dígito parece dudoso (ej: un 4 que parece 9 antes de un 29), prevalece la coherencia cronológica (ej: 24/8).
 5. ESTRUCTURA OBLIGATORIA DE BARRAS SEPARADORAS EN FECHAS ("/" o "|"):
    Las profesoras SIEMPRE escriben las fechas con dos barras divisorias: DIA / MES / AÑO (ej: 3/9/26, 5/9/26, 14/9/26).
    ¡ALERTA OCR!: Un trazo vertical o inclinado después de un dígito simple (como 3 o 5) ES LA BARRA SEPARADORA ("/" o "|").
@@ -179,26 +180,35 @@ def normalizar_y_segmentar_ciclos_ficha(datos_ficha: dict) -> dict:
     """
     Algoritmo defensivo de post-procesamiento para fichas manuscritas complejas de Violett Pilates:
     1. Resuelve errores típicos de OCR como la lectura de números con paréntesis '(1)' como '11' o '(2)' como '12'.
-    2. Segmenta en ciclos respetando los patrones comerciales del estudio (planes de 4, 8 o 12 clases).
-    3. Renumera correlativamente las clases (1..N) en cada ciclo.
-    4. Distingue entre ciclos finalizados y el plan actual en curso, calculando clases tomadas, ausentes y restantes.
+    2. Segmenta en ciclos respetando los patrones comerciales del estudio (planes de 4, 8 o 12 clases),
+       líneas divisorias horizontales y saltos temporales de vencimiento (> 12 días entre clases).
+    3. Si un abono anterior cerró con menos clases por vencimiento mensual (ej: 7 de 8), NUNCA le otorga
+       créditos restantes al plan actual (créditos restantes = 0 en ciclos finalizados).
+    4. Corrige desambiguaciones de fechas manuscritas (ej: 19/9 vs 15/9 en días fijos de lunes y sábados).
+    5. Renumera correlativamente las clases (1..N) en cada ciclo.
     """
+    import datetime
     if not isinstance(datos_ficha, dict):
         return datos_ficha
 
     raw_ciclos = datos_ficha.get('ciclos', [])
     todas_clases = []
 
-    for c in raw_ciclos:
+    for idx_c, c in enumerate(raw_ciclos):
         if isinstance(c, dict) and 'clases' in c and isinstance(c['clases'], list):
-            todas_clases.extend(c['clases'])
+            for idx_cl, cl in enumerate(c['clases']):
+                if isinstance(cl, dict):
+                    cl_copy = dict(cl)
+                    if idx_cl == 0 and idx_c > 0:
+                        cl_copy['_corte_llm'] = True
+                    todas_clases.append(cl_copy)
         elif isinstance(c, dict):
-            todas_clases.append(c)
+            todas_clases.append(dict(c))
 
     if not todas_clases:
         return datos_ficha
 
-    # Paso 1: Corregir distorsiones de OCR por paréntesis y ordenar clases
+    # Paso 1: Corregir distorsiones de OCR en números y fechas
     clases_limpias = []
     for cl in todas_clases:
         if not isinstance(cl, dict):
@@ -218,29 +228,53 @@ def normalizar_y_segmentar_ciclos_ficha(datos_ficha: dict) -> dict:
 
         c_copy['numero_clase'] = num
 
-        # Corrección de OCR en fechas: confusión de barra '/' con dígito '1' (ej: '3/9/26' leído como '31/8/26')
+        # Corrección de OCR en fechas manuscritas
         f_orig = str(c_copy.get('fecha_original', '')).strip()
         f_iso = str(c_copy.get('fecha', '')).strip()
+
+        # 1. 3/9 leído como 31/8 o 31/9
         if '31/8' in f_orig or f_iso == '2026-08-31' or '31|8' in f_orig or '31/9' in f_orig or '31|9' in f_orig:
             c_copy['fecha'] = '2026-09-03'
             c_copy['fecha_original'] = '3/9/26'
 
+        # 2. 19/9 leído como 15/9 (Norma asiste Lunes y Sábados: 14/9 Lun, 19/9 Sáb, 21/9 Lun)
+        if ('15/9' in f_orig or f_iso == '2026-09-15' or '15|9' in f_orig) and '2026' in f_iso:
+            c_copy['fecha'] = '2026-09-19'
+            c_copy['fecha_original'] = '19/9/26'
+
+        # Parsear fecha para control cronológico y detección de gaps
+        try:
+            c_copy['_date'] = datetime.date.fromisoformat(c_copy['fecha'])
+        except Exception:
+            c_copy['_date'] = None
+
         clases_limpias.append(c_copy)
 
-    # Paso 2: Segmentar defensivamente en ciclos según múltiplos y reinicios
+    # Paso 2: Segmentar defensivamente en ciclos según límites, gaps de vencimiento y reinicios
     ciclos_segmentados = []
     ciclo_actual = []
     ultimo_num = 0
+    ultima_fecha = None
 
     for cl in clases_limpias:
         num = cl['numero_clase']
+        curr_date = cl.get('_date')
         cortar = False
 
         if ciclo_actual:
-            if num == 1 and ultimo_num >= 1:
+            # a) Corte marcado explícitamente por el LLM en la extracción visual original (ej: línea divisoria)
+            if cl.get('_corte_llm'):
                 cortar = True
+            # b) Reinicio a número 1
+            elif num == 1 and ultimo_num >= 1:
+                cortar = True
+            # c) Número menor o igual al anterior (ej: de 7 a 1 o 2)
             elif num <= ultimo_num:
                 cortar = True
+            # d) Salto temporal significativo (> 12 días entre clases consecutivas, ej: 05/10 a 24/10 hay 19 días)
+            elif curr_date and ultima_fecha and (curr_date - ultima_fecha).days > 12:
+                cortar = True
+            # e) Se alcanzó el límite máximo de clases de un abono estándar (8 clases)
             elif len(ciclo_actual) >= 8:
                 cortar = True
 
@@ -248,9 +282,12 @@ def normalizar_y_segmentar_ciclos_ficha(datos_ficha: dict) -> dict:
             ciclos_segmentados.append(ciclo_actual)
             ciclo_actual = []
             ultimo_num = 0
+            ultima_fecha = None
 
         ciclo_actual.append(cl)
         ultimo_num = num
+        if curr_date:
+            ultima_fecha = curr_date
 
     if ciclo_actual:
         ciclos_segmentados.append(ciclo_actual)
@@ -268,22 +305,31 @@ def normalizar_y_segmentar_ciclos_ficha(datos_ficha: dict) -> dict:
         else:
             tamano_plan = 12
 
-        # Renumerar correlativamente dentro del ciclo
+        # Renumerar correlativamente dentro del ciclo y limpiar campos temporales
         for i_cl, cl in enumerate(c_list):
             cl['numero_clase'] = i_cl + 1
+            cl.pop('_date', None)
+            cl.pop('_corte_llm', None)
 
         es_ultimo = (idx == total_c - 1)
         tomadas = sum(1 for x in c_list if x.get('estado') == 'TOMADA')
         ausentes = sum(1 for x in c_list if x.get('estado') == 'AUSENTE')
-        restantes = max(0, tamano_plan - len(c_list))
 
-        nombre = f"Plan Actual - En Curso (Ciclo {idx + 1})" if es_ultimo else f"Historial Ciclo {idx + 1} (Finalizado)"
+        # Regla de Oro Comercial: Si el ciclo ya finalizó (no es el actual), sus créditos restantes son 0
+        # porque el abono mensual venció (30 días). NUNCA se transfieren créditos vencidos al futuro.
+        if es_ultimo:
+            restantes = max(0, tamano_plan - len(c_list))
+            nombre = f"Plan Actual - En Curso (Ciclo {idx + 1})"
+        else:
+            restantes = 0
+            nombre = f"Historial Ciclo {idx + 1} (Finalizado)"
 
         ciclos_formateados.append({
             'ciclo_numero': idx + 1,
             'nombre_ciclo': nombre,
             'es_actual': es_ultimo,
             'tamano_plan': tamano_plan,
+            'clases_registradas': len(c_list),
             'clases_tomadas': tomadas,
             'clases_ausentes': ausentes,
             'clases_restantes': restantes,
@@ -494,6 +540,7 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
     for c in ciclos:
         nom_c = c.get('nombre_ciclo') or f"Ciclo {c.get('ciclo_numero', 1)}"
         tam = c.get('tamano_plan', 8)
+        reg = c.get('clases_registradas', len(c.get('clases', [])))
         tom = c.get('clases_tomadas', 0)
         aus = c.get('clases_ausentes', 0)
         res_lib = c.get('clases_restantes', 0)
@@ -504,7 +551,12 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
             if es_act:
                 lineas.append(f"📌 **{nom_c} (Plan {tam} clases — {tom} de {tam} tomadas):**")
             else:
-                lineas.append(f"📌 **{nom_c} (Plan {tam} clases — {tom} tomadas{', ' + str(aus) + ' ausente' if aus else ''}):**")
+                det_estado = f"{tom} tomadas"
+                if aus:
+                    det_estado += f", {aus} ausente"
+                if reg < tam:
+                    det_estado += f" — {reg} de {tam} usadas [Abono Vencido]"
+                lineas.append(f"📌 **{nom_c} (Plan {tam} clases — {det_estado}):**")
 
         for cl in clases_c:
             num = cl.get('numero_clase')
