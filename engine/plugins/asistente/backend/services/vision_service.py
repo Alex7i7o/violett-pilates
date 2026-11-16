@@ -61,8 +61,10 @@ def obtener_vision_llms_disponibles():
     if groq_key:
         try:
             from langchain_groq import ChatGroq
+            # qwen/qwen3.8-27b es el modelo multimodal de visión activo oficial en Groq
+            groq_vis_model = os.environ.get('GROQ_VISION_MODEL', 'qwen/qwen3.8-27b')
             llms.append(ChatGroq(
-                model='llama-3.2-11b-vision-preview',
+                model=groq_vis_model,
                 api_key=groq_key,
                 temperature=0.0
             ))

@@ -879,6 +879,19 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             tools_usadas.append('renovar_o_asignar_plan_alumna')
             return res, "agente_direccion", tools_usadas
 
+        # 0a2. Aviso de envío de ficha física de alumna (foto / papel)
+        if any(k in msg_low for k in [
+            'voy a pasar una ficha', 'voy a mandar una ficha', 'voy a enviar una ficha',
+            'te paso una ficha', 'te mando una ficha', 'te envio una ficha', 'te envío una ficha',
+            'te paso la foto', 'te mando la foto', 'te paso la ficha', 'te mando la ficha',
+            'actualices los datos de una alumna', 'actualizar los datos de una alumna'
+        ]):
+            return (
+                "✦ ¡Dale Deby! Pasame la foto de la ficha física por acá y la leo con inteligencia visual para extraer las clases y mostrártelas para su confirmación 📸.",
+                "agente_direccion",
+                []
+            )
+
         # 0b. Consulta de ficha o situación de una alumna
         es_consulta_ficha = (
             any(k in msg_low for k in [
