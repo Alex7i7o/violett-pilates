@@ -634,6 +634,28 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
 
     # --- COMANDOS ADMINISTRATIVOS DE LA DUEÑA (AUTORIZACIÓN ESTRICTA) ---
     if rol == 'DUENA':
+        # Reasignación masiva de todas las clases de un profesor/a a otro/a (Esquema + Agenda)
+        es_reasignacion_masiva = (
+            any(k in msg_low for k in ['todas las clases', 'todas sus clases', 'todas las que sean de', 'no va a estar dando mas clases', 'no va a dar mas clases', 'no da mas clases', 'no va a estar dando']) and
+            any(k in msg_low for k in ['pasan a', 'pasaselas', 'pasáselas', 'pasale', 'pasále', 'ponela a', 'ponelo a', 'cambia a', 'cambiá a', 'solo emiliana', 'solo '])
+        )
+        if es_reasignacion_masiva:
+            profe_saliente = "Brian" if any(k in msg_low for k in ['brian', 'aguero', 'agüero']) else ""
+            nueva_profe = "Emiliana" if any(k in msg_low for k in ['emiliana', 'gauna']) else ""
+            if not profe_saliente and "cande" in msg_low:
+                profe_saliente = "Cande"
+            if not nueva_profe and "julieta" in msg_low:
+                nueva_profe = "Julieta"
+
+            if profe_saliente and nueva_profe:
+                from ..tools.profesores_tools import reasignar_todas_las_clases_profesor_duena
+                res = reasignar_todas_las_clases_profesor_duena.invoke({
+                    "profe_saliente_nombre": profe_saliente,
+                    "nueva_profe_nombre": nueva_profe
+                })
+                tools_usadas.append('reasignar_todas_las_clases_profesor_duena')
+                return res, "agente_direccion", tools_usadas
+
         # 0. Enviar mensaje de WhatsApp a una alumna por orden de la dueña
         es_orden_mensaje = any(k in msg_low for k in [
             'mandale un mensaje', 'mandale un whatsapp', 'mandale un wp', 'mandale un wpp',

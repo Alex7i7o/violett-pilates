@@ -280,6 +280,118 @@ def reasignar_profesora_directo(fecha_o_dia: str, hora_str: str, profe_titular_n
     )
 
 
+@tool("reasignar_todas_las_clases_profesor_duena")
+def reasignar_todas_las_clases_profesor_duena(profe_saliente_nombre: str, nueva_profe_nombre: str) -> str:
+    """
+    Comando para la dueña del estudio (Deby): reasigna de forma MASIVA e INMEDIATA todas las clases de un profesor/a saliente
+    a una nueva profesora de reemplazo, sincronizando en conjunto tanto el ESQUEMA SEMANAL (grilla fija recurrente)
+    como la AGENDA de clases futuras (desde hoy en adelante).
+
+    Parámetros:
+    - profe_saliente_nombre: Nombre del profesor a reemplazar (ej: 'Brian Agüero', 'Brian').
+    - nueva_profe_nombre: Nombre de la profesora que asume todas las clases (ej: 'Emiliana Gauna', 'Emiliana').
+    """
+    from ..models import RegistroAccionIA
+    from plugins.profesores.backend.models import Profesor, PlantillaProfesor, TurnoProfesor
+    from core.models import PlantillaTurno, Turno
+
+    profe_saliente = buscar_profesor(profe_saliente_nombre)
+    if not profe_saliente:
+        return f"✦ No encontré en el staff a ningún profesor/a llamado '{profe_saliente_nombre}'."
+
+    nueva_profe = buscar_profesor(nueva_profe_nombre)
+    if not nueva_profe:
+        return f"✦ No encontré en el staff a ninguna profesora llamada '{nueva_profe_nombre}'."
+
+    nom_saliente = f"{profe_saliente.nombre} {profe_saliente.apellido}".strip()
+    nom_nueva = f"{nueva_profe.nombre} {nueva_profe.apellido}".strip()
+
+    # 1. Actualizar Esquema Semanal (Plantillas fijas recurrentes)
+    plantillas_mod = PlantillaProfesor.objects.filter(profesor=profe_saliente)
+    total_plantillas = plantillas_mod.count()
+    plantillas_mod.update(profesor=nueva_profe)
+
+    # 2. Actualizar Agenda de clases futuras (desde hoy en adelante)
+    hoy = timezone.localdate()
+    turnos_prof_qs = TurnoProfesor.objects.filter(
+        profesor=profe_saliente,
+        turno__fecha__gte=hoy
+    ).exclude(turno__estado='CANCELADO')
+    total_turnos = turnos_prof_qs.count()
+    turnos_prof_qs.update(profesor=nueva_profe)
+
+    # 3. Asegurar que cualquier turno futuro cuya plantilla tenga a la nueva profe quede asignado
+    plantillas_nueva_ids = PlantillaProfesor.objects.filter(profesor=nueva_profe).values_list('plantilla_id', flat=True)
+    turnos_de_plantilla = Turno.objects.filter(
+        plantilla_id__in=plantillas_nueva_ids,
+        fecha__gte=hoy
+    ).exclude(estado='CANCELADO')
+    for t in turnos_de_plantilla:
+        TurnoProfesor.objects.update_or_create(
+            turno=t,
+            defaults={'profesor': nueva_profe}
+        )
+
+    # 4. Sincronizar cualquier turno futuro coincidente con las plantillas
+    for pp in PlantillaProfesor.objects.filter(profesor=nueva_profe).select_related('plantilla'):
+        t_coincidentes = Turno.objects.filter(
+            clase=pp.plantilla.clase,
+            hora_inicio=pp.plantilla.hora_inicio,
+            fecha__gte=hoy
+        ).exclude(estado='CANCELADO')
+        for tc in t_coincidentes:
+            if tc.fecha.isoweekday() == pp.plantilla.dia_semana:
+                TurnoProfesor.objects.update_or_create(
+                    turno=tc,
+                    defaults={'profesor': nueva_profe}
+                )
+
+    # 5. Notificar a las profesoras vía WhatsApp si corresponde
+    client = WhatsAppClient()
+    tel_nueva = (nueva_profe.telefono or (nueva_profe.usuario.telefono if nueva_profe.usuario else ""))
+    if tel_nueva:
+        clean_nueva = tel_nueva.replace('+', '').replace(' ', '').replace('-', '')
+        msg_nueva = (
+            f"¡Hola {nueva_profe.nombre}! ✦ Te informamos que la dirección te reasignó todas las clases de "
+            f"*{nom_saliente}* a tu cargo, tanto en el Esquema Semanal como en la Agenda de clases futuras. ¡Muchas gracias!"
+        )
+        try:
+            client.send_text_message(clean_nueva, msg_nueva)
+        except Exception:
+            pass
+
+    tel_sal = (profe_saliente.telefono or (profe_saliente.usuario.telefono if profe_saliente.usuario else ""))
+    if tel_sal and profe_saliente.id != nueva_profe.id:
+        clean_sal = tel_sal.replace('+', '').replace(' ', '').replace('-', '')
+        msg_sal = (
+            f"Hola {profe_saliente.nombre}, te confirmamos que la dirección reasignó todas tus clases "
+            f"a cargo de *{nom_nueva}* en el sistema."
+        )
+        try:
+            client.send_text_message(clean_sal, msg_sal)
+        except Exception:
+            pass
+
+    # 6. Registrar en auditoría
+    RegistroAccionIA.objects.create(
+        tipo_accion='REASIGNACION_MASIVA_PROFESOR',
+        descripcion=f"Reasignación masiva de todas las clases de {nom_saliente} a {nom_nueva} en Esquema ({total_plantillas}) y Agenda ({total_turnos}).",
+        payload={
+            'profe_saliente': nom_saliente,
+            'nueva_profe': nom_nueva,
+            'plantillas_actualizadas': total_plantillas,
+            'turnos_actualizados': total_turnos
+        }
+    )
+
+    return (
+        f"✅ **¡Listo Deby! Sincronicé todas las clases de {nom_saliente} a cargo de {nom_nueva} en conjunto:**\n\n"
+        f"• **Esquema Semanal:** {total_plantillas} horarios recurrentes fijados con {nom_nueva}.\n"
+        f"• **Agenda de clases:** Todas las clases futuras (a partir de hoy {hoy.strftime('%d/%m')}) quedaron a cargo de {nom_nueva}.\n\n"
+        f"El cambio ya se encuentra 100% visible tanto en el Esquema como en la Agenda del panel web."
+    )
+
+
 @tool
 def buscar_reemplazo_orden_duena(fecha_o_dia: str, hora_str: str, profe_titular_nombre: str = "") -> str:
     """

@@ -15,6 +15,7 @@ from ..tools.optimizacion_tools import (
 )
 from ..tools.profesores_tools import (
     reasignar_profesora_directo,
+    reasignar_todas_las_clases_profesor_duena,
     buscar_reemplazo_orden_duena,
     registrar_asistencia_clase_profesor,
     consultar_clases_sin_asistencia_hoy
@@ -81,6 +82,7 @@ DIRECCION_TOOLS = [
     obtener_reporte_ocupacion_mes,
     analizar_optimizacion_turnos_proximos,
     reasignar_profesora_directo,
+    reasignar_todas_las_clases_profesor_duena,
     buscar_reemplazo_orden_duena,
     vincular_alumnas_inseparables,
     aprobar_comprobante_pago,
@@ -188,6 +190,10 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si Deby consulta por porcentaje de clases llenas u ocupación mensual: usá 'obtener_reporte_ocupacion_mes'.
 
 4. PROFESORAS Y COMPROBANTES:
+   * Si Deby pide cambiar, transferir o reasignar TODAS las clases de un profesor/a a otro/a
+     (ej: "Todas las clases que sean de Brian pasaselas a Emiliana", "Brian no va a estar dando más clases por ahora, solo Emiliana", "Todas las clases que dan de Brian pasan a ser de Emiliana", "Cambiame a Brian por Emiliana en todas sus clases"):
+     -> Usá 'reasignar_todas_las_clases_profesor_duena(profe_saliente_nombre="Brian", nueva_profe_nombre="Emiliana")'.
+     Esto actualizará automática e instantáneamente el Esquema Semanal Y todos los turnos futuros de la Agenda en conjunto.
    * Si Deby aprueba un comprobante ("Aprobar", "Acreditar [código]"): usá 'aprobar_comprobante_pago'.
    * Si pide rechazarlo: usá 'rechazar_comprobante_pago'.
    * Si pide reasignar una profesora (ej: "El jueves a las 18 poné a Sofía"): usá 'reasignar_profesora_directo'.

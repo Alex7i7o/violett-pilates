@@ -1492,14 +1492,16 @@ def agregar_horario_esquema_semanal_duena(dia_semana_str: str, hora_str: str, no
         from core.services import generar_turnos_desde_plantillas
         generar_turnos_desde_plantillas()
 
-        # Si había turnos manuales ya creados sin plantilla en esa fecha/hora, vincularlos y asignarles la profesora
+        # Sincronizar todos los turnos futuros de este día y horario con la profesora asignada
+        hoy = timezone.localdate()
         turnos_coincidentes = Turno.objects.filter(
             clase=clase_obj,
-            hora_inicio=t_inicio
-        )
+            hora_inicio=t_inicio,
+            fecha__gte=hoy
+        ).exclude(estado='CANCELADO')
         for tc in turnos_coincidentes:
             if tc.fecha.isoweekday() == dia_num:
-                if not tc.plantilla:
+                if not tc.plantilla_id:
                     tc.plantilla = plantilla
                     tc.save(update_fields=['plantilla'])
                 if prof_obj:

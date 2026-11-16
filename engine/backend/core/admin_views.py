@@ -796,6 +796,12 @@ class AdminAgendaView(views.APIView):
         else:
             fecha = parse_date(fecha_str)
 
+        try:
+            from plugins.profesores.backend.hooks import sincronizar_profesores_esquema_con_agenda
+            sincronizar_profesores_esquema_con_agenda()
+        except Exception:
+            pass
+
         turnos = Turno.objects.select_related('clase').prefetch_related('reservas__usuario').filter(fecha=fecha, estado__in=['PROGRAMADO', 'CONFIRMADO', 'COMPLETADO']).order_by('hora_inicio')
         serializer = AdminTurnoSerializer(turnos, many=True)
         return Response(serializer.data)
