@@ -77,8 +77,8 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             )
             logger.info(f"[ASISTENTE LLM] Usando Groq como proveedor principal gratuito: {model_name}")
 
-            # Candidatos alternativos de Groq
-            for alt_g in ['llama-3.1-8b-instant', 'llama3-8b-8192']:
+            # Candidatos alternativos de Groq (descartando modelos obsoletos)
+            for alt_g in ['llama-3.1-8b-instant']:
                 if alt_g != model_name:
                     try:
                         all_fallbacks.append(ChatGroq(
@@ -91,11 +91,11 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                         pass
 
             # Gemini como fallback oficial robusto (Cuenta Paga / Pay-As-You-Go con fondos)
-            # Se incluye gemini-3.8-flash como opción salvavidas definitiva si los demás fallan
+            # Se incluye gemini-3.8-flash como opción salvavidas definitiva al final si los demás fallan
             if gemini_key:
                 try:
                     from langchain_google_genai import ChatGoogleGenerativeAI
-                    for m_gem in ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3.8-flash']:
+                    for m_gem in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
                         try:
                             all_fallbacks.append(ChatGoogleGenerativeAI(
                                 model=m_gem,
@@ -118,9 +118,8 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
             raw_model = os.environ.get('GEMINI_MODEL', '').strip()
-            # gemini-1.5-flash es el modelo oficial de producción con mayor cuota en Google AI Studio
             if not raw_model:
-                model_name = 'gemini-1.5-flash'
+                model_name = 'gemini-2.5-flash'
             else:
                 model_name = raw_model
             gemini_kwargs = dict(
@@ -136,7 +135,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
 
             # Fallbacks multimodelo de Gemini con cuotas independientes en Google AI Studio.
             # Se incluye gemini-3.8-flash como salvavidas definitivo al final si los demás fallan.
-            for alt_gem in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-3.8-flash']:
+            for alt_gem in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
                 if alt_gem != model_name:
                     try:
                         all_fallbacks.append(ChatGoogleGenerativeAI(
@@ -167,7 +166,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             if groq_key:
                 try:
                     from langchain_groq import ChatGroq
-                    for g_cand in ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-8b-8192']:
+                    for g_cand in ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']:
                         try:
                             all_fallbacks.append(ChatGroq(
                                 model=g_cand,

@@ -28,9 +28,9 @@ def obtener_vision_llms_disponibles():
             from langchain_google_genai import ChatGoogleGenerativeAI
             # gemini-1.5-flash es el modelo multimodal oficial más estable y disponible en todas las cuentas de Google
             candidatos_gemini = [
-                os.environ.get('GEMINI_VISION_MODEL', 'gemini-1.5-flash'),
+                os.environ.get('GEMINI_VISION_MODEL', 'gemini-2.5-flash'),
                 'gemini-2.0-flash',
-                'gemini-2.5-flash',
+                'gemini-1.5-flash',
                 'gemini-3.8-flash',
                 'gemini-1.5-pro'
             ]
@@ -93,23 +93,43 @@ def obtener_vision_llm():
     return llms[0] if llms else None
 
 
-PROMPT_VISION_UNIFICADO = """Sos el auditor inteligente de Violett Pilates. Analizá detenidamente esta imagen enviada por WhatsApp o subida al sistema.
+PROMPT_VISION_UNIFICADO = """Sos el auditor inteligente y perito documental de Violett Pilates. Analizá con máxima precisión y rigurosidad esta imagen enviada por WhatsApp o subida al sistema.
 
-Determiná con precisión qué tipo de documento es:
+Determiná con exactitud qué tipo de documento es:
 1. "FICHA_ALUMNA": Planilla física impresa o ficha de papel con encabezado "FICHA ALUMNA" (Violett Gym / Pilates), donde figura el NOMBRE de la alumna arriba y una cuadrícula o tabla con columnas como "N° CLASE" y "FIRMA", con números de clase, fechas manuscritas (ej: 14|10|26), firmas manuscritas o anotaciones ("Vino", "Ausente"), y posibles líneas divisorias horizontales entre abonos.
 2. "COMPROBANTE_PAGO": Comprobante bancario, transferencia, Mercado Pago, Santander u otra billetera virtual.
 3. "OTRO": Ninguno de los anteriores.
 
+REGLAS DE DOMINIO CRÍTICAS PARA "FICHA_ALUMNA" (ESTRICTO VIOLETT PILATES):
+1. PLANES DISPONIBLES EN EL ESTUDIO:
+   En Violett Pilates SOLO se comercializan planes de 4, 8 o 12 clases mensuales (el más común es el de 8 clases).
+   NUNCA existe un plan de 15, 20 o 22 clases continuas.
+2. ALERTA OCR DE NÚMEROS CON PARÉNTESIS:
+   Las profesoras anotan frecuentemente las clases de nuevos ciclos con paréntesis: (1), (2), (3), (4), (5), (6), (7), (8).
+   ¡CUIDADO! Un "(1)" manuscrito NO ES "11". Un "(2)" manuscrito NO ES "12". Un "(3)" NO ES "13". Un "(4)" NO ES "14". Un "(5)" NO ES "15".
+   El trazo izquierdo del paréntesis se parece a un 1, pero significa CLASE 1, CLASE 2, CLASE 3 del nuevo ciclo.
+3. SEGMENTACIÓN DE CICLOS / ABONOS MENSUALES:
+   Una ficha en papel contiene el historial de varios meses (ciclos) de la alumna en la misma cuadrícula.
+   Se DEBE dividir en un nuevo ciclo cuando:
+   - Los números se reinician en 1 o (1).
+   - Hay una línea divisoria horizontal dibujada a mano separando grupos de clases.
+   - Se completó un paquete de 8 clases (o 4/12) y las siguientes clases continúan en fechas posteriores.
+   - Hay un salto temporal de fechas de más de 12-15 días entre clases consecutivas.
+4. COHERENCIA CRONOLÓGICA ASCENDENTE:
+   Las clases siempre avanzan en orden cronológico hacia adelante (ej: 10/8, 15/8, 22/8, 24/8, 29/8...).
+   Si un dígito manuscrito parece dudoso (ej: un 4 que parece 9 antes de un 29), prevalece la coherencia cronológica (ej: 24/8).
+
 Si es "FICHA_ALUMNA", extraé con máxima rigurosidad:
-- nombre_alumna: El nombre de la alumna escrito en el campo "NOMBRE:" (ej: "Luz").
+- nombre_alumna: El nombre y apellido de la alumna escrito en "NOMBRE:" (ej: "Norma Staino", "Luz Dobias").
 - celular: El celular si figura escrito, o null.
-- ciclos: Lista de ciclos/abonos detectados. Si hay una línea divisoria horizontal entre filas (ej: tras la clase 8) o los números de clase se reinician en 1, cada grupo corresponde a un ciclo diferente (ciclo 1 = plan anterior, ciclo 2 = nuevo plan).
-  Para cada ciclo extraé la lista de clases en orden:
-  - numero_clase: Número de clase del plan (entero, ej: 1, 2, 3...)
-  - fecha: Fecha en formato "YYYY-MM-DD" (asumiendo año 2026 para terminación "26", ej: 14/10/26 -> "2026-10-14").
-  - fecha_original: Texto tal cual está escrito (ej: "14/10/26" o "14|10|26").
-  - estado: "TOMADA" si hay una firma manuscrita, rúbrica o anotación como "Vino". O "AUSENTE" si está en blanco, tachada o dice explícitamente "Ausente".
-  - detalle_firma: Breve texto de lo que se observa (ej: "Firmada", "Dice Vino", "Ausente", "Sin firma").
+- ciclos: Lista de ciclos/abonos detectados en orden cronológico. Para cada ciclo:
+  - ciclo_numero: 1, 2, 3...
+  - clases: Lista de clases de ese ciclo:
+    - numero_clase: Número de clase dentro del ciclo (1 a 8 generalmente, o 1 a 4, o 1 a 12). NUNCA mayor a 12.
+    - fecha: Fecha en formato "YYYY-MM-DD" (asumiendo año 2026 para terminación "26", ej: 14/10/26 -> "2026-10-14").
+    - fecha_original: Texto tal cual está escrito (ej: "14/10/26" o "14|10|26").
+    - estado: "TOMADA" si hay firma manuscrita, rúbrica o anotación ("Vino"). O "AUSENTE" si está en blanco, tachada o dice explícitamente "Ausente".
+    - detalle_firma: Breve descripción (ej: "Firmada", "Dice Vino", "Ausente", "Sin firma").
 
 Si es "COMPROBANTE_PAGO", extraé:
 - monto: Valor numérico flotante.
@@ -130,8 +150,8 @@ Respondé ÚNICAMENTE un objeto JSON válido sin bloques markdown ni texto intro
         "clases": [
           {
             "numero_clase": 1,
-            "fecha": "2026-10-14",
-            "fecha_original": "14/10/26",
+            "fecha": "2026-08-10",
+            "fecha_original": "10/8/26",
             "estado": "TOMADA",
             "detalle_firma": "Firmada"
           }
@@ -149,6 +169,117 @@ Respondé ÚNICAMENTE un objeto JSON válido sin bloques markdown ni texto intro
   }
 }
 """
+
+
+def normalizar_y_segmentar_ciclos_ficha(datos_ficha: dict) -> dict:
+    """
+    Algoritmo defensivo de post-procesamiento para fichas manuscritas complejas de Violett Pilates:
+    1. Resuelve errores típicos de OCR como la lectura de números con paréntesis '(1)' como '11' o '(2)' como '12'.
+    2. Segmenta en ciclos respetando los patrones comerciales del estudio (planes de 4, 8 o 12 clases).
+    3. Renumera correlativamente las clases (1..N) en cada ciclo.
+    4. Distingue entre ciclos finalizados y el plan actual en curso, calculando clases tomadas, ausentes y restantes.
+    """
+    if not isinstance(datos_ficha, dict):
+        return datos_ficha
+
+    raw_ciclos = datos_ficha.get('ciclos', [])
+    todas_clases = []
+
+    for c in raw_ciclos:
+        if isinstance(c, dict) and 'clases' in c and isinstance(c['clases'], list):
+            todas_clases.extend(c['clases'])
+        elif isinstance(c, dict):
+            todas_clases.append(c)
+
+    if not todas_clases:
+        return datos_ficha
+
+    # Paso 1: Corregir distorsiones de OCR por paréntesis y ordenar clases
+    clases_limpias = []
+    for cl in todas_clases:
+        if not isinstance(cl, dict):
+            continue
+        c_copy = dict(cl)
+        num = c_copy.get('numero_clase')
+        try:
+            num = int(num)
+        except (ValueError, TypeError):
+            num = 1
+
+        # Corrección de OCR por paréntesis manuscritos: (1)->11, (2)->12... (8)->18
+        if 11 <= num <= 18:
+            num = num - 10
+        elif 21 <= num <= 28:
+            num = num - 20
+
+        c_copy['numero_clase'] = num
+        clases_limpias.append(c_copy)
+
+    # Paso 2: Segmentar defensivamente en ciclos según múltiplos y reinicios
+    ciclos_segmentados = []
+    ciclo_actual = []
+    ultimo_num = 0
+
+    for cl in clases_limpias:
+        num = cl['numero_clase']
+        cortar = False
+
+        if ciclo_actual:
+            if num == 1 and ultimo_num >= 1:
+                cortar = True
+            elif num <= ultimo_num:
+                cortar = True
+            elif len(ciclo_actual) >= 8:
+                cortar = True
+
+        if cortar and ciclo_actual:
+            ciclos_segmentados.append(ciclo_actual)
+            ciclo_actual = []
+            ultimo_num = 0
+
+        ciclo_actual.append(cl)
+        ultimo_num = num
+
+    if ciclo_actual:
+        ciclos_segmentados.append(ciclo_actual)
+
+    # Paso 3: Calibrar métricas comerciales de cada ciclo (4, 8 o 12 clases)
+    ciclos_formateados = []
+    total_c = len(ciclos_segmentados)
+
+    for idx, c_list in enumerate(ciclos_segmentados):
+        tam = len(c_list)
+        if tam <= 4:
+            tamano_plan = 4
+        elif tam <= 8:
+            tamano_plan = 8
+        else:
+            tamano_plan = 12
+
+        # Renumerar correlativamente dentro del ciclo
+        for i_cl, cl in enumerate(c_list):
+            cl['numero_clase'] = i_cl + 1
+
+        es_ultimo = (idx == total_c - 1)
+        tomadas = sum(1 for x in c_list if x.get('estado') == 'TOMADA')
+        ausentes = sum(1 for x in c_list if x.get('estado') == 'AUSENTE')
+        restantes = max(0, tamano_plan - len(c_list))
+
+        nombre = f"Plan Actual - En Curso (Ciclo {idx + 1})" if es_ultimo else f"Historial Ciclo {idx + 1} (Finalizado)"
+
+        ciclos_formateados.append({
+            'ciclo_numero': idx + 1,
+            'nombre_ciclo': nombre,
+            'es_actual': es_ultimo,
+            'tamano_plan': tamano_plan,
+            'clases_tomadas': tomadas,
+            'clases_ausentes': ausentes,
+            'clases_restantes': restantes,
+            'clases': c_list
+        })
+
+    datos_ficha['ciclos'] = ciclos_formateados
+    return datos_ficha
 
 
 def extraer_datos_documento_multimodal(image_bytes: bytes, caption: str = ""):
@@ -314,6 +445,8 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
         )
         return
 
+    # Normalizar y segmentar ciclos inteligentemente respetando patrones de 4, 8 o 12 clases
+    datos_ficha = normalizar_y_segmentar_ciclos_ficha(datos_ficha)
     ciclos = datos_ficha.get('ciclos', [])
     total_clases = sum(len(c.get('clases', [])) for c in ciclos)
 
@@ -339,24 +472,37 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
     }
     conversacion.save(update_fields=['metadata'])
 
-    # Construir mensaje de previsualización para confirmación
+    # Construir mensaje de previsualización para confirmación con jerarquía clara de ciclos
+    desc_ciclos = f", divididas en {len(ciclos)} ciclos" if len(ciclos) > 1 else ""
     lineas = [
         f"✦ **¡Hola {nombre_staff}! Leí la ficha física de {alumna.nombre} {alumna.apellido}:**\n",
-        f"📋 Encontré **{total_clases} clases** registradas en el papel:\n"
+        f"📋 Encontré **{total_clases} clases** registradas en el papel{desc_ciclos}:\n"
     ]
 
     for c in ciclos:
-        c_num = c.get('ciclo_numero', 1)
+        nom_c = c.get('nombre_ciclo') or f"Ciclo {c.get('ciclo_numero', 1)}"
+        tam = c.get('tamano_plan', 8)
+        tom = c.get('clases_tomadas', 0)
+        aus = c.get('clases_ausentes', 0)
+        res_lib = c.get('clases_restantes', 0)
+        es_act = c.get('es_actual', False)
         clases_c = c.get('clases', [])
-        if len(ciclos) > 1:
-            tit = "📌 **Plan Anterior (Finalizado):**" if c_num == 1 else "📌 **Nuevo Plan (Ciclo Actual):**"
-            lineas.append(tit)
+
+        if len(ciclos) > 1 or es_act:
+            if es_act:
+                lineas.append(f"📌 **{nom_c} (Plan {tam} clases — {tom} de {tam} tomadas):**")
+            else:
+                lineas.append(f"📌 **{nom_c} (Plan {tam} clases — {tom} tomadas{', ' + str(aus) + ' ausente' if aus else ''}):**")
+
         for cl in clases_c:
             num = cl.get('numero_clase')
             f_orig = cl.get('fecha_original') or cl.get('fecha')
             st = "✓ Asistió" if cl.get('estado') == 'TOMADA' else "✕ Ausente"
             det = cl.get('detalle_firma', 'Firmada')
             lineas.append(f"• Clase {num}: {f_orig} — {st} ({det})")
+
+        if es_act and res_lib > 0:
+            lineas.append(f"• *Créditos restantes por agendar/tomar en este plan:* **{res_lib}**")
         lineas.append("")
 
     lineas.append("💡 **¿Querés que guarde estos cambios y actualice sus créditos?**")
