@@ -207,6 +207,14 @@ def consultar_mis_reservas_alumna(usuario_id: str = "") -> str:
     nombre_display = usuario.nombre.split()[0] if usuario.nombre else ""
     saludo = f"¡Hola {nombre_display}! ✦ " if nombre_display else "✦ "
 
+    from core.services import actualizar_reservas_pasadas_a_tomadas
+    actualizar_reservas_pasadas_a_tomadas(usuario=usuario)
+
+    asistidas_recientes = list(Reserva.objects.filter(
+        usuario=usuario,
+        estado='TOMADA'
+    ).select_related('turno', 'turno__clase').order_by('-turno__fecha', '-turno__hora_inicio')[:3])
+
     if not reservas_futuras and not horarios_fijos:
         creditos_info = ""
         try:
@@ -219,7 +227,17 @@ def consultar_mis_reservas_alumna(usuario_id: str = "") -> str:
         except Exception:
             pass
 
-        return f"{saludo}Actualmente no tenés ninguna clase agendada a futuro en Violett Pilates.{creditos_info}"
+        msg_base = f"{saludo}Actualmente no tenés ninguna clase agendada a futuro en Violett Pilates."
+        if asistidas_recientes:
+            msg_base += "\n\n✦ *Tus últimas clases asistidas:*"
+            for r in asistidas_recientes:
+                t = r.turno
+                dia_nombre = dias_semana[t.fecha.weekday()]
+                prof_obj = obtener_profesor_de_turno(t)
+                profe_txt = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+                msg_base += f"\n• *{dia_nombre} {t.fecha.strftime('%d/%m')} a las {t.hora_inicio.strftime('%H:%M')} hs* - {t.clase.nombre}{profe_txt}"
+
+        return f"{msg_base}{creditos_info}"
 
     resultado = [f"{saludo}Tus próximas clases agendadas en Violett Pilates:"]
     for r in reservas_futuras:
@@ -235,6 +253,15 @@ def consultar_mis_reservas_alumna(usuario_id: str = "") -> str:
     if horarios_fijos and not any(r.es_recurrente for r in reservas_futuras):
         resultado.append("\n✦ *Tu esquema de horario fijo semanal:*")
         resultado.extend(horarios_fijos)
+
+    if asistidas_recientes:
+        resultado.append("\n✦ *Tus últimas clases asistidas:*")
+        for r in asistidas_recientes:
+            t = r.turno
+            dia_nombre = dias_semana[t.fecha.weekday()]
+            prof_obj = obtener_profesor_de_turno(t)
+            profe_txt = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+            resultado.append(f"• *{dia_nombre} {t.fecha.strftime('%d/%m')} a las {t.hora_inicio.strftime('%H:%M')} hs* - {t.clase.nombre}{profe_txt}")
 
     return "\n".join(resultado)
 

@@ -9,7 +9,7 @@ KEYWORDS_TURNOS = [
     r'\banotarme?\b', r'\breserv\w+', r'\bcancelo?\b', r'\bcancelar?\b',
     r'\breprogram\w+', r'\bmañana\b', r'\bhoy\b', r'\blunes\b', r'\bmartes\b',
     r'\bmi[eé]rcoles\b', r'\bjueves\b', r'\bviernes\b', r'\bs[aá]bado\b',
-    r'\bagendad\w+', r'\bcupos?\b', r'\blugares?\b'
+    r'\bagendad\w+', r'\bcupos?\b', r'\blugares?\b', r'\basist\w+', r'\bclases? tomadas?\b'
 ]
 
 KEYWORDS_FINANZAS = [
@@ -35,7 +35,7 @@ KEYWORDS_DIRECCION = [
     r'\babon[oó]\b', r'\bpag[oó]\b', r'\bplan nuevo\b', r'\bcu[aá]ntas clases le quedan\b',
     r'\bcrear\b', r'\bcre[aá]\b', r'\babrir\b', r'\babr[ií]\b', r'\bnueva clase\b', r'\bnuevo turno\b',
     r'\bagregar una clase\b', r'\bagreg[aá] una clase\b',
-    r'\bagenda\b', r'\bqui[eé]nes vienen\b', r'\bficha\b', r'\balumna\b', r'\balumnas\b',
+    r'\bagenda\b', r'\bqui[eé]nes vienen\b', r'\bficha\b', r'\balumna\b', r'\balumnas\b', r'\basist\w+', r'\bclases? tomadas?\b', r'\bqui[eé]nes (vinieron|estuvieron|asistieron)\b',
     r'\bmes entero\b', r'\btodo el mes\b', r'\bdel mes\b', r'\bde este mes\b',
     r'\bde la semana\b', r'\bingresos?\b', r'\brecaudaci[oó]n\b', r'\bbalance\b',
     r'\bcu[aá]nto (se factur[oó]|entr[oó]|ingres[oó]|se cobr[oó]|ganamos)\b',

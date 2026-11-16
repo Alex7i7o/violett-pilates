@@ -430,7 +430,7 @@ El abono ya quedó registrado y activo en el sistema 🌸."""
 def consultar_alumna_detalle(nombre_o_tel: str) -> str:
     """
     Comando para la dueña: busca a una alumna y muestra su estado completo:
-    plan actual, clases disponibles, vencimiento, teléfono y sus próximas clases reservadas.
+    plan actual, clases disponibles, vencimiento, teléfono, últimas clases a las que asistió y próximas agendadas.
     NUNCA inventa datos: si no existe, avisa que no fue encontrada.
     """
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel)
@@ -438,6 +438,11 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
         return formatear_opciones_human_in_the_loop(nombre_o_tel, matches, "ver su ficha y abono")
     elif not alumna:
         return f"✦ No encontré a ninguna alumna registrada con '{nombre_o_tel}' en la base de datos."
+
+    registrar_alumna_activa(alumna)
+
+    from core.services import actualizar_reservas_pasadas_a_tomadas
+    actualizar_reservas_pasadas_a_tomadas(usuario=alumna)
 
     nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
     tel = alumna.telefono or "No registrado"
@@ -451,6 +456,26 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
     else:
         info_plan = "• Plan actual: Sin plan activo actualmente."
 
+    dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+    # Clases asistidas recientes
+    asistidas = Reserva.objects.filter(
+        usuario=alumna,
+        estado='TOMADA'
+    ).select_related('turno', 'turno__clase').order_by('-turno__fecha', '-turno__hora_inicio')[:4]
+
+    if asistidas.exists():
+        lista_asistidas = []
+        for r in asistidas:
+            t = r.turno
+            dia_str = dias_es[t.fecha.weekday()]
+            prof_obj = obtener_profesor_de_turno(t)
+            profe = f" (Profe: {prof_obj.nombre})" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+            lista_asistidas.append(f"  • {dia_str} {t.fecha.strftime('%d/%m')} a las {t.hora_inicio.strftime('%H:%M')} hs ({t.clase.nombre}{profe})")
+        info_asistidas = "Últimas clases a las que asistió:\n" + "\n".join(lista_asistidas)
+    else:
+        info_asistidas = "Clases asistidas: No registra asistencias recientes."
+
     today = timezone.localdate()
     futuras = Reserva.objects.filter(
         usuario=alumna,
@@ -459,7 +484,6 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
     ).select_related('turno', 'turno__clase').order_by('turno__fecha', 'turno__hora_inicio')[:5]
 
     if futuras.exists():
-        dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
         lista_turnos = []
         for r in futuras:
             t = r.turno
@@ -476,7 +500,168 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
 • Email: {email}
 {info_plan}
 
+{info_asistidas}
+
 {info_turnos}"""
+
+
+@tool
+def consultar_asistencias_alumna_duena(nombre_o_tel_alumna: str, filtro: str = "") -> str:
+    """
+    Comando para la dueña (Deby): Consulta el historial de clases a las que asistió una alumna,
+    mostrando fecha, día, hora, profesor/a a cargo, número de clase dentro de su abono (ej: Clase 1 de 8)
+    y el plan correspondiente (Plan Actual vs Plan Anterior).
+    También resume asistencias, clases agendadas por tomar, canceladas y créditos libres.
+    
+    Parámetros:
+      - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Luz Dobias', 'Luz', '1167437391').
+      - filtro: Opcional. 'actual' para solo el plan vigente, o el nombre de un mes (ej: 'noviembre', 'octubre').
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "ver su historial de asistencias")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada con '{nombre_o_tel_alumna}' en la base de datos."
+
+    registrar_alumna_activa(alumna)
+
+    from core.services import actualizar_reservas_pasadas_a_tomadas
+    actualizar_reservas_pasadas_a_tomadas(usuario=alumna)
+
+    from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+    subs = list(Suscripcion.objects.filter(usuario=alumna).select_related('plan').order_by('fecha_inicio'))
+    sub_actual = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+
+    todas_reservas = list(Reserva.objects.filter(usuario=alumna).select_related('turno__clase').order_by('turno__fecha', 'turno__hora_inicio'))
+
+    # Mapeo de reservas a suscripciones para numerar clases cronológicamente
+    reserva_sub_map = {}
+    for r in todas_reservas:
+        rm = ReservaMembresia.objects.filter(reserva=r).select_related('suscripcion__plan').first()
+        if rm:
+            reserva_sub_map[r.id] = rm.suscripcion
+        else:
+            sub_matched = None
+            for s in reversed(subs):
+                if s.fecha_inicio <= r.turno.fecha <= s.fecha_vencimiento:
+                    sub_matched = s
+                    break
+            if not sub_matched and subs:
+                for s in reversed(subs):
+                    if s.fecha_inicio <= r.turno.fecha:
+                        sub_matched = s
+                        break
+                if not sub_matched:
+                    sub_matched = subs[0]
+            reserva_sub_map[r.id] = sub_matched
+
+    plan_counters = {}
+    reserva_info = {}
+    for r in todas_reservas:
+        sub = reserva_sub_map.get(r.id)
+        if sub:
+            sub_id_str = str(sub.id)
+            current_cnt = plan_counters.get(sub_id_str, 0)
+            num_clase = None
+            if r.estado in ['TOMADA', 'AUSENTE', 'CONFIRMADA']:
+                current_cnt += 1
+                plan_counters[sub_id_str] = current_cnt
+                num_clase = current_cnt
+            es_actual = bool(sub_actual and sub.id == sub_actual.id)
+            reserva_info[r.id] = {
+                'sub': sub,
+                'numero_clase': num_clase,
+                'total_clases_plan': sub.plan.cantidad_clases,
+                'es_plan_actual': es_actual,
+            }
+        else:
+            reserva_info[r.id] = {
+                'sub': None,
+                'numero_clase': None,
+                'total_clases_plan': None,
+                'es_plan_actual': False,
+            }
+
+    meses_map = {
+        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+        'julio': 7, 'agosto': 8, 'septiembre': 9, 'setiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+    }
+    filtro_lower = (filtro or "").lower().strip()
+    mes_filtro = None
+    for mes_nombre, mes_num in meses_map.items():
+        if mes_nombre in filtro_lower:
+            mes_filtro = mes_num
+            break
+
+    solo_actual = 'actual' in filtro_lower or 'activo' in filtro_lower or 'este plan' in filtro_lower
+
+    reservas_consideradas = todas_reservas
+    if mes_filtro:
+        reservas_consideradas = [r for r in reservas_consideradas if r.turno.fecha.month == mes_filtro]
+    elif solo_actual and sub_actual:
+        reservas_consideradas = [r for r in reservas_consideradas if reserva_info[r.id]['sub'] and reserva_info[r.id]['sub'].id == sub_actual.id]
+
+    dias_es = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    
+    asistidas = [r for r in reservas_consideradas if r.estado == 'TOMADA']
+    now = timezone.localtime()
+    today = now.date()
+    now_time = now.time()
+    pendientes = [
+        r for r in reservas_consideradas 
+        if r.estado == 'CONFIRMADA' and (r.turno.fecha > today or (r.turno.fecha == today and r.turno.hora_inicio >= now_time))
+    ]
+    canceladas = [r for r in reservas_consideradas if r.estado.startswith('CANCELADA')]
+
+    nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
+    
+    if sub_actual:
+        resumen_plan = f"• Plan actual: {sub_actual.plan.nombre} ({sub_actual.clases_restantes} créditos libres • Vence: {sub_actual.fecha_vencimiento.strftime('%d/%m/%Y')})"
+    else:
+        resumen_plan = "• Plan actual: Sin membresía activa actualmente."
+
+    lineas_salida = [
+        f"✦ Asistencias y Clases: {nombre_completo}",
+        resumen_plan,
+        f"• Balance: {len(asistidas)} asistida(s) | {len(pendientes)} pendiente(s) por tomar | {len(canceladas)} cancelada(s)"
+    ]
+
+    if asistidas:
+        lineas_salida.append("\nClases a las que asistió:")
+        for r in asistidas:
+            info = reserva_info[r.id]
+            dia_str = dias_es[r.turno.fecha.weekday()]
+            p = obtener_profesor_de_turno(r.turno)
+            profe_str = f" - Profe: {p.nombre}" if p and hasattr(p, 'nombre') else ""
+            num_str = f"Clase {info['numero_clase']} de {info['total_clases_plan']}" if info['numero_clase'] else "Clase puntual"
+            sub = info['sub']
+            if info['es_plan_actual']:
+                plan_tag = " [✦ Plan Actual]"
+            elif sub:
+                plan_tag = f" [Plan Anterior ({sub.fecha_inicio.strftime('%d/%m')} al {sub.fecha_vencimiento.strftime('%d/%m')})]"
+            else:
+                plan_tag = ""
+            lineas_salida.append(f"  • {num_str}: {dia_str} {r.turno.fecha.strftime('%d/%m')} a las {r.turno.hora_inicio.strftime('%H:%M')} hs ({r.turno.clase.nombre}{profe_str}){plan_tag}")
+    else:
+        lineas_salida.append("\n• No registra clases asistidas (tomadas) en este período.")
+
+    if pendientes:
+        lineas_salida.append("\nPróximas clases agendadas por tomar:")
+        for r in pendientes:
+            info = reserva_info[r.id]
+            dia_str = dias_es[r.turno.fecha.weekday()]
+            p = obtener_profesor_de_turno(r.turno)
+            profe_str = f" - Profe: {p.nombre}" if p and hasattr(p, 'nombre') else ""
+            num_str = f"Clase {info['numero_clase']} de {info['total_clases_plan']}" if info['numero_clase'] else "Clase puntual"
+            lineas_salida.append(f"  • {num_str}: {dia_str} {r.turno.fecha.strftime('%d/%m')} a las {r.turno.hora_inicio.strftime('%H:%M')} hs ({r.turno.clase.nombre}{profe_str})")
+
+    if canceladas:
+        lineas_salida.append("\nClases canceladas:")
+        for r in canceladas:
+            dia_str = dias_es[r.turno.fecha.weekday()]
+            lineas_salida.append(f"  • Cancelada: {dia_str} {r.turno.fecha.strftime('%d/%m')} {r.turno.hora_inicio.strftime('%H:%M')} hs (Crédito reintegrado)")
+
+    return "\n".join(lineas_salida)
 
 
 @tool
@@ -670,9 +855,14 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy", hora_str: str = "") 
         t = turnos.first()
         prof_obj = obtener_profesor_de_turno(t)
         profe = f" | Profe: {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
-        reservas = [r for r in t.reservas.all() if r.estado == 'CONFIRMADA']
+        reservas = [r for r in t.reservas.all() if r.estado in ['CONFIRMADA', 'TOMADA']]
         cant = len(reservas)
-        nombres = [(f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna puntual")) for r in reservas]
+        nombres = []
+        for r in reservas:
+            nom = f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna puntual")
+            if r.estado == 'TOMADA':
+                nom += " (Asistió)"
+            nombres.append(nom)
         nombres_str = ", ".join(nombres) if nombres else "Ninguna (todas las camillas libres)"
         libres = 3 - cant
         return f"✦ Clase de las {t.hora_inicio.strftime('%H:%M')} hs ({dia_nom} {target_date.strftime('%d/%m/%Y')}):\n• Alumnas inscriptas ({cant}/3): {nombres_str}\n• Camillas libres: {libres}\n• Profesora a cargo:{profe or ' Sin asignar'}"
@@ -681,9 +871,14 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy", hora_str: str = "") 
     for t in turnos:
         prof_obj = obtener_profesor_de_turno(t)
         profe = f" | Profe: {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
-        reservas = [r for r in t.reservas.all() if r.estado == 'CONFIRMADA']
+        reservas = [r for r in t.reservas.all() if r.estado in ['CONFIRMADA', 'TOMADA']]
         cant = len(reservas)
-        nombres = [(f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna puntual")) for r in reservas]
+        nombres = []
+        for r in reservas:
+            nom = f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna puntual")
+            if r.estado == 'TOMADA':
+                nom += " (Asistió)"
+            nombres.append(nom)
         nombres_str = ", ".join(nombres) if nombres else "Sin alumnas aún"
         libres = 3 - cant
         lineas.append(f"• {t.hora_inicio.strftime('%H:%M')} hs ({cant}/3 ocupadas){profe}\n  Alumnas: {nombres_str} ({libres} camilla(s) libre(s))")

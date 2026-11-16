@@ -24,6 +24,7 @@ from ..tools.finanzas_tools import (
 from ..tools.gestion_tools import (
     renovar_o_asignar_plan_alumna,
     consultar_alumna_detalle,
+    consultar_asistencias_alumna_duena,
     agendar_alumna_en_turno_duena,
     cancelar_reserva_alumna_duena,
     consultar_agenda_completa_dia,
@@ -53,6 +54,7 @@ logger = logging.getLogger(__name__)
 DIRECCION_TOOLS = [
     renovar_o_asignar_plan_alumna,
     consultar_alumna_detalle,
+    consultar_asistencias_alumna_duena,
     agendar_alumna_en_turno_duena,
     crear_clase_y_agendar_alumna_duena,
     cancelar_reserva_alumna_duena,
@@ -116,7 +118,10 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
 1. GESTIÓN DE PLANES Y MEMBRESÍAS DE ALUMNAS:
    * Si Deby indica que una alumna pagó, arrancó un plan o pide asignarle/renovárselo (ej: "Laila marzzuck hoy arrancó un plan nuevo y ya abonó", "Renovale su plan", "Cargale el plan de 8 a Marcela", "Agrégale un plan de 4 clases a Alex Agüero"):
      -> Usá 'renovar_o_asignar_plan_alumna'.
-   * Si Deby consulta la ficha, abono o situación de una alumna (ej: "¿Qué plan tiene Alex?", "¿Cómo viene Laila?", "¿Cuántas clases le quedan?", "¿Cuándo vence el abono de...?"):
+   * Si Deby consulta a qué clases asistió una persona, cuántas clases tomó, si vino tal día o el historial de asistencias (ej: "¿A qué clases asistió Luz?", "¿Luz vino a clase?", "¿Cuántas clases tomó Martina?", "¿A qué clase vino Marcela?", "Pasame las asistencias de Luz", "¿Cuándo vino por última vez?", "¿A qué clase asistió cada persona?"):
+     -> Usá 'consultar_asistencias_alumna_duena' (o 'consultar_alumna_detalle').
+     Esta herramienta le mostrará a Deby cada clase a la que la alumna asistió, con fecha, hora, profesora a cargo, número de clase dentro de su abono (ej: Clase 1 de 8) y si corresponde al plan actual o al anterior.
+   * Si Deby consulta la ficha general, abono o situación de una alumna (ej: "¿Qué plan tiene Alex?", "¿Cómo viene Laila?", "¿Cuántas clases le quedan?", "¿Cuándo vence el abono de...?"):
      -> Usá 'consultar_alumna_detalle'.
    * Si Deby consulta por la cantidad total o estado de alumnas del estudio (ej: "Quiero la cantidad de alumnas que tenemos", "¿Cuántas alumnas tenemos?", "Cuántas clientas activas hay"):
      -> Usá 'obtener_metricas_alumnas_duena'.
