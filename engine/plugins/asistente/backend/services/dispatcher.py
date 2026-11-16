@@ -40,7 +40,17 @@ def _ejecutar_ciclo_agente(data: dict):
 
     # 3. Detectar rol (reconocimiento automático de Débora, Staff y Profesores)
     from ..config_loader import es_telefono_staff_o_duena
-    if es_telefono_staff_o_duena(clean_phone):
+    es_staff_db = False
+    if conversacion.usuario:
+        es_staff_db = (
+            getattr(conversacion.usuario, 'is_staff', False) or
+            getattr(conversacion.usuario, 'is_superuser', False) or
+            str(getattr(conversacion.usuario, 'rol', '')).upper() in ['ADMIN', 'DUENA', 'DIRECTORA', 'STAFF']
+        )
+
+    if es_telefono_staff_o_duena(clean_phone) or es_staff_db:
+        conversacion.rol_detectado = 'DUENA'
+    elif conversacion.metadata.get('propuesta_ficha_alumna'):
         conversacion.rol_detectado = 'DUENA'
     else:
         is_profesor = False
@@ -100,7 +110,23 @@ def _ejecutar_ciclo_agente(data: dict):
             t_id = consulta_activa.get('turno_id', '')
             texto_citado = f"Asistencia de clase {clase_c} ({hora_c} hs) - Alumnas anotadas: {alumnas_txt}. Turno ID: {t_id}"
 
-    texto_para_agente = f'[En respuesta a tu aviso anterior: "{texto_citado}"]\n{text}' if texto_citado else text
+    # 3.4 Si hay una propuesta de sincronización de ficha física pendiente
+    if conversacion.metadata.get('propuesta_ficha_alumna'):
+        prop = conversacion.metadata.get('propuesta_ficha_alumna')
+        nom_al = prop.get('usuario_nombre', 'la alumna')
+        tot_cl = prop.get('total_clases', 0)
+        aviso_ficha = (
+            f"[INSTRUCCIÓN CRÍTICA DE GESTIÓN: Hay una propuesta de sincronización de ficha física de '{nom_al}' "
+            f"({tot_cl} clases) esperando confirmación. Si el mensaje del usuario aprueba, confirma, dice 'sí', 'confirmar', 'dale', 'guardalo', 'exactamente' "
+            f"o lo pide por audio, llamá INMEDIATAMENTE a la herramienta 'confirmar_sincronizacion_ficha_duena(decision=\"CONFIRMAR\")'. "
+            f"Si cancela o descarta, llamá a 'confirmar_sincronizacion_ficha_duena(decision=\"CANCELAR\")'.]"
+        )
+        if texto_citado:
+            texto_para_agente = f"{aviso_ficha}\n[En respuesta a tu aviso anterior: \"{texto_citado}\"]\n{text}"
+        else:
+            texto_para_agente = f"{aviso_ficha}\n{text}"
+    else:
+        texto_para_agente = f'[En respuesta a tu aviso anterior: "{texto_citado}"]\n{text}' if texto_citado else text
 
     conversacion.save()
 

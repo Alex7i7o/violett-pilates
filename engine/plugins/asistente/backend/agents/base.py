@@ -61,8 +61,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     if provider_pref == 'groq' and groq_key:
         try:
             from langchain_groq import ChatGroq
-            # llama-3.1-8b-instant está disponible para todas las cuentas sin 404 ni restricciones
-            model_name = os.environ.get('GROQ_MODEL', 'llama-3.1-8b-instant')
+            model_name = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
             llm = ChatGroq(
                 model=model_name,
                 temperature=temperature,
@@ -70,6 +69,19 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                 api_key=groq_key
             )
             logger.info(f"[ASISTENTE LLM] Usando Groq como proveedor principal gratuito: {model_name}")
+
+            # Candidatos alternativos de Groq
+            for alt_g in ['llama-3.1-8b-instant', 'llama3-8b-8192']:
+                if alt_g != model_name:
+                    try:
+                        all_fallbacks.append(ChatGroq(
+                            model=alt_g,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            api_key=groq_key
+                        ))
+                    except Exception:
+                        pass
 
             # Gemini como fallback oficial
             if gemini_key:
@@ -84,7 +96,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                         timeout=15
                     ))
                     all_fallbacks.append(ChatGoogleGenerativeAI(
-                        model='gemini-2.5-flash',
+                        model='gemini-2.0-flash',
                         temperature=0.1,
                         max_output_tokens=max(max_tokens, 1024),
                         google_api_key=gemini_key,
@@ -118,16 +130,50 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
 
-            # Si Groq está configurado, se agrega como PRIMER fallback inmediato (0.2s)
+            # Fallbacks multimodelo de Gemini: gemini-2.0-flash y gemini-1.5-flash-8b tienen cuotas
+            # independientes de RPM/TPM en Google AI Studio, blindando contra 429 Rate Limit.
+            for alt_gem in ['gemini-2.0-flash', 'gemini-1.5-flash-8b']:
+                if alt_gem != model_name:
+                    try:
+                        all_fallbacks.append(ChatGoogleGenerativeAI(
+                            model=alt_gem,
+                            temperature=0.1,
+                            max_output_tokens=max(max_tokens, 1024),
+                            google_api_key=gemini_key,
+                            max_retries=1,
+                            timeout=15
+                        ))
+                    except Exception:
+                        pass
+
+            # Si OpenAI está configurado, fallback adicional
+            if openai_key:
+                try:
+                    from langchain_openai import ChatOpenAI
+                    all_fallbacks.append(ChatOpenAI(
+                        model=os.environ.get('OPENAI_MODEL', 'gpt-4o-mini'),
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        api_key=openai_key
+                    ))
+                except Exception:
+                    pass
+
+            # Si Groq está configurado, agregar candidatos con manejo de excepciones
             if groq_key:
                 try:
                     from langchain_groq import ChatGroq
-                    all_fallbacks.append(ChatGroq(
-                        model=os.environ.get('GROQ_MODEL', 'llama-3.1-8b-instant'),
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        api_key=groq_key
-                    ))
+                    for g_cand in ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-8b-8192']:
+                        try:
+                            all_fallbacks.append(ChatGroq(
+                                model=g_cand,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                api_key=groq_key
+                            ))
+                            break
+                        except Exception:
+                            pass
                 except Exception as eg_g:
                     logger.warning(f"[ASISTENTE LLM] Error agregando Groq a fallbacks: {eg_g}")
         except Exception as eg:

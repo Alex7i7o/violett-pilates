@@ -70,6 +70,15 @@
           "activo": true,
           "recibe_alertas": true,
           "notas": "Línea oficial de la dueña"
+        },
+        {
+          "id": "staff_alex_2",
+          "nombre": "Alex Agüero (Staff/Admin)",
+          "telefono": "5491162051543",
+          "rol": "DUENA",
+          "activo": true,
+          "recibe_alertas": true,
+          "notas": "Línea de administración y desarrollo"
         }
       ]
     }

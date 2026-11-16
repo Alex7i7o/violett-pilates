@@ -29,8 +29,8 @@ def obtener_vision_llms_disponibles():
             # gemini-1.5-flash es el modelo multimodal oficial más estable y disponible en todas las cuentas de Google
             candidatos_gemini = [
                 os.environ.get('GEMINI_VISION_MODEL', 'gemini-1.5-flash'),
-                'gemini-2.5-flash',
-                'gemini-2.0-flash'
+                'gemini-2.0-flash',
+                'gemini-1.5-pro'
             ]
             vistos = set()
             for mod in candidatos_gemini:

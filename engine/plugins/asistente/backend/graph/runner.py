@@ -493,6 +493,44 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
     tools_usadas = []
     rol = conversacion.rol_detectado
 
+    # 0. Sincronización de ficha física de alumna pendiente de confirmación
+    if conversacion and getattr(conversacion, 'metadata', None) and conversacion.metadata.get('propuesta_ficha_alumna'):
+        from ..tools.gestion_tools import confirmar_sincronizacion_ficha_duena
+        es_confirmacion = (
+            msg_low in ['si', 'sí', 'ok', 's', 'yes'] or
+            any(k in msg_low for k in [
+                'confirm', 'guard', 'exactamente', 'dale', 'aplicar', 'de una',
+                'hacelo', 'hacerlo', 'correcto', 'está bien', 'esta bien', 'perfecto',
+                'sincroniz', 'de acuerdo'
+            ]) or
+            msg_low.startswith('si ') or
+            msg_low.startswith('sí ')
+        )
+        es_cancelacion = (
+            msg_low in ['no', 'nop'] or
+            any(k in msg_low for k in ['cancel', 'descart', 'rechaz', 'no guard', 'no lo guard']) or
+            msg_low.startswith('no ')
+        )
+
+        if es_confirmacion:
+            res = confirmar_sincronizacion_ficha_duena.invoke({"decision": "CONFIRMAR"})
+            tools_usadas.append('confirmar_sincronizacion_ficha_duena')
+            return res, "agente_direccion", tools_usadas
+        elif es_cancelacion:
+            res = confirmar_sincronizacion_ficha_duena.invoke({"decision": "CANCELAR"})
+            tools_usadas.append('confirmar_sincronizacion_ficha_duena')
+            return res, "agente_direccion", tools_usadas
+        elif any(k in msg_low for k in ['ficha', 'la ficha', 'lo de la ficha']):
+            prop = conversacion.metadata.get('propuesta_ficha_alumna')
+            nom_al = prop.get('usuario_nombre', 'la alumna')
+            tot_cl = prop.get('total_clases', 0)
+            return (
+                f"✦ Tengo lista la lectura de la ficha de *{nom_al}* ({tot_cl} clases leídas).\n\n"
+                f"Para guardarlas definitivamente en el historial y actualizar sus créditos, por favor respondé **'Confirmar'** o **'Sí'**.",
+                "agente_direccion",
+                []
+            )
+
     if rol == 'DUENA':
         nombre_display = "Deby"
     else:
