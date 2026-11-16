@@ -15,7 +15,9 @@ from ..tools.optimizacion_tools import (
 )
 from ..tools.profesores_tools import (
     reasignar_profesora_directo,
-    buscar_reemplazo_orden_duena
+    buscar_reemplazo_orden_duena,
+    registrar_asistencia_clase_profesor,
+    consultar_clases_sin_asistencia_hoy
 )
 from ..tools.finanzas_tools import (
     aprobar_comprobante_pago,
@@ -94,7 +96,9 @@ DIRECCION_TOOLS = [
     reprogramar_o_mover_reserva_alumna_duena,
     mover_o_reprogramar_clase_completa_duena,
     cancelar_o_eliminar_clase_agenda_duena,
-    responder_propuesta_cancelacion_duena
+    responder_propuesta_cancelacion_duena,
+    registrar_asistencia_clase_profesor,
+    consultar_clases_sin_asistencia_hoy
 ]
 
 SYSTEM_PROMPT_DIRECCION = """Sos el Agente Ejecutivo de Dirección y Gestión Operativa de Violett Pilates ✦.
@@ -169,6 +173,12 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
        -> LLAMÁ a 'reasignar_profesora_directo(fecha_str=..., hora_str=..., nueva_profesora_nombre="emiliana")'.
      - Si Deby pide cancelarla o darle de baja (ej: "cancelala", "sí cancelá"):
        -> LLAMÁ a 'responder_propuesta_cancelacion_duena(decision="CANCELAR", fecha_str=..., hora_str=...)'.
+
+13. ASISTENCIA DE PROFESORES Y CLASES PENDIENTES:
+   * Si Deby consulta qué profesores no tomaron asistencia hoy o qué clases quedaron sin marcar asistencia (ej: "¿Qué profesores no tomaron asistencia hoy?", "¿Falta tomar asistencia en alguna clase?", "¿Hay clases sin asistencia?"):
+     -> Usá 'consultar_clases_sin_asistencia_hoy'.
+   * Si Deby pide asentar o tomar la asistencia de una clase de algún profesor (ej: "Tomale asistencia a Brian, vinieron todas", "Anotale presente a todas las de la clase de las 18"):
+     -> Usá 'registrar_asistencia_clase_profesor'.
 
 3. FACTURACIÓN Y MÉTRICAS CONTABLES:
    * Si Deby pide facturación, resumen, ingresos o recaudación:

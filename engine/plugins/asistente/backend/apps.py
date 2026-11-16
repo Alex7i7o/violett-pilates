@@ -39,6 +39,13 @@ def run_notificar_clases_una_alumna_job():
     except Exception as e:
         logger.error(f"[ASISTENTE NOTIFICAR CLASES 1 ALUMNA ERROR] {e}")
 
+def run_solicitar_asistencia_profesores_job():
+    from django.core.management import call_command
+    try:
+        call_command("solicitar_asistencia_profesores")
+    except Exception as e:
+        logger.error(f"[ASISTENTE SOLICITAR ASISTENCIA PROFESORES ERROR] {e}")
+
 class AsistenteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'plugins.asistente.backend'
@@ -153,6 +160,13 @@ class AsistenteConfig(AppConfig):
                     trigger="interval",
                     hours=3,
                     id="asistente_notificar_clases_una_alumna_job",
+                    replace_existing=True
+                )
+                scheduler.add_job(
+                    run_solicitar_asistencia_profesores_job,
+                    trigger="interval",
+                    minutes=15,
+                    id="asistente_solicitar_asistencia_profesores_job",
                     replace_existing=True
                 )
                 scheduler.start()

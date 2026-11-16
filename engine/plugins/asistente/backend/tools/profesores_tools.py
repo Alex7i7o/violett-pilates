@@ -440,3 +440,186 @@ def gestionar_ausencia_y_buscar_reemplazo(profesor_usuario_id: str, turno_id: st
     )
 
     return f"✦ Listo, no te preocupes. Ya le envié un mensaje a {len(contactadas)} profesoras del staff que están libres en ese horario para coordinar la suplencia. Apenas alguna confirme, queda reasignada y te avisamos."
+
+
+@tool
+def registrar_asistencia_clase_profesor(
+    todas_presentes: bool = False,
+    alumnas_ausentes: str = "",
+    alumnas_presentes: str = "",
+    turno_id: str = "",
+    profesor_usuario_id: str = "",
+    fecha_o_dia: str = "hoy",
+    hora_str: str = ""
+) -> str:
+    """
+    Registra la asistencia de las alumnas de una clase dictada por una profesora o profesor.
+    Parámetros:
+    - todas_presentes: True si todas las alumnas de la clase asistieron (ej: 'Vinieron todas', 'Todas presentes', 'Estuvieron todas').
+    - alumnas_ausentes: Nombres de las alumnas que faltaron separados por coma (ej: 'Nora, Gladys' o 'faltó Marcela').
+    - alumnas_presentes: Nombres de las alumnas que sí vinieron si fue solo un subgrupo (ej: 'vino solo Laura').
+    - turno_id: Opcional, ID exacto del turno a marcar. Si no se pasa, busca la clase pendiente más reciente de la profesora hoy.
+    - profesor_usuario_id: Opcional, ID de la profesora.
+    - hora_str: Opcional, horario de la clase (ej: '18:00', '18hs').
+    """
+    from core.models import Turno, Reserva, LogMovimientoClase
+    from ..models import RegistroAccionIA, ConversacionWhatsApp
+    from plugins.profesores.backend.models import Profesor
+
+    today = resolver_fecha(fecha_o_dia)
+    now = timezone.localtime()
+
+    # 1. Resolver el Turno
+    turno = None
+    if turno_id:
+        try:
+            turno = Turno.objects.select_related('clase', 'plantilla').prefetch_related('reservas', 'reservas__usuario').get(id=turno_id)
+        except Exception:
+            turno = None
+
+    if not turno and hora_str:
+        target_time = resolver_hora(hora_str)
+        turno = Turno.objects.filter(
+            fecha=today,
+            hora_inicio__hour=target_time.hour,
+            estado__in=['PROGRAMADO', 'COMPLETADO']
+        ).select_related('clase', 'plantilla').prefetch_related('reservas', 'reservas__usuario').first()
+
+    # Si aún no tenemos turno, buscar en las clases asignadas al profesor hoy que tengan reservas 'CONFIRMADA' o terminaron
+    if not turno:
+        profe = None
+        if profesor_usuario_id:
+            profe = buscar_profesor(profesor_usuario_id)
+
+        qs = Turno.objects.filter(
+            fecha=today,
+            estado__in=['PROGRAMADO', 'COMPLETADO']
+        ).select_related('clase', 'plantilla').prefetch_related('reservas', 'reservas__usuario').order_by('-hora_inicio')
+
+        if profe:
+            qs = qs.filter(
+                Q(profesor_asignado__profesor=profe) |
+                (Q(profesor_asignado__isnull=True) & Q(plantilla__profesor_asignado__profesor=profe))
+            )
+
+        # Priorizar aquel turno que tenga reservas 'CONFIRMADA'
+        for t in qs:
+            if t.reservas.filter(estado='CONFIRMADA').exists():
+                turno = t
+                break
+
+        # Si ninguno tiene CONFIRMADA, tomar el último de hoy
+        if not turno and qs.exists():
+            turno = qs.first()
+
+    if not turno:
+        return "No encontré ninguna clase pendiente de asistencia para hoy. Por favor indicame el horario de la clase (ej: 'la clase de las 18hs')."
+
+    reservas = list(turno.reservas.exclude(estado__in=['CANCELADA_TIEMPO', 'CANCELADA_TARDIA']).select_related('usuario'))
+    if not reservas:
+        return f"La clase de {turno.clase.nombre} ({turno.hora_inicio.strftime('%H:%M')} hs) no tenía alumnas inscriptas."
+
+    profe_obj = obtener_profesor_de_turno(turno)
+    nombre_profe = f"{profe_obj.nombre} {profe_obj.apellido}".strip() if profe_obj else "Profesor/a"
+
+    resumen_cambios = []
+    ausentes_tokens = [a.strip().lower() for a in alumnas_ausentes.replace(' y ', ',').split(',') if a.strip()]
+    presentes_tokens = [p.strip().lower() for p in alumnas_presentes.replace(' y ', ',').split(',') if p.strip()]
+
+    for r in reservas:
+        nom_alumna = f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or "Alumna")
+        nom_low = nom_alumna.lower()
+        estado_ant = r.estado
+
+        if todas_presentes:
+            nuevo_st = 'TOMADA'
+        elif ausentes_tokens:
+            is_ausente = any(tok in nom_low for tok in ausentes_tokens)
+            nuevo_st = 'AUSENTE' if is_ausente else 'TOMADA'
+        elif presentes_tokens:
+            is_presente = any(tok in nom_low for tok in presentes_tokens)
+            nuevo_st = 'TOMADA' if is_presente else 'AUSENTE'
+        else:
+            nuevo_st = 'TOMADA'
+
+        r.estado = nuevo_st
+        r.modificada_manualmente = True
+        r.modificada_por = f"{nombre_profe} (WhatsApp)"
+        r.motivo_modificacion = f"Asistencia reportada por WhatsApp por {nombre_profe}"
+        r.fecha_modificacion = timezone.now()
+        r.save(update_fields=['estado', 'modificada_manualmente', 'modificada_por', 'motivo_modificacion', 'fecha_modificacion'])
+
+        # Registrar log de auditoría
+        if r.usuario:
+            LogMovimientoClase.objects.create(
+                reserva=r,
+                usuario=r.usuario,
+                turno=turno,
+                tipo_movimiento='ASISTENCIA_REGISTRADA_WPP',
+                estado_anterior=estado_ant,
+                estado_nuevo=nuevo_st,
+                realizado_por=f"{nombre_profe} (WhatsApp)",
+                motivo="Asistencia informada por mensaje de WhatsApp"
+            )
+
+        simbolo = "✓ Presente" if nuevo_st == 'TOMADA' else "✕ Ausente"
+        resumen_cambios.append(f"• {nom_alumna}: {simbolo}")
+
+    # Si ya no quedan reservas pendientes, marcar turno como COMPLETADO
+    if not turno.reservas.filter(estado='CONFIRMADA').exists():
+        turno.estado = 'COMPLETADO'
+        turno.save(update_fields=['estado'])
+
+    # Registrar acción de IA
+    RegistroAccionIA.objects.create(
+        tipo_accion='ASISTENCIA_REGISTRADA',
+        descripcion=f"Asistencia tomada vía WhatsApp para {turno.clase.nombre} ({turno.fecha} {turno.hora_inicio.strftime('%H:%M')}hs) por {nombre_profe}.",
+        payload={
+            'turno_id': str(turno.id),
+            'profe': nombre_profe,
+            'cambios': resumen_cambios
+        }
+    )
+
+    hora_fmt = turno.hora_inicio.strftime('%H:%M')
+    resumen_txt = "\n".join(resumen_cambios)
+    return (
+        f"✅ ¡Excelente {nombre_profe.split()[0]}! Ya quedó registrada la asistencia de la clase de *{turno.clase.nombre}* de las *{hora_fmt} hs*:\n\n"
+        f"{resumen_txt}\n\n"
+        f"¡Muchas gracias por mantener la agenda al día! ✨"
+    )
+
+
+@tool
+def consultar_clases_sin_asistencia_hoy() -> str:
+    """
+    Lista todas las clases dictadas hoy que aún tienen alumnas con reserva 'CONFIRMADA' (asistencia sin tomar).
+    Muestra la clase, el horario, el profesor a cargo y los nombres de las alumnas pendientes.
+    """
+    from core.models import Turno
+    today = timezone.localdate()
+    now_time = timezone.localtime().time()
+
+    turnos_pendientes = Turno.objects.filter(
+        fecha=today,
+        hora_fin__lte=now_time,
+        estado='PROGRAMADO',
+        reservas__estado='CONFIRMADA'
+    ).select_related('clase', 'plantilla').prefetch_related('reservas', 'reservas__usuario').distinct().order_by('hora_inicio')
+
+    if not turnos_pendientes.exists():
+        return "✦ ¡Excelente! No hay ninguna clase pendiente de asistencia el día de hoy. Todas las clases finalizadas tienen su asistencia completa."
+
+    lineas = ["📋 **Clases de hoy con asistencia pendiente de marcar:**\n"]
+    for t in turnos_pendientes:
+        prof = obtener_profesor_de_turno(t)
+        nom_prof = f"{prof.nombre} {prof.apellido}".strip() if prof else "Sin profesor asignado"
+        hora_fmt = t.hora_inicio.strftime('%H:%M')
+        reservas_conf = t.reservas.filter(estado='CONFIRMADA')
+        alumnas_noms = [
+            f"{r.usuario.nombre} {r.usuario.apellido}".strip() if r.usuario else (r.nombre_temporal or 'Alumna')
+            for r in reservas_conf
+        ]
+        lineas.append(f"• **{hora_fmt} hs** — {t.clase.nombre} (Prof: *{nom_prof}*): {len(alumnas_noms)} alumnas ({', '.join(alumnas_noms)})")
+
+    return "\n".join(lineas)

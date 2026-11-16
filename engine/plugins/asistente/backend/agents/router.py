@@ -22,7 +22,9 @@ KEYWORDS_FINANZAS = [
 
 KEYWORDS_PROFESORES = [
     r'\bmis clases\b', r'\bno puedo asistir\b', r'\bausencia\b',
-    r'\bcubrir\b', r'\breemplazo\b', r'\bprofe\b'
+    r'\bcubrir\b', r'\breemplazo\b', r'\bprofe\b',
+    r'\basist\w+', r'\bvinieron\b', r'\bvino\b', r'\bpresentes?\b',
+    r'\bausentes?\b', r'\bfalt[oó]\b', r'\btodas\b', r'\btodos\b'
 ]
 
 KEYWORDS_DIRECCION = [
@@ -57,11 +59,12 @@ def clasificar_intencion_fast(texto: str, rol: str) -> str:
             return 'agente_recepcionista'
         return 'agente_direccion'
 
-    # Si es profesor
+    # Si es profesor: SIEMPRE a AGENTE_PROFESORES (salvo saludo puramente social)
     if rol == 'PROFESOR':
-        for pattern in KEYWORDS_PROFESORES:
-            if re.search(pattern, t):
-                return 'agente_profesores'
+        es_solo_saludo = any(t == s for s in ['hola', 'buenas', 'buen dia', 'buen día', 'buenas tardes', 'buenas noches', 'que tal', 'qué tal', 'hola!'])
+        if es_solo_saludo:
+            return 'agente_recepcionista'
+        return 'agente_profesores'
 
     # Turnos & Reservas (Alumnas y prospectos)
     for pattern in KEYWORDS_TURNOS:

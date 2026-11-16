@@ -38,18 +38,35 @@ def _ejecutar_ciclo_agente(data: dict):
         if usuario:
             conversacion.usuario = usuario
 
-    # 3. Detectar rol (reconocimiento automático de Débora y miembros del Staff con permisos de dirección)
+    # 3. Detectar rol (reconocimiento automático de Débora, Staff y Profesores)
     from ..config_loader import es_telefono_staff_o_duena
     if es_telefono_staff_o_duena(clean_phone):
         conversacion.rol_detectado = 'DUENA'
-    elif conversacion.usuario:
-        is_profesor = getattr(conversacion.usuario, 'is_profesor', False) or str(getattr(conversacion.usuario, 'rol', '')).upper() == 'PROFESOR'
+    else:
+        is_profesor = False
+        if conversacion.usuario:
+            is_profesor = getattr(conversacion.usuario, 'is_profesor', False) or str(getattr(conversacion.usuario, 'rol', '')).upper() == 'PROFESOR'
+        if not is_profesor:
+            try:
+                from plugins.profesores.backend.models import Profesor
+                from django.db.models import Q
+                p_obj = Profesor.objects.filter(is_active=True).filter(
+                    Q(telefono__icontains=clean_phone[-8:]) |
+                    Q(usuario__telefono__icontains=clean_phone[-8:])
+                ).first()
+                if p_obj:
+                    is_profesor = True
+                    if not conversacion.usuario and p_obj.usuario:
+                        conversacion.usuario = p_obj.usuario
+            except Exception:
+                pass
+
         if is_profesor:
             conversacion.rol_detectado = 'PROFESOR'
-        else:
+        elif conversacion.usuario:
             conversacion.rol_detectado = 'ALUMNA'
-    else:
-        conversacion.rol_detectado = 'PROSPECTO'
+        else:
+            conversacion.rol_detectado = 'PROSPECTO'
 
     # 3.1 Recuperar contexto si la usuaria respondió citando un mensaje de WhatsApp
     raw_msg = data.get('raw_msg', {})
@@ -71,6 +88,17 @@ def _ejecutar_ciclo_agente(data: dict):
             text_low = text.lower()
             if any(k in text_low for k in ['ese horario', 'esa clase', 'agrega a', 'agregale a', 'agrégale a', 'anota a', 'anotá a', 'pone como profesora', 'poné como profesora', 'cancelala', 'cancelá esa', 'hola no', 'y esta esta']):
                 texto_citado = ultimo_aviso.texto
+
+    # 3.3 Si es una profesora respondiendo a una consulta de asistencia activa
+    if not texto_citado and conversacion.rol_detectado == 'PROFESOR':
+        consulta_activa = conversacion.metadata.get('consulta_asistencia_activa')
+        if consulta_activa:
+            hora_c = consulta_activa.get('hora', '')
+            clase_c = consulta_activa.get('clase_nombre', '')
+            alumnas_c = [a.get('nombre') for a in consulta_activa.get('alumnas', []) if a.get('nombre')]
+            alumnas_txt = ", ".join(alumnas_c)
+            t_id = consulta_activa.get('turno_id', '')
+            texto_citado = f"Asistencia de clase {clase_c} ({hora_c} hs) - Alumnas anotadas: {alumnas_txt}. Turno ID: {t_id}"
 
     texto_para_agente = f'[En respuesta a tu aviso anterior: "{texto_citado}"]\n{text}' if texto_citado else text
 
