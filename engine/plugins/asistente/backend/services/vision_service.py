@@ -4,19 +4,20 @@ import base64
 import logging
 from django.utils import timezone
 from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient
-from ..models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA, ComprobantePendiente
+from ..models import ConversacionWhatsApp, MensajeWhatsAppLog, RegistroAccionIA, ComprobantePendiente, RegistroErrorIA
 from ..config_loader import get_asistente_config
 
 logger = logging.getLogger(__name__)
 
-def obtener_vision_llm():
+def obtener_vision_llms_disponibles():
     """
-    Retorna la mejor instancia de LLM con capacidad de visión disponible en el entorno:
-    1. Google Gemini (gemini-2.5-flash / gemini-1.5-flash)
+    Retorna una lista de instancias LLM multimodales disponibles ordenadas por robustez:
+    1. Google Gemini (gemini-1.5-flash / gemini-2.5-flash / gemini-2.0-flash)
     2. OpenAI (gpt-4o-mini / gpt-4o)
-    3. Anthropic (claude-3-5-sonnet)
-    4. Groq (llama-3.2-11b-vision-preview)
+    3. Groq (llama-3.2-11b-vision-preview)
+    4. Anthropic (claude-3-5-sonnet-latest)
     """
+    llms = []
     gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
@@ -25,51 +26,67 @@ def obtener_vision_llm():
     if gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            model_name = os.environ.get('GEMINI_VISION_MODEL', 'gemini-2.5-flash')
-            return ChatGoogleGenerativeAI(
-                model=model_name,
-                google_api_key=gemini_key,
-                temperature=0.0
-            )
+            # gemini-1.5-flash es el modelo multimodal oficial más estable y disponible en todas las cuentas de Google
+            candidatos_gemini = [
+                os.environ.get('GEMINI_VISION_MODEL', 'gemini-1.5-flash'),
+                'gemini-2.5-flash',
+                'gemini-2.0-flash'
+            ]
+            vistos = set()
+            for mod in candidatos_gemini:
+                if mod and mod not in vistos:
+                    vistos.add(mod)
+                    try:
+                        llms.append(ChatGoogleGenerativeAI(
+                            model=mod,
+                            google_api_key=gemini_key,
+                            temperature=0.0
+                        ))
+                    except Exception as e_mod:
+                        logger.warning(f"[VISION LLM] No se pudo preparar Gemini {mod}: {e_mod}")
         except Exception as eg:
-            logger.warning(f"[VISION LLM] Error inicializando ChatGoogleGenerativeAI: {eg}")
+            logger.warning(f"[VISION LLM] Error cargando langchain_google_genai: {eg}")
 
     if openai_key:
         try:
             from langchain_openai import ChatOpenAI
-            model_name = os.environ.get('OPENAI_VISION_MODEL', 'gpt-4o-mini')
-            return ChatOpenAI(
-                model=model_name,
+            llms.append(ChatOpenAI(
+                model=os.environ.get('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
                 api_key=openai_key,
                 temperature=0.0
-            )
+            ))
         except Exception as eo:
             logger.warning(f"[VISION LLM] Error inicializando ChatOpenAI: {eo}")
-
-    if anthropic_key:
-        try:
-            from langchain_anthropic import ChatAnthropic
-            model_name = os.environ.get('ANTHROPIC_VISION_MODEL', 'claude-3-5-sonnet-latest')
-            return ChatAnthropic(
-                model=model_name,
-                api_key=anthropic_key,
-                temperature=0.0
-            )
-        except Exception as ea:
-            logger.warning(f"[VISION LLM] Error inicializando ChatAnthropic: {ea}")
 
     if groq_key:
         try:
             from langchain_groq import ChatGroq
-            return ChatGroq(
+            llms.append(ChatGroq(
                 model='llama-3.2-11b-vision-preview',
                 api_key=groq_key,
                 temperature=0.0
-            )
+            ))
         except Exception as egr:
             logger.warning(f"[VISION LLM] Error inicializando ChatGroq Vision: {egr}")
 
-    return None
+    if anthropic_key:
+        try:
+            from langchain_anthropic import ChatAnthropic
+            llms.append(ChatAnthropic(
+                model=os.environ.get('ANTHROPIC_VISION_MODEL', 'claude-3-5-sonnet-latest'),
+                api_key=anthropic_key,
+                temperature=0.0
+            ))
+        except Exception as ea:
+            logger.warning(f"[VISION LLM] Error inicializando ChatAnthropic: {ea}")
+
+    return llms
+
+
+def obtener_vision_llm():
+    """Retorna la primera instancia LLM multimodal disponible."""
+    llms = obtener_vision_llms_disponibles()
+    return llms[0] if llms else None
 
 
 PROMPT_VISION_UNIFICADO = """Sos el auditor inteligente de Violett Pilates. Analizá detenidamente esta imagen enviada por WhatsApp o subida al sistema.
@@ -133,11 +150,12 @@ Respondé ÚNICAMENTE un objeto JSON válido sin bloques markdown ni texto intro
 def extraer_datos_documento_multimodal(image_bytes: bytes, caption: str = ""):
     """
     Ejecuta el análisis visual multimodal sobre los bytes de una imagen.
+    Prueba en cascada los LLMs multimodales disponibles hasta que uno responda con éxito.
     Devuelve (ok: bool, datos: dict, error_msg: str).
     """
-    llm = obtener_vision_llm()
-    if not llm:
-        return False, {}, "No hay ningún proveedor de LLM con visión multimodal configurado en el servidor (GEMINI_API_KEY, OPENAI_API_KEY o ANTHROPIC_API_KEY)."
+    llms = obtener_vision_llms_disponibles()
+    if not llms:
+        return False, {}, "No hay ningún proveedor de LLM con visión multimodal configurado en el servidor (GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY o ANTHROPIC_API_KEY)."
 
     try:
         from langchain_core.messages import HumanMessage
@@ -149,30 +167,51 @@ def extraer_datos_documento_multimodal(image_bytes: bytes, caption: str = ""):
             {"type": "image_url", "image_url": {"url": image_data_url}}
         ])
 
-        response = llm.invoke([msg])
-        content = response.content.strip()
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
+        last_err = ""
+        for llm in llms:
+            try:
+                logger.info(f"[VISION LLM] Analizando documento con {llm}...")
+                response = llm.invoke([msg])
+                content = response.content.strip()
+                if content.startswith("```json"):
+                    content = content[7:]
+                if content.startswith("```"):
+                    content = content[3:]
+                if content.endswith("```"):
+                    content = content[:-3]
 
-        datos = json.loads(content.strip())
-        return True, datos, ""
+                datos = json.loads(content.strip())
+                return True, datos, ""
+            except Exception as e_llm:
+                last_err = str(e_llm)
+                logger.warning(f"[VISION LLM RETRY] Modelo {llm} falló: {e_llm}")
+                continue
+
+        logger.error(f"[VISION EXTRACT ERROR] Fallaron todos los modelos multimodales. Último error: {last_err}")
+        return False, {}, last_err
     except Exception as e:
         logger.error(f"[VISION EXTRACT ERROR] Error analizando documento: {e}", exc_info=True)
         return False, {}, str(e)
 
 
-def procesar_imagen_entrante(phone: str, image_id: str = None, caption: str = "", image_bytes: bytes = None):
+def procesar_imagen_entrante(phone: str, image_id: str = None, caption: str = "", image_bytes: bytes = None, quoted_wamid: str = None):
     """
     Punto de entrada principal para cualquier imagen recibida por WhatsApp o subida al sistema.
     Descarga la imagen si se pasa image_id y determina si es FICHA_ALUMNA o COMPROBANTE_PAGO.
+    Garantiza el registro inmediato tanto de la imagen entrante como de las respuestas en el historial CRM.
     """
     clean_phone = phone.replace('+', '').replace(' ', '')
     conversacion, _ = ConversacionWhatsApp.objects.get_or_create(telefono=clean_phone)
     client = WhatsAppClient()
+
+    # 1. Registrar inmediatamente la foto recibida en el historial del CRM
+    caption_txt = f": {caption}" if caption else ""
+    MensajeWhatsAppLog.objects.create(
+        conversacion=conversacion,
+        direccion='ENTRANTE',
+        agente_responsable='usuario',
+        texto=f"📷 [Foto / Imagen enviada]{caption_txt}"
+    )
 
     if not image_bytes and image_id:
         image_bytes = client.download_media_bytes(image_id)
@@ -182,14 +221,33 @@ def procesar_imagen_entrante(phone: str, image_id: str = None, caption: str = ""
 
     if not image_bytes:
         logger.warning(f"[VISION SERVICE] No se recibieron bytes para la imagen de {clean_phone}")
+        resp_fallo = "✦ Recibí la imagen pero hubo un inconveniente al descargarla desde los servidores de WhatsApp. Por favor, volvé a enviarla."
+        client.send_text_message(clean_phone, resp_fallo)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conversacion,
+            direccion='SALIENTE',
+            agente_responsable='agente_vision',
+            texto=resp_fallo
+        )
         return
 
     ok, datos, err = extraer_datos_documento_multimodal(image_bytes, caption)
 
-    # Si no hay llm configurado o falló, ejecutar fallback amigable
+    # Si falló la extracción visual
     if not ok:
-        logger.info(f"[VISION SERVICE FALLBACK] {err}")
-        _atender_imagen_fallback(conversacion, clean_phone, client, telefono_duena, caption)
+        logger.error(f"[VISION SERVICE ERROR] {err}")
+        # Registrar incidencia en Centinela (RegistroErrorIA)
+        try:
+            RegistroErrorIA.objects.create(
+                tipo_fallo='ERROR_TECNICO_INTERNO',
+                mensaje_error=f"Fallo en visión multimodal al procesar imagen: {err}",
+                contexto_conversacion={'phone': clean_phone, 'caption': caption, 'image_id': image_id},
+                telefono_afectado=clean_phone
+            )
+        except Exception as e_cent:
+            logger.warning(f"[CENTINELA LOG ERROR] {e_cent}")
+
+        _atender_imagen_fallback(conversacion, clean_phone, client, telefono_duena, caption=caption, error_detalle=err)
         return
 
     tipo_doc = datos.get('tipo_documento', 'OTRO')
@@ -231,6 +289,12 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
     if not alumna:
         msg = f"✦ {nombre_staff}, leí la ficha física de *'{nombre_raw}'*, pero no encontré ninguna alumna registrada con ese nombre en la base de datos para asociar sus clases.\n\n¿Está anotada con otro nombre o apellido en el sistema?"
         client.send_text_message(clean_phone, msg)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conversacion,
+            direccion='SALIENTE',
+            agente_responsable='agente_vision_fichas',
+            texto=msg
+        )
         return
 
     ciclos = datos_ficha.get('ciclos', [])
@@ -239,6 +303,12 @@ def procesar_ficha_alumna_detectada(datos_ficha: dict, clean_phone: str, client:
     if total_clases == 0:
         msg = f"✦ {nombre_staff}, identifiqué la ficha de *{alumna.nombre} {alumna.apellido}*, pero no logré leer ninguna clase o fecha anotada con claridad en la cuadrícula."
         client.send_text_message(clean_phone, msg)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conversacion,
+            direccion='SALIENTE',
+            agente_responsable='agente_vision_fichas',
+            texto=msg
+        )
         return
 
     # Guardar la propuesta en los metadatos de la conversación
@@ -344,16 +414,27 @@ def procesar_comprobante_detectado(datos_comp: dict, clean_phone: str, client: W
         client.send_text_message(telefono_duena, msg_duena)
 
 
-def _atender_imagen_fallback(conversacion, clean_phone: str, client: WhatsAppClient, telefono_duena: str, caption: str = ""):
-    """Fallback si no hay API key de visión disponible en este momento."""
+def _atender_imagen_fallback(conversacion, clean_phone: str, client: WhatsAppClient, telefono_duena: str, caption: str = "", error_detalle: str = ""):
+    """Fallback si ocurre un inconveniente técnico al procesar la imagen."""
     usuario = conversacion.usuario
     nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Alumna"
 
-    # Si el remitente es la dueña o staff autorizado, orientarla
+    # Si el remitente es la dueña o staff autorizado, orientarla con mensaje prolijo
     from ..config_loader import es_telefono_staff_o_duena
     if es_telefono_staff_o_duena(clean_phone) or getattr(conversacion, 'rol_detectado', '') == 'DUENA':
-        msg = "✦ Deby, recibí la imagen. Para que la IA procese la ficha o comprobante de forma 100% automática, asegurate de tener configurada la API Key (GEMINI_API_KEY o OPENAI_API_KEY) en las variables del servidor."
+        msg = (
+            "✦ Deby, recibí la foto de la ficha pero en este momento no pude leer los datos automáticamente.\n\n"
+            "📸 **Opciones para continuar:**\n"
+            "1. Podés reenviármela asegurando buena iluminación y enfoque nítido sobre la cuadrícula.\n"
+            "2. O podés escanearla o cargarla directamente desde el sistema web en: *Alumnas ➔ Seleccionar Alumna ➔ Clases / Asistencia ➔ 'Escanear Ficha Física'*, donde podés revisar y confirmar cada clase al instante."
+        )
         client.send_text_message(clean_phone, msg)
+        MensajeWhatsAppLog.objects.create(
+            conversacion=conversacion,
+            direccion='SALIENTE',
+            agente_responsable='agente_vision',
+            texto=msg
+        )
         return
 
     # Si es una alumna
@@ -362,7 +443,7 @@ def _atender_imagen_fallback(conversacion, clean_phone: str, client: WhatsAppCli
         usuario=usuario,
         monto=45000,
         plan_nombre="Plan Mensual - 8 Clases",
-        datos_extraidos={"simulado": True, "caption": caption},
+        datos_extraidos={"simulado": True, "caption": caption, "error": error_detalle},
         estado='PENDIENTE'
     )
     respuesta = (
@@ -378,5 +459,5 @@ def _atender_imagen_fallback(conversacion, clean_phone: str, client: WhatsAppCli
 
 
 # Alias para retrocompatibilidad
-def procesar_comprobante_imagen(phone: str, image_id: str, caption: str = ""):
-    return procesar_imagen_entrante(phone=phone, image_id=image_id, caption=caption)
+def procesar_comprobante_imagen(phone: str, image_id: str, caption: str = "", quoted_wamid: str = None):
+    return procesar_imagen_entrante(phone=phone, image_id=image_id, caption=caption, quoted_wamid=quoted_wamid)

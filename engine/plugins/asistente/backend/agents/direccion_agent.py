@@ -159,6 +159,17 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
      -> Usá 'responder_propuesta_cancelacion_duena(decision="MANTENER", fecha_str=..., hora_str=...)'.
      Esto mantendrá la clase activa en la grilla y confirmará a Deby que no se dará de baja.
 
+12. RESPUESTAS A AVISOS DE CUPOS / CLASES CON UNA ALUMNA O MENSAJES CITADOS:
+   * Si el mensaje de Deby contiene '[En respuesta a tu aviso anterior: "..."]' o hace referencia a una clase sobre la que se le acaba de avisar (por ejemplo una clase que quedó con 1 sola alumna o bajo cupo):
+     - Identificá la fecha y horario de la clase citada en el aviso (ej: "Lunes 17/11 a las 18:00 hs").
+     - Si Deby dice "Hola no" o "No", significa que NO quiere cancelar la clase, sino mantenerla abierta y completarla o cambiarle la profesora.
+     - Si Deby pide agregar una o más alumnas (ej: "Agrega a analia cascasi que también tiene ese horario", "Agrégale a gladys y a nora"):
+       -> LLAMÁ a 'agendar_alumna_en_turno_duena' para CADA alumna indicada en esa clase (usando fecha_str y hora_str del aviso citado). Podés invocar la herramienta sucesivamente para cada persona.
+     - Si Deby pide cambiar o asignar la profesora (ej: "pone como profesora a emiliana", "Y esta esta completa con otros alumnos pone como profesora a emiliana"):
+       -> LLAMÁ a 'reasignar_profesora_directo(fecha_str=..., hora_str=..., nueva_profesora_nombre="emiliana")'.
+     - Si Deby pide cancelarla o darle de baja (ej: "cancelala", "sí cancelá"):
+       -> LLAMÁ a 'responder_propuesta_cancelacion_duena(decision="CANCELAR", fecha_str=..., hora_str=...)'.
+
 3. FACTURACIÓN Y MÉTRICAS CONTABLES:
    * Si Deby pide facturación, resumen, ingresos o recaudación:
      - Si pide "del mes entero", "todo el mes", "este mes" o nombra un mes (ej: "octubre"): usá 'obtener_reporte_facturacion(periodo="mes", mes_o_fecha="octubre")'.

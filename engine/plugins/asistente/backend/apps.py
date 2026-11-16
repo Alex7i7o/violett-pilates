@@ -62,8 +62,13 @@ class AsistenteConfig(AppConfig):
                 phone = data.get('phone')
                 image_id = data.get('image_id')
                 caption = data.get('caption', '')
+                quoted_wamid = data.get('quoted_wamid')
                 if phone and image_id:
-                    threading.Thread(target=procesar_comprobante_imagen, args=(phone, image_id, caption), daemon=True).start()
+                    threading.Thread(
+                        target=procesar_comprobante_imagen,
+                        args=(phone, image_id, caption, quoted_wamid),
+                        daemon=True
+                    ).start()
             except Exception as e:
                 logger.error(f"[ASISTENTE ERROR] Error despachando imagen entrante: {e}")
             return data

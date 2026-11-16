@@ -69,12 +69,33 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                 api_key=groq_key
             )
             logger.info(f"[ASISTENTE LLM] Usando Groq como proveedor principal gratuito: {model_name}")
-            # Gemini como fallback
+            
+            # Si el modelo principal de Groq es 70b, agregar 8b-instant como PRIMER fallback inmediato (disponible siempre en todas las cuentas)
+            if '8b' not in model_name:
+                try:
+                    all_fallbacks.append(ChatGroq(
+                        model='llama-3.1-8b-instant',
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        api_key=groq_key
+                    ))
+                except Exception:
+                    pass
+
+            # Gemini como fallback oficial
             if gemini_key:
                 try:
                     from langchain_google_genai import ChatGoogleGenerativeAI
                     all_fallbacks.append(ChatGoogleGenerativeAI(
-                        model='gemini-3.8-flash',
+                        model='gemini-2.5-flash',
+                        temperature=0.1,
+                        max_output_tokens=max(max_tokens, 1024),
+                        google_api_key=gemini_key,
+                        max_retries=1,
+                        timeout=15
+                    ))
+                    all_fallbacks.append(ChatGoogleGenerativeAI(
+                        model='gemini-1.5-flash',
                         temperature=0.1,
                         max_output_tokens=max(max_tokens, 1024),
                         google_api_key=gemini_key,
@@ -94,7 +115,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             # Gemini 2.5 Flash es el modelo actual oficial recomendado por Google AI Studio
             raw_model = os.environ.get('GEMINI_MODEL', '').strip()
             if not raw_model or '2.0-flash' in raw_model or '2.5-flash' in raw_model:
-                model_name = 'gemini-3.8-flash'
+                model_name = 'gemini-2.5-flash'
             else:
                 model_name = raw_model
             gemini_kwargs = dict(

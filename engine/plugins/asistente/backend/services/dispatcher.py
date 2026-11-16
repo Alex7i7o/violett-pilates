@@ -51,11 +51,40 @@ def _ejecutar_ciclo_agente(data: dict):
     else:
         conversacion.rol_detectado = 'PROSPECTO'
 
+    # 3.1 Recuperar contexto si la usuaria respondió citando un mensaje de WhatsApp
+    raw_msg = data.get('raw_msg', {})
+    quoted_wamid = data.get('quoted_wamid') or (raw_msg.get('context', {}).get('id') if isinstance(raw_msg, dict) else None)
+    texto_citado = None
+    if quoted_wamid:
+        wamid_map = conversacion.metadata.get('sent_wamid_map', {})
+        texto_citado = wamid_map.get(quoted_wamid)
+
+    # 3.2 Si no citó explícitamente pero es Débora/Staff respondiendo a una alerta reciente de agenda
+    if not texto_citado and conversacion.rol_detectado == 'DUENA':
+        import datetime
+        hace_20m = timezone.now() - datetime.timedelta(minutes=20)
+        ultimo_aviso = conversacion.mensajes.filter(
+            direccion='SALIENTE',
+            created_at__gte=hace_20m
+        ).order_by('-created_at').first()
+        if ultimo_aviso and any(k in ultimo_aviso.texto.lower() for k in ['alerta', 'solo 1 alumna', 'aviso dirección', 'camillas libres']):
+            text_low = text.lower()
+            if any(k in text_low for k in ['ese horario', 'esa clase', 'agrega a', 'agregale a', 'agrégale a', 'anota a', 'anotá a', 'pone como profesora', 'poné como profesora', 'cancelala', 'cancelá esa', 'hola no', 'y esta esta']):
+                texto_citado = ultimo_aviso.texto
+
+    texto_para_agente = f'[En respuesta a tu aviso anterior: "{texto_citado}"]\n{text}' if texto_citado else text
+
     conversacion.save()
 
     # 4. Registrar log del mensaje entrante
     es_audio = data.get('es_audio', False)
-    texto_log = f"🎤 [Audio]: {text}" if es_audio else text
+    texto_base = f"🎤 [Audio]: {text}" if es_audio else text
+    if texto_citado:
+        primera_linea = texto_citado.split('\n')[0][:80]
+        texto_log = f"↩️ [En respuesta a: \"{primera_linea}...\"]\n{texto_base}"
+    else:
+        texto_log = texto_base
+
     MensajeWhatsAppLog.objects.create(
         conversacion=conversacion,
         direccion='ENTRANTE',
@@ -73,7 +102,7 @@ def _ejecutar_ciclo_agente(data: dict):
         from ..graph.runner import ejecutar_grafo_asistente
         respuesta_texto, agente_responsable, tools_usadas = ejecutar_grafo_asistente(
             conversacion=conversacion,
-            mensaje_usuario=text
+            mensaje_usuario=texto_para_agente
         )
     except Exception as e:
         print(f"[ASISTENTE ERROR GRAFO] Excepción para {clean_phone}: {e}", flush=True)

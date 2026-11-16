@@ -70,6 +70,8 @@ class WhatsAppWebhookView(APIView):
                     for msg in messages:
                         phone_number = msg.get('from')
                         msg_type = msg.get('type')
+                        context_obj = msg.get('context', {})
+                        quoted_wamid = context_obj.get('id') if context_obj else None
                         
                         client = WhatsAppClient()
                         
@@ -82,6 +84,7 @@ class WhatsAppWebhookView(APIView):
                                 'phone': phone_number,
                                 'image_id': image_id,
                                 'caption': caption,
+                                'quoted_wamid': quoted_wamid,
                                 'raw_msg': msg
                             })
                             if not registry.listeners.get('whatsapp_imagen_recibida'):
@@ -97,6 +100,7 @@ class WhatsAppWebhookView(APIView):
                                 'phone': phone_number,
                                 'audio_id': audio_id,
                                 'mime_type': mime_type,
+                                'quoted_wamid': quoted_wamid,
                                 'raw_msg': msg
                             })
                             if not registry.listeners.get('whatsapp_audio_recibido'):
@@ -113,10 +117,11 @@ class WhatsAppWebhookView(APIView):
                                 threading.Thread(target=client.mark_as_read, args=(msg_id,), daemon=True).start()
 
                             from backend_core.hooks import registry
-                            # Emitir hook para el Asistente Multi-Agente
+                            # Emitir hook para el Asistente Multi-Agente con soporte de mensaje citado
                             registry.execute('whatsapp_mensaje_recibido', {
                                 'phone': phone_number,
                                 'text': text_body,
+                                'quoted_wamid': quoted_wamid,
                                 'raw_msg': msg
                             })
                             # Fallback si el plugin asistente no esta activo

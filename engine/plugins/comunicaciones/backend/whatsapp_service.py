@@ -83,7 +83,11 @@ class WhatsAppClient:
             media_url = res.json().get('url')
             if not media_url:
                 return None
-            file_res = requests.get(media_url, headers=headers, timeout=15)
+            file_headers = {
+                "Authorization": f"Bearer {self.token}",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            file_res = requests.get(media_url, headers=file_headers, timeout=20)
             if file_res.status_code == 200:
                 return file_res.content
             logger.error(f"[WHATSAPP MEDIA DOWNLOAD ERROR] {file_res.status_code}")
@@ -156,6 +160,27 @@ class WhatsAppClient:
                 print(f'[WHATSAPP ENVIADO EXITOSAMENTE] Status: {response.status_code} | Respuesta: {response.text}', flush=True)
                 from backend_core.hooks import registry
                 registry.execute('wpp_enviado_tracker', {})
+                
+                # Almacenar ID del mensaje (wamid) para soporte de respuestas citadas
+                try:
+                    res_json = response.json()
+                    msgs_list = res_json.get('messages', [])
+                    if msgs_list:
+                        meta_wamid = msgs_list[0].get('id')
+                        if meta_wamid:
+                            from plugins.asistente.backend.models import ConversacionWhatsApp
+                            clean_to = str(phone).replace('+', '').replace('-', '').replace(' ', '')
+                            conv = ConversacionWhatsApp.objects.filter(telefono=clean_to).first()
+                            if conv:
+                                wamid_map = conv.metadata.setdefault('sent_wamid_map', {})
+                                wamid_map[meta_wamid] = text_message[:350]
+                                if len(wamid_map) > 50:
+                                    for k in list(wamid_map.keys())[:-50]:
+                                        wamid_map.pop(k, None)
+                                conv.save(update_fields=['metadata'])
+                except Exception as ex_wamid:
+                    logger.debug(f"[WHATSAPP WAMID MAP ERROR] {ex_wamid}")
+
                 return True
             else:
                 print(f'[WHATSAPP ERROR META] Status: {response.status_code} | Respuesta: {response.text}', flush=True)
