@@ -98,7 +98,7 @@ class Command(BaseCommand):
             # Verificar si ya existe una propuesta de cancelación previa para este turno
             propuesta_existente = RegistroAccionIA.objects.filter(
                 tipo_accion='PROPUESTA_CANCELACION_BAJO_CUPO',
-                metadata__turno_id=str(turno.id)
+                payload__turno_id=str(turno.id)
             ).order_by('-created_at').first()
 
             if propuesta_existente:
@@ -164,9 +164,9 @@ class Command(BaseCommand):
                     RegistroAccionIA.objects.create(
                         conversacion=conversacion_duena,
                         tipo_accion='PROPUESTA_CANCELACION_BAJO_CUPO',
-                        resultado='PENDIENTE',
                         descripcion=f"Consulta enviada a Deby para confirmar cancelación de {dia_nom} {fecha_str} {hora_str}hs ({inscriptas} inscriptas).",
-                        metadata={
+                        payload={
+                            'resultado': 'PENDIENTE',
                             'turno_id': str(turno.id),
                             'fecha': turno.fecha.strftime('%Y-%m-%d'),
                             'hora': turno.hora_inicio.strftime('%H:%M'),

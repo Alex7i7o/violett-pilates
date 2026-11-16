@@ -32,6 +32,13 @@ def run_notificar_profesores_nocturno_job():
     except Exception as e:
         logger.error(f"[ASISTENTE NOTIFICAR PROFESORES NOCTURNO ERROR] {e}")
 
+def run_notificar_clases_una_alumna_job():
+    from django.core.management import call_command
+    try:
+        call_command("notificar_clases_una_alumna")
+    except Exception as e:
+        logger.error(f"[ASISTENTE NOTIFICAR CLASES 1 ALUMNA ERROR] {e}")
+
 class AsistenteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'plugins.asistente.backend'
@@ -81,7 +88,21 @@ class AsistenteConfig(AppConfig):
         registry.register('whatsapp_mensaje_recibido', on_whatsapp_mensaje)
         registry.register('whatsapp_imagen_recibida', on_whatsapp_imagen)
         registry.register('whatsapp_audio_recibido', on_whatsapp_audio)
-        logger.info("[ASISTENTE IA] Hooks 'whatsapp_mensaje_recibido', 'whatsapp_imagen_recibida' y 'whatsapp_audio_recibido' registrados.")
+
+        def on_reserva_cancelada_check_cupo(data, **kwargs):
+            try:
+                reserva = data
+                if reserva and getattr(reserva, 'turno', None):
+                    from .services.notificaciones_duena import notificar_duena_clase_con_una_alumna
+                    alumna = getattr(reserva, 'usuario', None)
+                    notificar_duena_clase_con_una_alumna(reserva.turno, motivo='cancelacion', alumna_cancelada=alumna)
+            except Exception as e:
+                logger.error(f"[ALERTA CUPO DUENA ERROR] {e}")
+            return data
+
+        registry.register('reserva_cancelada_a_tiempo', on_reserva_cancelada_check_cupo)
+        registry.register('reserva_cancelada_tardia', on_reserva_cancelada_check_cupo)
+        logger.info("[ASISTENTE IA] Hooks de mensajería y alerta de cupo a dueña registrados.")
 
         # Iniciar Scheduler proactivo en background si no es un comando de migración/shell/check
         if not any(cmd in arg for arg in sys.argv for cmd in ['makemigrations', 'migrate', 'collectstatic', 'shell', 'test', 'check']):
@@ -120,6 +141,13 @@ class AsistenteConfig(AppConfig):
                     hour=21,
                     minute=0,
                     id="asistente_notificar_profesores_nocturno_job",
+                    replace_existing=True
+                )
+                scheduler.add_job(
+                    run_notificar_clases_una_alumna_job,
+                    trigger="interval",
+                    hours=3,
+                    id="asistente_notificar_clases_una_alumna_job",
                     replace_existing=True
                 )
                 scheduler.start()

@@ -70,14 +70,34 @@ class RegistroAccionIA(models.Model):
         ('REPORTE_DUENA', 'Reporte Solicitado por Dueña'),
         ('OFERTA_PROACTIVA', 'Oferta Proactiva de Camilla Libre'),
         ('PROPUESTA_CONSOLIDACION', 'Sugerencia de Fusión de Clases Incompletas'),
+        ('ALERTA_CLASE_UNA_ALUMNA', 'Alerta de Clase con 1 Alumna'),
+        ('PROPUESTA_CANCELACION_BAJO_CUPO', 'Propuesta Cancelación Bajo Cupo'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversacion = models.ForeignKey(ConversacionWhatsApp, on_delete=models.SET_NULL, null=True, blank=True)
-    tipo_accion = models.CharField(max_length=40, choices=TIPOS)
+    tipo_accion = models.CharField(max_length=50, choices=TIPOS)
     descripcion = models.TextField()
     payload = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def metadata(self):
+        return self.payload
+
+    @metadata.setter
+    def metadata(self, val):
+        self.payload = val or {}
+
+    @property
+    def resultado(self):
+        return self.payload.get('resultado', '')
+
+    @resultado.setter
+    def resultado(self, val):
+        if not isinstance(self.payload, dict):
+            self.payload = {}
+        self.payload['resultado'] = val
 
     class Meta:
         verbose_name = 'Acción de Asistente IA'

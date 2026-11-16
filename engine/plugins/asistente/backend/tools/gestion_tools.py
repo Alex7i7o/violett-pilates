@@ -2198,7 +2198,7 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
         # 1. Buscar propuestas pendientes de respuesta de Deby
         propuestas = RegistroAccionIA.objects.filter(
             tipo_accion='PROPUESTA_CANCELACION_BAJO_CUPO',
-            resultado='PENDIENTE'
+            payload__resultado='PENDIENTE'
         ).order_by('-created_at')
 
         if not propuestas.exists():
