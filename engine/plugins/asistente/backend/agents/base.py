@@ -91,25 +91,22 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                         pass
 
             # Gemini como fallback oficial robusto (Cuenta Paga / Pay-As-You-Go con fondos)
+            # Se incluye gemini-3.8-flash como opción salvavidas definitiva si los demás fallan
             if gemini_key:
                 try:
                     from langchain_google_genai import ChatGoogleGenerativeAI
-                    all_fallbacks.append(ChatGoogleGenerativeAI(
-                        model='gemini-1.5-flash',
-                        temperature=0.1,
-                        max_output_tokens=max(max_tokens, 1024),
-                        google_api_key=gemini_key,
-                        max_retries=1,
-                        timeout=15
-                    ))
-                    all_fallbacks.append(ChatGoogleGenerativeAI(
-                        model='gemini-2.0-flash',
-                        temperature=0.1,
-                        max_output_tokens=max(max_tokens, 1024),
-                        google_api_key=gemini_key,
-                        max_retries=1,
-                        timeout=15
-                    ))
+                    for m_gem in ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-3.8-flash']:
+                        try:
+                            all_fallbacks.append(ChatGoogleGenerativeAI(
+                                model=m_gem,
+                                temperature=0.1,
+                                max_output_tokens=max(max_tokens, 1024),
+                                google_api_key=gemini_key,
+                                max_retries=1,
+                                timeout=15
+                            ))
+                        except Exception as e_mg:
+                            logger.warning(f"[ASISTENTE LLM] No se pudo agregar {m_gem} a fallbacks: {e_mg}")
                 except Exception:
                     pass
         except Exception as eg_groq:
@@ -137,9 +134,9 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
 
-            # Fallbacks multimodelo de Gemini: gemini-2.0-flash y gemini-1.5-flash-8b tienen cuotas
-            # independientes de RPM/TPM en Google AI Studio, blindando contra 429 Rate Limit.
-            for alt_gem in ['gemini-2.0-flash', 'gemini-1.5-flash-8b']:
+            # Fallbacks multimodelo de Gemini con cuotas independientes en Google AI Studio.
+            # Se incluye gemini-3.8-flash como salvavidas definitivo al final si los demás fallan.
+            for alt_gem in ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-3.8-flash']:
                 if alt_gem != model_name:
                     try:
                         all_fallbacks.append(ChatGoogleGenerativeAI(

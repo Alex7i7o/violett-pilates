@@ -46,8 +46,9 @@ flowchart TD
 * **Estado de la cuenta:** **Pay-As-You-Go (Tier de Pago con fondos)** en Google AI Studio.
 * **Modelos configurados en cascada:**
   1. `gemini-1.5-flash`: Modelo de producción insignia para razonamiento, tool-calling y OCR multimodal.
-  2. `gemini-2.0-flash`: Modelo de última generación con cuota independiente.
-  3. `gemini-1.5-flash-8b`: Modelo ultraligero de alta capacidad para momentos de alto tráfico.
+  2. `gemini-2.0-flash`: Modelo de última generación con cuota independiente (2.000 RPM / 4M TPM).
+  3. `gemini-2.5-flash`: Modelo con cuota activa en tu panel (1.000 RPM / 1M TPM).
+  4. `gemini-3.8-flash`: **Salvavidas definitivo garantizado**. Es el modelo de máxima capacidad y estabilidad en tu proyecto de Google AI Studio (1.000 RPM / 138.61K TPM), configurado al final de la cadena para responder con éxito si cualquier modelo previo llegara a fallar.
 * **Límites oficiales de Google AI Studio (Referencia: [docs/rate-limits](https://aistudio.google.com/docs/rate-limits)):**
 
 | Métrica | Free Tier de Google (Sin tarjeta) | Pay-As-You-Go (Cuenta Violett con fondos) |
