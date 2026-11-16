@@ -44,10 +44,12 @@ SEGURIDAD CRÍTICA Y BLINDAJE ANTI-SUPLANTACIÓN (ZERO-TRUST):
 
 def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: int = 600):
     """
-    Crea la instancia de LLM compartida con parámetros optimizados de velocidad, inteligencia y baja latencia.
-    Prioridad: Google Gemini (gemini-1.5-flash / gemini-2.0-flash) > Anthropic (Haiku) > OpenAI (gpt-4o-mini) > Groq (llama-3.1-8b)
+    Crea la instancia de LLM compartida con arquitectura HÍBRIDA de alta disponibilidad y costo optimizado:
+    1. Primario Gratuito: Groq (LPU Ultra-rápido, Costo $0 USD) mientras tenga cuota disponible.
+    2. Fallback Ilimitado con Saldo: Google Gemini (Pay-As-You-Go / Cuenta Paga: gemini-1.5-flash / gemini-2.0-flash).
+       Garantiza continuidad sin interrupción cuando Groq agota su cuota gratuita o ante errores de red.
     """
-    gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+    gemini_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY') or os.environ.get('GOOGLE_GENAI_API_KEY')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
     openai_key = os.environ.get('OPENAI_API_KEY')
     groq_key = os.environ.get('GROQ_API_KEY')
@@ -55,7 +57,12 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     llm = None
     all_fallbacks = []
 
-    provider_pref = os.environ.get('LLM_PROVIDER', 'gemini').lower().strip()
+    pref_env = os.environ.get('LLM_PROVIDER', '').lower().strip()
+    if pref_env:
+        provider_pref = pref_env
+    else:
+        # Por defecto: usar Groq gratuito primero si tiene API Key configurada
+        provider_pref = 'groq' if groq_key else 'gemini'
 
     # Si se configuró Groq como proveedor prioritario (Costo $0 USD por su Free Tier)
     if provider_pref == 'groq' and groq_key:
@@ -83,7 +90,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                     except Exception:
                         pass
 
-            # Gemini como fallback oficial
+            # Gemini como fallback oficial robusto (Cuenta Paga / Pay-As-You-Go con fondos)
             if gemini_key:
                 try:
                     from langchain_google_genai import ChatGoogleGenerativeAI
@@ -228,8 +235,15 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
     if llm:
         if all_fallbacks:
             if tools:
-                tools_fallbacks = [fb.bind_tools(tools) for fb in all_fallbacks]
-                return llm.bind_tools(tools).with_fallbacks(tools_fallbacks)
+                tools_fallbacks = []
+                for fb in all_fallbacks:
+                    try:
+                        tools_fallbacks.append(fb.bind_tools(tools))
+                    except Exception as e_bind:
+                        logger.warning(f"[ASISTENTE LLM] No se pudieron enlazar herramientas al fallback {fb}: {e_bind}")
+                if tools_fallbacks:
+                    return llm.bind_tools(tools).with_fallbacks(tools_fallbacks)
+                return llm.bind_tools(tools)
             return llm.with_fallbacks(all_fallbacks)
         else:
             if tools:
