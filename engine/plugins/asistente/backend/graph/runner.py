@@ -1026,6 +1026,17 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             tools_usadas.append('cancelar_reserva_alumna_duena')
             return res, "agente_direccion", tools_usadas
 
+        # Fast-path: Confirmación de Ficha Física de Alumna
+        if conversacion and conversacion.metadata.get('propuesta_ficha_alumna'):
+            if any(k in msg_low for k in ['confirmar', 'confirma', 'confirmá', 'guardar', 'guardalo', 'guardá', 'aplicar', 'aplicalo', 'dale', 'sí', 'si']):
+                res = confirmar_sincronizacion_ficha_duena.invoke({"decision": "CONFIRMAR"})
+                tools_usadas.append('confirmar_sincronizacion_ficha_duena')
+                return res, "agente_direccion_ficha", tools_usadas
+            elif any(k in msg_low for k in ['cancelar', 'cancela', 'descartar', 'descarta', 'no']):
+                res = confirmar_sincronizacion_ficha_duena.invoke({"decision": "CANCELAR"})
+                tools_usadas.append('confirmar_sincronizacion_ficha_duena')
+                return res, "agente_direccion_ficha", tools_usadas
+
         # 1. Aprobación de comprobantes
         if any(k in msg_low for k in ['aprobar', 'acreditar']):
             partes = mensaje_usuario.split()

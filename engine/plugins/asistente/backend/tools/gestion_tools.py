@@ -2499,3 +2499,65 @@ def corregir_asistencia_retroactiva_duena(
         f"• Auditoría: Quedó registrado en los logs del sistema con motivo: *\"{motivo_final}\"* {detalles_plan}\n\n"
         f"El balance de clases y créditos de {alumna.nombre} ya quedó perfectamente sincronizado."
     )
+
+
+@tool
+def confirmar_sincronizacion_ficha_duena(decision: str = "CONFIRMAR", correcciones: str = "") -> str:
+    """
+    Comando para la dueña (Deby): Confirma o descarta la sincronización en la base de datos de una ficha física de alumna previamente escaneada por WhatsApp.
+    Impacta cada clase en el historial de la alumna (como TOMADA o AUSENTE con el badge de Modificada) y reconcilia sus créditos.
+
+    Parámetros:
+    - decision: 'CONFIRMAR' para guardar definitivamente las clases en la base de datos, o 'CANCELAR' para descartar.
+    - correcciones: Opcional, si Deby indicó cambiar alguna fecha o detalle.
+    """
+    conversacion = get_conversacion_activa()
+    if not conversacion or not getattr(conversacion, 'metadata', None) or not conversacion.metadata.get('propuesta_ficha_alumna'):
+        from ..models import ConversacionWhatsApp
+        from ..config_loader import get_asistente_config
+        config = get_asistente_config()
+        tel_duena = config.get('telefono_duena', '').replace('+', '').replace(' ', '')
+        if tel_duena:
+            conv_d = ConversacionWhatsApp.objects.filter(telefono=tel_duena).first()
+            if conv_d and conv_d.metadata.get('propuesta_ficha_alumna'):
+                conversacion = conv_d
+
+    if not conversacion or not conversacion.metadata.get('propuesta_ficha_alumna'):
+        return "✦ No tengo ninguna propuesta de ficha física pendiente de confirmación en este momento. Si enviaste una foto recién, aguardá unos segundos o volvé a enviarla."
+
+    decision_norm = decision.strip().upper()
+    if any(k in decision_norm for k in ['CANCEL', 'NO', 'DESCART']):
+        conversacion.metadata.pop('propuesta_ficha_alumna', None)
+        conversacion.save(update_fields=['metadata'])
+        return "✦ Descarté la propuesta de la ficha. No se realizó ningún cambio en el historial de clases."
+
+    propuesta = conversacion.metadata.pop('propuesta_ficha_alumna')
+    conversacion.save(update_fields=['metadata'])
+
+    usuario_id = propuesta.get('usuario_id')
+    ciclos = propuesta.get('ciclos', [])
+
+    try:
+        usuario = Usuario.objects.get(id=usuario_id)
+    except Usuario.DoesNotExist:
+        return "✦ No pude encontrar al usuario en la base de datos para asociar las clases."
+
+    from core.services import sincronizar_clases_desde_ficha
+    ok, msg, total = sincronizar_clases_desde_ficha(usuario=usuario, ciclos_o_clases=ciclos, realizado_por="Débora (WhatsApp Ficha)")
+
+    if not ok:
+        return f"✦ Hubo un error al sincronizar las clases: {msg}"
+
+    from plugins.membresias.backend.models import Suscripcion
+    sub = Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+
+    info_abono = ""
+    if sub:
+        info_abono = f"\n• Abono activo: **{sub.plan.nombre}**\n• Clases libres restantes: **{sub.clases_restantes}** (Estado: {sub.estado})"
+
+    return (
+        f"✅ **¡Excelente Deby! Sincronicé las {total} clases de la ficha física de {usuario.nombre} {usuario.apellido} en el sistema.**\n\n"
+        f"• Se actualizaron sus asistencias y fechas en la base de datos.\n"
+        f"• Cada clase quedó identificada con el badge ✦ **Modificada** y guardada en el historial de auditoría.{info_abono}\n\n"
+        f"El historial de {usuario.nombre} ya quedó 100% al día con su ficha en papel."
+    )

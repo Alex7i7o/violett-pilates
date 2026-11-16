@@ -743,6 +743,44 @@ class AdminUsuarioViewSet(viewsets.ModelViewSet):
             return Response({'detail': msg}, status=400)
         return Response({'detail': msg, 'reserva_id': str(res_obj.id)})
 
+    @action(detail=True, methods=['post'], url_path='escanear-ficha')
+    def escanear_ficha(self, request, pk=None):
+        usuario = self.get_object()
+        foto = request.FILES.get('foto')
+        if not foto:
+            return Response({'detail': 'Debe adjuntar una imagen en el campo foto.'}, status=400)
+
+        foto_bytes = foto.read()
+        from plugins.asistente.backend.services.vision_service import extraer_datos_documento_multimodal
+        ok, datos, err = extraer_datos_documento_multimodal(foto_bytes)
+        if not ok:
+            return Response({'detail': f"No se pudo procesar la imagen: {err}"}, status=400)
+
+        tipo_doc = datos.get('tipo_documento', 'OTRO')
+        ficha_datos = datos.get('ficha', {})
+
+        return Response({
+            'usuario_id': str(usuario.id),
+            'usuario_nombre': f"{usuario.nombre} {usuario.apellido}",
+            'tipo_documento': tipo_doc,
+            'ficha': ficha_datos
+        })
+
+    @action(detail=True, methods=['post'], url_path='aplicar-sincronizacion-ficha')
+    def aplicar_sincronizacion_ficha(self, request, pk=None):
+        usuario = self.get_object()
+        clases_o_ciclos = request.data.get('clases') or request.data.get('ciclos')
+        if not clases_o_ciclos:
+            return Response({'detail': 'No se enviaron clases para sincronizar.'}, status=400)
+
+        from core.services import sincronizar_clases_desde_ficha
+        realizado_por = getattr(request.user, 'nombre', '') or 'Administración (Web Ficha)'
+        ok, msg, total = sincronizar_clases_desde_ficha(usuario=usuario, ciclos_o_clases=clases_o_ciclos, realizado_por=realizado_por)
+        if not ok:
+            return Response({'detail': msg}, status=400)
+
+        return Response({'detail': msg, 'total_clases': total})
+
 
 
 from django.utils import timezone

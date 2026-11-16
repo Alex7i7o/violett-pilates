@@ -6,7 +6,7 @@ import { api } from '../../../lib/api';
 import { deleteAdminAlumno, asignarPlanAlumno, cancelarPlanAlumno, cancelarClasesFuturasAlumno, cancelarReservaAdmin } from '../../../lib/adminApi';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Plus, Minus, RotateCcw, XCircle, Calendar, AlertTriangle, Pencil, History, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Trash2, Plus, Minus, RotateCcw, XCircle, Calendar, AlertTriangle, Pencil, History, Sparkles, CheckCircle2, Camera, Upload, Check } from 'lucide-react';
 import { useClientConfig } from '../../../context/ClientConfigContext';
 
 interface EditStudentModalProps {
@@ -46,6 +46,14 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
   const [showLogsModal, setShowLogsModal] = useState<boolean>(false);
   const [logsMovimientos, setLogsMovimientos] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
+
+  // Estados para Escaneo y Sincronización de Ficha Física
+  const [showFichaModal, setShowFichaModal] = useState<boolean>(false);
+  const [archivoFicha, setArchivoFicha] = useState<File | null>(null);
+  const [previewUrlFicha, setPreviewUrlFicha] = useState<string | null>(null);
+  const [escaneandoFicha, setEscaneandoFicha] = useState<boolean>(false);
+  const [fichaPrevia, setFichaPrevia] = useState<any>(null);
+  const [aplicandoFicha, setAplicandoFicha] = useState<boolean>(false);
 
   // Perfil State
   const [nombre, setNombre] = useState('');
@@ -249,6 +257,45 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
       console.error("Error al cargar logs", err);
     } finally {
       setLoadingLogs(false);
+    }
+  };
+
+  const handleEscanearFicha = async () => {
+    if (!archivoFicha || !alumno?.id) return;
+    try {
+      setEscaneandoFicha(true);
+      const formData = new FormData();
+      formData.append('foto', archivoFicha);
+      const res = await api.post(`/admin/alumnos/${alumno.id}/escanear-ficha/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setFichaPrevia(res.data?.ficha || null);
+      toast.success("Ficha leída con éxito. Revisá las clases y confirmá.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Error al escanear la ficha.");
+    } finally {
+      setEscaneandoFicha(false);
+    }
+  };
+
+  const handleAplicarFicha = async () => {
+    if (!fichaPrevia || !alumno?.id) return;
+    try {
+      setAplicandoFicha(true);
+      const res = await api.post(`/admin/alumnos/${alumno.id}/aplicar-sincronizacion-ficha/`, {
+        ciclos: fichaPrevia.ciclos || []
+      });
+      toast.success(`✦ ${res.data?.detail || 'Ficha sincronizada exitosamente'}`);
+      setShowFichaModal(false);
+      setFichaPrevia(null);
+      setArchivoFicha(null);
+      setPreviewUrlFicha(null);
+      fetchAlumnoReservas();
+      onUpdate();
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Error al aplicar sincronización.");
+    } finally {
+      setAplicandoFicha(false);
     }
   };
 
@@ -986,19 +1033,35 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
             )}
 
             {/* Barra de Acciones y Auditoría */}
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
               <span className="text-xs font-bold text-slate-700 tracking-wide uppercase">Listado de Clases:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowLogsModal(true);
-                  fetchLogsMovimientos();
-                }}
-                className="text-xs font-bold text-primary-main hover:text-primary-dark bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
-              >
-                <History className="w-3.5 h-3.5" />
-                <span>Auditoría / Logs de Clases</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFichaPrevia(null);
+                    setArchivoFicha(null);
+                    setPreviewUrlFicha(null);
+                    setShowFichaModal(true);
+                  }}
+                  className="text-xs font-bold text-amber-900 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
+                  title="Sincronizar historial subiendo una foto de la ficha física en papel"
+                >
+                  <Camera className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Escanear Ficha</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogsModal(true);
+                    fetchLogsMovimientos();
+                  }}
+                  className="text-xs font-bold text-primary-main hover:text-primary-dark bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Auditoría</span>
+                </button>
+              </div>
             </div>
 
             {/* Listado de Clases */}
@@ -1693,6 +1756,168 @@ export function EditStudentModal({ isOpen, onClose, alumno: rawAlumno, onUpdate,
         )}
       </AnimatePresence>
 
+      {/* Modal Sincronizar Ficha Física desde Foto */}
+      <AnimatePresence>
+        {showFichaModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-xl w-full shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Camera className="w-5 h-5 text-amber-700" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">Sincronizar Ficha Física de Papel</h3>
+                    <p className="text-xs text-muted">{alumno.nombre} {alumno.apellido}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFichaModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {!fichaPrevia ? (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Subí una foto de la ficha de asistencia de la alumna. La inteligencia artificial leerá el nombre, los números de clase, fechas, firmas de asistencia y la separación entre abonos para sincronizarla automáticamente.
+                    </p>
+
+                    <div className="border-2 border-dashed border-slate-300 hover:border-amber-400 rounded-2xl p-6 text-center bg-slate-50 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="inputFotoFicha"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setArchivoFicha(file);
+                            setPreviewUrlFicha(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <label htmlFor="inputFotoFicha" className="cursor-pointer block space-y-2">
+                        {previewUrlFicha ? (
+                          <div className="space-y-2">
+                            <img src={previewUrlFicha} alt="Previsualización" className="max-h-48 mx-auto rounded-xl shadow-xs border border-slate-200" />
+                            <p className="text-xs font-bold text-amber-900">{archivoFicha?.name}</p>
+                            <p className="text-[11px] text-muted">Hacé clic para elegir otra foto</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto" />
+                            <p className="text-xs font-bold text-slate-700">Hacé clic para seleccionar una foto de la ficha</p>
+                            <p className="text-[11px] text-muted">Formatos JPG, PNG, WebP</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowFichaModal(false)}
+                        className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!archivoFicha || escaneandoFicha}
+                        onClick={handleEscanearFicha}
+                        className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {escaneandoFicha ? 'Leyendo ficha con IA...' : 'Analizar Ficha con IA'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-950 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold">Lectura completada:</span> Alumna detectada: *{fichaPrevia.nombre_alumna || alumno.nombre}*
+                      </div>
+                      <span className="text-[10px] font-bold bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-full">
+                        {fichaPrevia.ciclos?.reduce((acc: number, c: any) => acc + (c.clases?.length || 0), 0) || 0} clases detectadas
+                      </span>
+                    </div>
+
+                    {fichaPrevia.ciclos?.map((ciclo: any, cIdx: number) => (
+                      <div key={cIdx} className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800">
+                            {cIdx === 0 && fichaPrevia.ciclos.length > 1 ? '📌 Plan Anterior (Completado)' : '📌 Plan Actual'}
+                          </span>
+                          <span className="text-[10px] text-muted">{ciclo.clases?.length || 0} clases</span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {ciclo.clases?.map((cl: any, clIdx: number) => (
+                            <div key={clIdx} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200 text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                                  {cl.numero_clase}
+                                </span>
+                                <span className="font-bold text-slate-900">{cl.fecha_original || cl.fecha}</span>
+                                <span className="text-[10px] text-slate-400">({cl.fecha})</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted italic">{cl.detalle_firma || 'Firmada'}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextSt = cl.estado === 'TOMADA' ? 'AUSENTE' : 'TOMADA';
+                                    const updated = { ...fichaPrevia };
+                                    updated.ciclos[cIdx].clases[clIdx].estado = nextSt;
+                                    setFichaPrevia(updated);
+                                  }}
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
+                                    cl.estado === 'TOMADA' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                  }`}
+                                >
+                                  {cl.estado === 'TOMADA' ? '✓ Asistió' : '✕ Ausente'}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setFichaPrevia(null)}
+                        className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+                      >
+                        ← Volver a subir foto
+                      </button>
+                      <button
+                        type="button"
+                        disabled={aplicandoFicha}
+                        onClick={handleAplicarFicha}
+                        className="px-5 py-2 text-xs font-bold text-white bg-primary-main hover:bg-primary-dark rounded-xl transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {aplicandoFicha ? 'Sincronizando...' : 'Confirmar y Aplicar a Base de Datos'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Modal>
   );
 }

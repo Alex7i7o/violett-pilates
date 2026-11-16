@@ -26,6 +26,8 @@ from ..tools.gestion_tools import (
     consultar_alumna_detalle,
     consultar_asistencias_alumna_duena,
     corregir_asistencia_retroactiva_duena,
+    confirmar_sincronizacion_ficha_duena,
+    confirmar_sincronizacion_ficha_duena,
     agendar_alumna_en_turno_duena,
     cancelar_reserva_alumna_duena,
     consultar_agenda_completa_dia,
@@ -57,6 +59,7 @@ DIRECCION_TOOLS = [
     consultar_alumna_detalle,
     consultar_asistencias_alumna_duena,
     corregir_asistencia_retroactiva_duena,
+    confirmar_sincronizacion_ficha_duena,
     agendar_alumna_en_turno_duena,
     crear_clase_y_agendar_alumna_duena,
     cancelar_reserva_alumna_duena,
@@ -141,6 +144,12 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si Deby pide ver la agenda, saber qué alumnas hay en cada clase o quiénes asisten a un horario puntual (ej: "¿Quiénes vienen hoy?", "Pasame la agenda de hoy/mañana", "¿Qué alumnas hay en cada clase?", "¿Quiénes están anotadas a las 18 hs?"):
      -> Usá 'consultar_agenda_completa_dia' (pasando 'hora_str' si preguntó por un horario específico).
 
+
+11. CONFIRMACIÓN DE SINCRONIZACIÓN DE FICHAS FÍSICAS DE ALUMNAS:
+   * Si Deby responde a la lectura de una ficha física diciendo "confirmar", "confirmalo", "sí", "dale", "guardalo", "aplicar", "guardar", etc.:
+     -> Usá 'confirmar_sincronizacion_ficha_duena(decision="CONFIRMAR")' INMEDIATAMENTE.
+   * Si Deby responde diciendo "cancelar", "descartar", "no":
+     -> Usá 'confirmar_sincronizacion_ficha_duena(decision="CANCELAR")'.
 
 10. CONFIRMACIÓN Y RESPUESTA A PROPUESTAS DE CANCELACIÓN DE CLASES POR BAJO CUPO:
    * Si el sistema le envió un mensaje a Deby consultándole si desea cancelar una clase vacía o con 1 alumna (o si Deby responde a la consulta diciendo "cancelar", "cancelala", "sí cancelala", "dale de baja", "cancelá esa clase", "ok cancelá", etc.):

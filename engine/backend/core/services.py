@@ -669,3 +669,121 @@ def analizar_creditos_y_motivo_alumna(alumna, target_date=None):
         )
 
     return False, 0, motivo, futuras_list, sub_activa
+
+
+@transaction.atomic
+def sincronizar_clases_desde_ficha(usuario, ciclos_o_clases, realizado_por="Débora (WhatsApp)"):
+    """
+    Aplica y registra en la base de datos el listado de clases extraídas de una ficha física de papel.
+    Actualiza el estado de las clases existentes o crea nuevas reservas históricas para turnos pasados.
+    Reconcilia los créditos del abono activo de la alumna y deja la marca de auditoría LogMovimientoClase.
+    """
+    import datetime
+    from .models import Turno, Reserva, Clase
+
+    # Aplanar ciclos si vienen anidados
+    clases_a_procesar = []
+    if isinstance(ciclos_o_clases, list):
+        for elem in ciclos_o_clases:
+            if isinstance(elem, dict) and 'clases' in elem:
+                clases_a_procesar.extend(elem['clases'])
+            elif isinstance(elem, dict):
+                clases_a_procesar.append(elem)
+
+    if not clases_a_procesar:
+        return False, "No se proporcionaron clases válidas para sincronizar.", 0
+
+    total_actualizadas = 0
+    today = timezone.localdate()
+
+    for item in clases_a_procesar:
+        fecha_str = item.get('fecha')
+        if not fecha_str:
+            continue
+        try:
+            fecha_d = datetime.date.fromisoformat(fecha_str)
+        except Exception:
+            continue
+
+        num_clase = item.get('numero_clase', total_actualizadas + 1)
+        estado_raw = str(item.get('estado', 'TOMADA')).upper()
+        estado = 'AUSENTE' if 'AUSENTE' in estado_raw else 'TOMADA'
+
+        reserva = Reserva.objects.filter(usuario=usuario, turno__fecha=fecha_d).first()
+        estado_ant = 'SIN_RESERVA'
+        
+        if reserva:
+            estado_ant = reserva.estado
+            reserva.estado = estado
+            reserva.modificada_manualmente = True
+            reserva.motivo_modificacion = f"Sincronización digital desde ficha física de papel (Clase #{num_clase})"
+            reserva.modificada_por = realizado_por
+            reserva.fecha_modificacion = timezone.now()
+            reserva.save(update_fields=['estado', 'modificada_manualmente', 'motivo_modificacion', 'modificada_por', 'fecha_modificacion'])
+        else:
+            turno = Turno.objects.filter(fecha=fecha_d).order_by('hora_inicio').first()
+            if not turno:
+                clase_def = Clase.objects.filter(is_active=True).first()
+                h_ini = datetime.time(19, 0)
+                h_fin = datetime.time(19, 50)
+                turno = Turno.objects.create(
+                    clase=clase_def,
+                    fecha=fecha_d,
+                    hora_inicio=h_ini,
+                    hora_fin=h_fin,
+                    cupo_actual=0,
+                    estado='COMPLETADO'
+                )
+            reserva = Reserva.objects.create(
+                turno=turno,
+                usuario=usuario,
+                estado=estado,
+                es_recurrente=False,
+                modificada_manualmente=True,
+                motivo_modificacion=f"Sincronización digital desde ficha física de papel (Clase #{num_clase})",
+                modificada_por=realizado_por,
+                fecha_modificacion=timezone.now()
+            )
+
+        registrar_log_movimiento(
+            usuario=usuario,
+            turno=reserva.turno,
+            tipo_movimiento='SINCRONIZACION_FICHA_FISICA',
+            reserva=reserva,
+            estado_anterior=estado_ant,
+            estado_nuevo=estado,
+            realizado_por=realizado_por,
+            motivo=f"Ficha física de papel: Clase #{num_clase} ({fecha_str}) - {estado}"
+        )
+        total_actualizadas += 1
+
+    # Reconciliación matemática de créditos
+    try:
+        from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+        sub_activa = Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+        if sub_activa:
+            for r in Reserva.objects.filter(usuario=usuario, turno__fecha__gte=sub_activa.fecha_inicio, turno__fecha__lte=sub_activa.fecha_vencimiento):
+                ReservaMembresia.objects.get_or_create(reserva=r, defaults={'suscripcion': sub_activa})
+
+            clases_totales = sub_activa.plan.cantidad_clases
+            clases_tomadas = Reserva.objects.filter(
+                usuario=usuario,
+                estado__in=['TOMADA', 'AUSENTE'],
+                turno__fecha__gte=sub_activa.fecha_inicio,
+                turno__fecha__lte=sub_activa.fecha_vencimiento
+            ).count()
+            clases_pendientes = Reserva.objects.filter(
+                usuario=usuario,
+                estado='CONFIRMADA',
+                turno__fecha__gt=today,
+                turno__fecha__lte=sub_activa.fecha_vencimiento
+            ).count()
+
+            sub_activa.clases_restantes = max(0, clases_totales - (clases_tomadas + clases_pendientes))
+            sub_activa.estado = 'AGOTADO' if sub_activa.clases_restantes == 0 else 'ACTIVO'
+            sub_activa.save(update_fields=['clases_restantes', 'estado'])
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Error al reconciliar créditos post sincronización: {e}")
+
+    return True, f"Se sincronizaron con éxito {total_actualizadas} clases para {usuario.nombre} {usuario.apellido}.", total_actualizadas
