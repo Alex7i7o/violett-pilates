@@ -91,11 +91,11 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
                         pass
 
             # Gemini como fallback oficial robusto (Cuenta Paga / Pay-As-You-Go con fondos)
-            # Se incluye gemini-3.8-flash como opción salvavidas definitiva al final si los demás fallan
+            # Tiering de costos: modelos Flash Lite ($0.075/1M) primero, salvavidas gemini-3.8-flash al final
             if gemini_key:
                 try:
                     from langchain_google_genai import ChatGoogleGenerativeAI
-                    for m_gem in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
+                    for m_gem in ['gemini-2.5-flash-lite', 'gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
                         try:
                             all_fallbacks.append(ChatGoogleGenerativeAI(
                                 model=m_gem,
@@ -113,13 +113,13 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             logger.error(f"[ASISTENTE LLM] Error inicializando ChatGroq prioritario: {eg_groq}")
             llm = None
 
-    # 1. Google Gemini (Por defecto: 1M tokens context, ultra rápido, voseo natural)
+    # 1. Google Gemini (Model Tiering: Flash-Lite ultra-económico por defecto, 3.8 como salvavidas)
     if not llm and gemini_key:
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI
             raw_model = os.environ.get('GEMINI_MODEL', '').strip()
             if not raw_model:
-                model_name = 'gemini-2.5-flash'
+                model_name = 'gemini-2.5-flash-lite'
             else:
                 model_name = raw_model
             gemini_kwargs = dict(
@@ -133,9 +133,9 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             llm = ChatGoogleGenerativeAI(**gemini_kwargs)
             logger.info(f"[ASISTENTE LLM] Usando Google Gemini: {model_name}")
 
-            # Fallbacks multimodelo de Gemini con cuotas independientes en Google AI Studio.
-            # Se incluye gemini-3.8-flash como salvavidas definitivo al final si los demás fallan.
-            for alt_gem in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
+            # Fallbacks multimodelo de Gemini ordenados por costo/eficiencia
+            # gemini-3.8-flash como salvavidas definitivo al final si los demás fallan
+            for alt_gem in ['gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
                 if alt_gem != model_name:
                     try:
                         all_fallbacks.append(ChatGoogleGenerativeAI(

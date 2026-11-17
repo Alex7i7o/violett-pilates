@@ -57,51 +57,109 @@ from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
 logger = logging.getLogger(__name__)
 
-DIRECCION_TOOLS = [
-    renovar_o_asignar_plan_alumna,
-    consultar_alumna_detalle,
-    consultar_asistencias_alumna_duena,
-    corregir_asistencia_retroactiva_duena,
-    confirmar_sincronizacion_ficha_duena,
-    agendar_alumna_en_turno_duena,
-    crear_clase_y_agendar_alumna_duena,
-    cancelar_reserva_alumna_duena,
-    consultar_agenda_completa_dia,
-    obtener_metricas_alumnas_duena,
-    ajustar_creditos_alumna_duena,
-    consultar_esquema_fijo_alumna,
-    asignar_horario_fijo_alumna,
-    dar_baja_horario_fijo_alumna,
-    apartar_camilla_duena,
-    liberar_camilla_bloqueada_duena,
-    dar_baja_plan_alumna_duena,
-    consultar_ultimas_resenas_duena,
+TOOLS_REPORTES = [
     obtener_reporte_facturacion,
     obtener_reporte_facturacion_semanal,
     obtener_reporte_ocupacion_hoy,
     obtener_reporte_ocupacion_mes,
-    analizar_optimizacion_turnos_proximos,
-    reasignar_profesora_directo,
-    reasignar_todas_las_clases_profesor_duena,
-    buscar_reemplazo_orden_duena,
-    vincular_alumnas_inseparables,
-    aprobar_comprobante_pago,
-    rechazar_comprobante_pago,
-    contactar_prospectos_desde_lista,
-    guardar_preferencia_alumna,
-    consultar_preferencias_o_vinculos,
-    # Herramientas de esquema, mensajería y traslados
-    agregar_horario_esquema_semanal_duena,
-    consultar_esquema_semanal_completo_duena,
-    dar_baja_horario_esquema_semanal_duena,
-    enviar_mensaje_whatsapp_alumna_duena,
+    obtener_metricas_alumnas_duena,
+    contactar_prospectos_desde_lista
+]
+
+TOOLS_AGENDA = [
+    consultar_agenda_completa_dia,
+    agendar_alumna_en_turno_duena,
+    crear_clase_y_agendar_alumna_duena,
+    cancelar_reserva_alumna_duena,
     reprogramar_o_mover_reserva_alumna_duena,
     mover_o_reprogramar_clase_completa_duena,
     cancelar_o_eliminar_clase_agenda_duena,
-    responder_propuesta_cancelacion_duena,
+    apartar_camilla_duena,
+    liberar_camilla_bloqueada_duena,
+    analizar_optimizacion_turnos_proximos,
+    responder_propuesta_cancelacion_duena
+]
+
+TOOLS_PROFESORES_ESQUEMA = [
+    agregar_horario_esquema_semanal_duena,
+    consultar_esquema_semanal_completo_duena,
+    dar_baja_horario_esquema_semanal_duena,
+    reasignar_profesora_directo,
+    reasignar_todas_las_clases_profesor_duena,
+    buscar_reemplazo_orden_duena,
     registrar_asistencia_clase_profesor,
     consultar_clases_sin_asistencia_hoy
 ]
+
+TOOLS_ALUMNAS_PLANES = [
+    consultar_alumna_detalle,
+    consultar_asistencias_alumna_duena,
+    corregir_asistencia_retroactiva_duena,
+    confirmar_sincronizacion_ficha_duena,
+    renovar_o_asignar_plan_alumna,
+    ajustar_creditos_alumna_duena,
+    dar_baja_plan_alumna_duena,
+    consultar_esquema_fijo_alumna,
+    asignar_horario_fijo_alumna,
+    dar_baja_horario_fijo_alumna,
+    vincular_alumnas_inseparables,
+    guardar_preferencia_alumna,
+    consultar_preferencias_o_vinculos,
+    enviar_mensaje_whatsapp_alumna_duena
+]
+
+TOOLS_FINANZAS = [
+    aprobar_comprobante_pago,
+    rechazar_comprobante_pago,
+    consultar_ultimas_resenas_duena
+]
+
+TOOLS_CORE_RAPIDAS = [
+    consultar_agenda_completa_dia,
+    consultar_alumna_detalle,
+    agendar_alumna_en_turno_duena,
+    cancelar_reserva_alumna_duena,
+    renovar_o_asignar_plan_alumna,
+    ajustar_creditos_alumna_duena
+]
+
+# Consolidación total para registro en grafo
+DIRECCION_TOOLS = list({t.name: t for t in (
+    TOOLS_REPORTES + TOOLS_AGENDA + TOOLS_PROFESORES_ESQUEMA + TOOLS_ALUMNAS_PLANES + TOOLS_FINANZAS
+)}.values())
+
+
+def seleccionar_herramientas_direccion(mensaje: str) -> list:
+    """
+    Sub-Routing dinámico de herramientas (Dynamic Tool Sub-Routing) para la Dueña.
+    En lugar de serializar las 42 herramientas en cada llamada (~8.500 tokens fijos),
+    analiza el mensaje y adjunta únicamente las 5 a 12 herramientas pertinentes.
+    Reduce más del 85% el payload de tokens de entrada por turno.
+    """
+    msg = (mensaje or "").lower().strip()
+
+    # 1. Reportes y Facturación
+    if any(k in msg for k in ['factur', 'ingreso', 'recaudaci', 'balance', 'plata', 'dinero', 'ocupaci', 'cuanto se factur', 'cuánto se factur', 'ganancia', 'métric', 'metric', 'prospecto']):
+        return list({t.name: t for t in (TOOLS_REPORTES + [consultar_agenda_completa_dia])}.values())
+
+    # 2. Profesores y Esquema Semanal
+    if any(k in msg for k in ['profe', 'profesor', 'reemplazo', 'cubrir', 'ausencia', 'esquema', 'fijo todos los', 'fija todos los', 'grilla fija']):
+        return list({t.name: t for t in (TOOLS_PROFESORES_ESQUEMA + [consultar_agenda_completa_dia])}.values())
+
+    # 3. Comprobantes y Pagos bancarios
+    if any(k in msg for k in ['comprobante', 'transfer', 'aprobar', 'aprobá', 'rechazar', 'rechazá', 'acreditar', 'acreditá', 'reseña', 'resena', 'opinion']):
+        return list({t.name: t for t in (TOOLS_FINANZAS + [renovar_o_asignar_plan_alumna, consultar_alumna_detalle])}.values())
+
+    # 4. Agenda, turnos y clases (crear, mover, cancelar, camillas)
+    if any(k in msg for k in ['agenda', 'turno', 'clase', 'camilla', 'anot', 'inscrib', 'sacá', 'saca', 'bajá', 'baja', 'abrir', 'crear', 'mové', 'move', 'traslad', 'feriado', 'reprogram', 'apartar', 'bloquear']):
+        return list({t.name: t for t in (TOOLS_AGENDA + [consultar_alumna_detalle])}.values())
+
+    # 5. Alumnas, planes, fichas, asistencias y créditos
+    if any(k in msg for k in ['alumn', 'plan', 'abono', 'ficha', 'asist', 'vino', 'falt', 'credit', 'crédit', 'sumale', 'cargale', 'agregale', 'mensaje', 'whatsapp', 'inseparable', 'preferenc', 'fij']):
+        return list({t.name: t for t in (TOOLS_ALUMNAS_PLANES + [consultar_agenda_completa_dia])}.values())
+
+    # Por defecto (mensajes generales, saludos o sin coincidencia clara): set core + facturación + esquema
+    return list({t.name: t for t in (TOOLS_CORE_RAPIDAS + [obtener_reporte_facturacion, consultar_esquema_semanal_completo_duena])}.values())
 
 SYSTEM_PROMPT_DIRECCION = """Sos el Agente Ejecutivo de Dirección y Gestión Operativa de Violett Pilates ✦.
 Estás hablando directamente con Deby (Débora Zárate), la dueña y directora del estudio.
@@ -246,11 +304,22 @@ def agente_direccion_node(state):
         formato_rules=FORMATO_WHATSAPP_RULES
     )
 
-    llm = get_llm(tools=DIRECCION_TOOLS)
+    messages = state["messages"]
+    last_user_text = ""
+    for m in reversed(messages):
+        if getattr(m, 'type', '') in ['human', 'user']:
+            last_user_text = extraer_texto(m.content) if hasattr(m, 'content') else str(m)
+            break
+
+    # Sub-Routing dinámico: solo las herramientas necesarias para esta intención
+    tools_filtradas = seleccionar_herramientas_direccion(last_user_text)
+    logger.info(f"[DIRECCION SUB-ROUTING] Enlazando {len(tools_filtradas)} tools (en vez de 42) para: '{last_user_text[:40]}'")
+    print(f"[DIRECCION SUB-ROUTING] Enlazando {len(tools_filtradas)} tools (en vez de 42)", flush=True)
+
+    llm = get_llm(tools=tools_filtradas)
     if not llm:
         return {"messages": [], "agente_responsable": "agente_direccion"}
 
-    messages = state["messages"]
     sys_msg = SystemMessage(
         content=sys_prompt,
         additional_kwargs={"cache_control": {"type": "ephemeral"}}

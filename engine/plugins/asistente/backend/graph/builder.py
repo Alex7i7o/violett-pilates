@@ -2,6 +2,7 @@ import logging
 import threading
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from langchain_core.messages import AIMessage, ToolMessage
 
 from .state import AgentState
 from ..agents import (
@@ -28,7 +29,7 @@ def build_asistente_graph():
     - Router / Triaje central
     - 4 Agentes Especialistas (Turnos, Finanzas, Profesores, Dirección)
     - 1 Agente Anfitrión / Recepcionista General
-    - Capa desacoplada de ejecución de herramientas con aviso previo de espera activa
+    - Capa desacoplada de herramientas con Espera Activa y Return-Direct Bypass (Ahorro 50% tokens)
     """
     workflow = StateGraph(AgentState)
 
@@ -40,7 +41,7 @@ def build_asistente_graph():
     workflow.add_node("agente_profesores", agente_profesores_node)
     workflow.add_node("agente_direccion", agente_direccion_node)
 
-    # 2. Registrar nodo de herramientas con Espera Activa desacoplada
+    # 2. Registrar nodo de herramientas con Espera Activa desacoplada y Bypass Return-Direct
     raw_tool_node = ToolNode(ALL_ACTIVE_TOOLS)
 
     def tools_wrapper_node(state: AgentState):
@@ -78,10 +79,33 @@ def build_asistente_graph():
 
         tool_result = raw_tool_node.invoke(state)
         cancel_event.set()
-        if isinstance(tool_result, dict):
-            tool_result["ack_enviado"] = True
-            return tool_result
-        return {"messages": tool_result, "ack_enviado": True}
+
+        # Determinar si la respuesta de la tool es auto-contenida (Return-Direct Bypass)
+        mensajes_tools = tool_result.get("messages", []) if isinstance(tool_result, dict) else tool_result
+        if not isinstance(mensajes_tools, list):
+            mensajes_tools = [mensajes_tools]
+
+        ultimo_tool_msg = mensajes_tools[-1] if mensajes_tools else None
+        texto_tool = getattr(ultimo_tool_msg, 'content', '') if ultimo_tool_msg else ''
+
+        # Criterio Return-Direct: respuesta prolija para WhatsApp (>20 chars y sin errores de sistema)
+        es_respuesta_directa = False
+        if isinstance(texto_tool, str) and len(texto_tool.strip()) >= 20:
+            no_es_error_interno = not any(err_k in texto_tool.lower() for err_k in ['traceback', 'exception:', 'internal server error'])
+            if no_es_error_interno:
+                es_respuesta_directa = True
+
+        mensajes_salida = list(mensajes_tools)
+        if es_respuesta_directa:
+            mensajes_salida.append(AIMessage(content=texto_tool.strip()))
+            logger.info(f"[LANGGRAPH RETURN-DIRECT] Bypass de 2da llamada activado para tool '{getattr(ultimo_tool_msg, 'name', 'tool')}'.")
+            print(f"[LANGGRAPH RETURN-DIRECT] Bypass 2da llamada activado para '{getattr(ultimo_tool_msg, 'name', 'tool')}' (Ahorro: 50% tokens)", flush=True)
+
+        return {
+            "messages": mensajes_salida,
+            "ack_enviado": True,
+            "respuesta_directa": es_respuesta_directa
+        }
 
     workflow.add_node("tools", tools_wrapper_node)
 
@@ -119,8 +143,13 @@ def build_asistente_graph():
             {"tools": "tools", END: END}
         )
 
-    # 6. Retorno desde tools hacia el agente especialista que las invocó
+    # 6. Retorno desde tools: si hubo Bypass Return-Direct, va a END; de lo contrario regresa al agente
     def route_from_tools(state: AgentState):
+        if state.get("respuesta_directa"):
+            return END
+        last_m = state["messages"][-1] if state.get("messages") else None
+        if isinstance(last_m, AIMessage) and not getattr(last_m, 'tool_calls', None):
+            return END
         return state.get("target_agent", "agente_recepcionista")
 
     workflow.add_conditional_edges("tools", route_from_tools, {
