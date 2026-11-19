@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /pilates/
+Allow: /estetica
+
+Disallow: /admin/
+Disallow: /api/
+Disallow: /webhook/
+
+Sitemap: https://violett.com.ar/sitemap.xml

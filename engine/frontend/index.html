@@ -36,27 +36,128 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Violett" />
     <link rel="apple-touch-icon" href="/logo-icon.png" />
-    <!-- Prevent scaling on input focus -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
+    <!-- Viewport accesible para móviles y SEO (sin penalización Lighthouse) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- SEO & Link Preview Meta Tags -->
-    <meta name="description" content="Violett Pilates. Tu compromiso con la elegancia. El m&eacute;todo definitivo para esculpir tu figura y conectar cuerpo y mente." />
-    
-    <!-- Open Graph / Facebook / WhatsApp -->
+    <!-- Canonical & SEO Primario -->
+    <link rel="canonical" href="https://violett.com.ar/pilates/" />
+    <title>Violett Pilates Reformer en Ramos Mejía | Estudio Boutique</title>
+    <meta name="description" content="Estudio boutique de Pilates Reformer en Ramos Mejía. Clases exclusivas de hasta 3 camillas, 55 min de Reformer + 5 min de masaje de descompresión asistido. 21 años de trayectoria con la Lic. Débora Zárate." />
+    <meta name="keywords" content="pilates reformer ramos mejia, pilates boutique ramos mejia, clases de pilates ramos mejia, debora zarate kinesiologia, estudio pilates zona oeste" />
+    <meta name="author" content="Violett Pilates &amp; Lic. Débora Zárate" />
+
+    <!-- Geo Tags para Posicionamiento Local (Local SEO Ramos Mejía) -->
+    <meta name="geo.region" content="AR-B" />
+    <meta name="geo.placename" content="Ramos Mejía" />
+    <meta name="geo.position" content="-34.6534;-58.5638" />
+    <meta name="ICBM" content="-34.6534, -58.5638" />
+
+    <!-- Open Graph / WhatsApp / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_AR" />
     <meta property="og:url" content="https://violett.com.ar/pilates/" />
-    <meta property="og:title" content="Violett Pilates" />
-    <meta property="og:description" content="Tu compromiso con la elegancia. El m&eacute;todo definitivo para esculpir tu figura." />
+    <meta property="og:title" content="Violett Pilates Reformer en Ramos Mejía | Estudio Boutique" />
+    <meta property="og:description" content="Moldeá tu figura y cuidá tu postura. Clases exclusivas de hasta 3 alumnas con 55 min de Reformer + 5 min de masaje descompresivo asistido." />
     <meta property="og:image" content="https://violett.com.ar/pilates/logo-full.png" />
+    <meta property="og:site_name" content="Violett Pilates" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://violett.com.ar/pilates/" />
-    <meta name="twitter:title" content="Violett Pilates" />
-    <meta name="twitter:description" content="Tu compromiso con la elegancia. El m&eacute;todo definitivo para esculpir tu figura." />
+    <meta name="twitter:title" content="Violett Pilates Reformer en Ramos Mejía | Estudio Boutique" />
+    <meta name="twitter:description" content="Estudio boutique de Pilates Reformer en Ramos Mejía. Hasta 3 camillas por clase y ritual de descompresión asistido." />
     <meta name="twitter:image" content="https://violett.com.ar/pilates/logo-full.png" />
 
-    <title>Violett Pilates</title>
+    <!-- Datos Estructurados Schema.org (Google Knowledge Graph & Local SEO) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "ExerciseGym",
+          "@id": "https://violett.com.ar/pilates/#gym",
+          "name": "Violett Pilates Boutique Ramos Mejía",
+          "url": "https://violett.com.ar/pilates/",
+          "logo": "https://violett.com.ar/pilates/logo-full.png",
+          "image": "https://violett.com.ar/pilates/logo-full.png",
+          "description": "Estudio boutique de Pilates Reformer en Ramos Mejía con atención personalizada de hasta 3 camillas por turno y ritual de descompresión asistida de 5 minutos.",
+          "telephone": "+5491157691786",
+          "priceRange": "$$",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Gral. Guido 1573",
+            "addressLocality": "Ramos Mejía",
+            "addressRegion": "Provincia de Buenos Aires",
+            "postalCode": "B1704",
+            "addressCountry": "AR"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": -34.6534,
+            "longitude": -58.5638
+          },
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+              "opens": "07:30",
+              "closes": "21:30"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Saturday"],
+              "opens": "08:30",
+              "closes": "13:30"
+            }
+          ],
+          "founder": {
+            "@type": "Person",
+            "name": "Lic. Débora Zárate",
+            "jobTitle": "Kinesióloga y Fisiatra",
+            "description": "Kinesióloga con más de 21 años de trayectoria clínica y deportiva, fundadora del Método Violett Pilates."
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://violett.com.ar/pilates/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "¿Cuántas alumnas hay por clase en Violett Pilates Ramos Mejía?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nuestras clases son estrictamente boutique y personalizadas, con un máximo de 3 camillas de Reformer por turno. Esto garantiza que la instructora supervise cada movimiento y postura en detalle."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿En qué consiste el ritual 55 + 5 de Violett?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Cada sesión de 60 minutos se divide en 55 minutos de entrenamiento consciente de Pilates Reformer y 5 minutos finales de masaje de descompresión miofascial asistido para relajar cuello, hombros y columna."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Se necesita experiencia previa para empezar?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No se requiere ninguna experiencia previa. El Reformer se adapta con precisión a tu nivel y anatomía. Además, nuestras instructoras están guiadas por el enfoque kinésico de la Lic. Débora Zárate para cuidar tus articulaciones."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Dónde queda el estudio de Violett Pilates?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Estamos ubicadas en Gral. Guido 1573, Ramos Mejía, Provincia de Buenos Aires, a pocas cuadras de las avenidas principales."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   
     <script>
       window.addEventListener('error', function(e) {

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /pilates/
+
+Disallow: /pilates/app/
+Disallow: /pilates/login
+Disallow: /pilates/perfil
+Disallow: /pilates/admin/
+
+Sitemap: https://violett.com.ar/sitemap.xml

@@ -5,6 +5,13 @@ import PilatesLanding from './pages/PilatesLanding';
 import EsteticaLanding from './pages/EsteticaLanding';
 import EliminarDatos from './pages/EliminarDatos';
 
+const RedirectToPilatesApp = () => {
+  React.useEffect(() => {
+    window.location.replace('/pilates/');
+  }, []);
+  return null;
+};
+
 function App() {
   return (
     <BrowserRouter>
@@ -14,7 +21,7 @@ function App() {
         
         {/* Rutas reales */}
         <Route path="/home" element={<HomeLanding />} />
-        <Route path="/pilates" element={<PilatesLanding />} />
+        <Route path="/pilates" element={<RedirectToPilatesApp />} />
         <Route path="/estetica" element={<EsteticaLanding />} />
         
         {/* Rutas legales requeridas por Meta */}
