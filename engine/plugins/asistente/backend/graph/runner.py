@@ -100,8 +100,32 @@ def _procesar_confirmacion_hitl_si_aplica(conversacion, mensaje_usuario: str):
     if not candidatos:
         return None
 
-    # Si Deby cancela o rechaza
-    if any(k in msg_low for k in ['no', 'ninguna', 'ninguno', 'ningun', 'cancelar', 'cancelá', 'otra', 'ninguno de esos']):
+    tipo = accion.get('tipo')
+    params = accion.get('params', {})
+
+    # 0. Comprobar si Deby responde indicando que es una alumna manual / sin app
+    es_respuesta_manual = any(k in msg_low for k in [
+        'es manual', 'anotala manual', 'anotalo manual', 'manual', 'sin app',
+        'no tiene app', 'es nueva', 'nueva', 'de prueba', 'invitada', 'sin cuenta', 'anotale manual'
+    ])
+    if es_respuesta_manual and tipo in ['agendar', 'crear_clase_y_agendar']:
+        conversacion.metadata.pop('accion_pendiente', None)
+        conversacion.save(update_fields=['metadata'])
+        nom_manual = params.get('nombre_o_tel_alumna') or accion.get('query_original') or 'Alumna manual'
+        res = agendar_alumna_en_turno_duena.invoke({
+            "nombre_o_tel_alumna": nom_manual,
+            "fecha_o_dia": params.get('fecha_o_dia', 'hoy'),
+            "hora_str": params.get('hora_str', '18:00'),
+            "es_manual": True
+        })
+        return res, "agente_direccion", ['agendar_alumna_en_turno_duena']
+
+    # Si Deby cancela o rechaza (pero no si dijo "no, es manual" o similar)
+    es_cancelacion = (
+        msg_low in ['no', 'no no', 'nop', 'cancelar', 'cancelá', 'ninguna', 'ninguno', 'ningun', 'otra', 'ninguno de esos']
+        or any(k in msg_low for k in ['cancelar', 'cancelá', 'ninguna de esas', 'ninguno de esos'])
+    )
+    if es_cancelacion and not es_respuesta_manual:
         conversacion.metadata.pop('accion_pendiente', None)
         conversacion.save(update_fields=['metadata'])
         return (
@@ -1029,13 +1053,20 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
             'agregá a', 'agrega a', 'agregar a', 'sumá a', 'suma a', 'sumar a'
         ]) and not ('plan' in msg_low):
             m_anota = re.search(
-                r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií])|agreg(?:ar|[aá])|sum(?:ar|[aá]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+?)(?:\s+(?:para\s+el|para\s+la|para|en\s+el|en\s+la|en|el|la|este|esta|hoy|mañana|a\s+las|\d)|$|[?.,!])',
+                r'(?:agend(?:ar|[aá])|anot(?:ar|[aá])|inscrib(?:ir|[ií])|agreg(?:ar|[aá])|sum(?:ar|[aá]))(?:le|la|lo)?\s+a\s+([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\(\)\[\]]+?)(?:\s+(?:para\s+el|para\s+la|para|en\s+el|en\s+la|en|el|la|este|esta|hoy|mañana|a\s+las|\d)|$|[?.,!])',
                 mensaje_usuario,
                 re.IGNORECASE
             )
             nom = m_anota.group(1).strip() if m_anota else ""
             nom = re.sub(r'\s+(?:para|en|el|la|de|a|este|esta)$', '', nom, flags=re.IGNORECASE).strip()
-            hora_match = re.search(r'(\d{1,2}(?::\d{2})?(?:\s*hs)?)', msg_low)
+            patron_manual = r'[\(\[\{]?(?:que\s+|q\s+)?(?:manual|manuales|sin\s+app|no\s+tiene\s+app|sin\s+cuenta|de\s+prueba|invitada|externa|alumna\s+manual)[\)\]\}]?'
+            es_man = bool(re.search(patron_manual, nom, re.IGNORECASE) or any(k in msg_low for k in ['manual', 'sin app', 'no tiene app', 'sin cuenta']))
+            nom_clean = re.sub(patron_manual, '', nom, flags=re.IGNORECASE).strip()
+            nom_clean = re.sub(r'[\(\[\{\)\]\}]', '', nom_clean).strip()
+            if not nom_clean:
+                nom_clean = nom
+
+            hora_match = re.search(r'(\d{1,2}(?:[:;.][0-5]\d)?(?:\s*hs)?)', msg_low)
             hora_str = hora_match.group(1) if hora_match else "18:00"
             fecha_str = "hoy"
             for d in ['lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes', 'sabado', 'sábado', 'mañana', 'hoy']:
@@ -1043,11 +1074,12 @@ def _procesar_simulacion_interna(conversacion, mensaje_usuario: str, usuario_id:
                     fecha_str = d
                     break
             res = agendar_alumna_en_turno_duena.invoke({
-                "nombre_o_tel_alumna": nom,
+                "nombre_o_tel_alumna": nom_clean,
                 "fecha_o_dia": fecha_str,
-                "hora_str": hora_str
+                "hora_str": hora_str,
+                "es_manual": es_man
             })
-            _guardar_hitl_si_corresponde(conversacion, res, 'agendar', {'fecha_o_dia': fecha_str, 'hora_str': hora_str})
+            _guardar_hitl_si_corresponde(conversacion, res, 'agendar', {'nombre_o_tel_alumna': nom_clean, 'fecha_o_dia': fecha_str, 'hora_str': hora_str})
             tools_usadas.append('agendar_alumna_en_turno_duena')
             return res, "agente_direccion", tools_usadas
 

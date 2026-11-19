@@ -123,26 +123,29 @@ VERBOS_Y_STOPWORDS_GESTION = {
     'plan', 'planes', 'abono', 'abonos', 'clase', 'clases', 'credito', 'creditos', 'crédito', 'créditos',
     'su', 'sus', 'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'al', 'del', 'a', 'de', 'para', 'en', 'por', 'con',
     'hoy', 'mañana', 'sabado', 'sábado', 'lunes', 'martes', 'miercoles', 'miércoles', 'jueves', 'viernes',
-    'hs', 'horas'
+    'hs', 'horas',
+    'manual', 'manuales', 'app', 'la app', 'sin', 'cuenta', 'invitada', 'externa', 'prueba', 'alumna', 'alumnas', 'cliente', 'chica', 'persona'
 }
 
 
 def normalizar_hora_str(hora_str: str, texto_completo: str = "") -> str:
     """
-    Normaliza expresiones como '5', 'a las 5', '5 de la tarde', '17', '17hs', '17:00' a '17:00'.
+    Normaliza expresiones como '5', 'a las 5', '5 de la tarde', '17', '17hs', '17:00', '15;30', '15.30' a '17:00' o '15:30'.
     Mantiene compatibilidad con horarios matutinos (08:00, 09:00, 10:00, 11:00) y vespertinos (15:00..21:00).
     """
     texto = (str(hora_str) + " " + str(texto_completo)).lower()
     
-    # 1. Formato explícito HH:MM
-    m_hhmm = re.search(r'\b([01]?\d|2[0-3]):([0-5]\d)\b', hora_str)
+    # 1. Formato explícito HH:MM, HH;MM, HH.MM (con o sin 'hs')
+    m_hhmm = re.search(r'\b([01]?\d|2[0-3])[:;.]([0-5]\d)', str(hora_str))
+    if not m_hhmm:
+        m_hhmm = re.search(r'\b([01]?\d|2[0-3])[:;.]([0-5]\d)', texto)
     if m_hhmm:
         h = int(m_hhmm.group(1))
         m = int(m_hhmm.group(2))
         return f"{h:02d}:{m:02d}"
 
     # 2. Extraer número
-    m_num = re.search(r'\b(\d{1,2})\b', hora_str)
+    m_num = re.search(r'\b(\d{1,2})\b', str(hora_str))
     if not m_num:
         m_num = re.search(r'\b(?:a\s+las?|las?)\s*(\d{1,2})\b', texto)
 
@@ -182,6 +185,7 @@ def formatear_opciones_human_in_the_loop(query: str, candidatas: list, accion_de
     
     accion_txt = f" para {accion_desc}" if accion_desc else ""
     lineas.append(f"\n¿Te referías a alguna de ellas? Podés indicarme el número (ej: *\"la 1\"*) o el nombre completo y continúo{accion_txt}.")
+    lineas.append(f"💡 O si es una alumna nueva / sin app (de manera manual), decime *\"anotala manual\"* y la agendo directamente en la camilla.")
     return "\n".join(lineas)
 
 def buscar_alumna_flexible(query: str):
@@ -665,38 +669,70 @@ def consultar_asistencias_alumna_duena(nombre_o_tel_alumna: str, filtro: str = "
 
 
 @tool
-def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, hora_str: str, forzar: bool = False) -> str:
+def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, hora_str: str, forzar: bool = False, es_manual: bool = False) -> str:
     """
-    Comando para la dueña: inscribe manualmente a una alumna en una camilla de un turno específico.
-    Si la alumna no tiene créditos disponibles, le avisa a Deby explicándole el motivo exacto (si el plan venció, si ya tomó todas las clases o si las tiene todas agendadas para otros días con sus fechas).
+    Comando para la dueña: inscribe a una alumna en una camilla de un turno específico.
+    Soporta tanto alumnas registradas con app como gente que no tiene app (alumnas manuales o invitadas).
+    Si la persona no tiene cuenta en la app o Deby pide anotarla de forma manual / sin app, aparta la camilla directamente con su nombre.
+    Si la alumna está registrada en el sistema pero no tiene créditos disponibles, le avisa a Deby explicándole el motivo exacto.
     
     Parámetros:
-    - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Luz Dobias', 'Laila Marzzuck', '1167437391').
+    - nombre_o_tel_alumna: Nombre o teléfono de la alumna (ej: 'Luz Dobias', 'Alejandra Rivarola', 'Paula manual', 'Marcela (sin app)').
     - fecha_o_dia: 'hoy', 'mañana' o nombre del día / fecha (ej: 'lunes', 'viernes', '20/11/2026').
-    - hora_str: Hora de inicio (ej: '15:30', '18:00', '19', '20').
+    - hora_str: Hora de inicio (ej: '15:30', '15;30', '18:00', '19', '20').
     - forzar: True únicamente si Deby explícitamente confirmó que la anote de todas formas aunque no tenga créditos libres o como cortesía.
+    - es_manual: True si se debe anotar como alumna manual sin app directamente.
     """
     target_date = resolver_fecha(fecha_o_dia)
-    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
-    if ':' not in hora_clean:
-        try:
-            hora_clean = f"{int(hora_clean):02d}:00"
-        except ValueError:
-            hora_clean = "18:00"
+    hora_clean = normalizar_hora_str(hora_str, fecha_o_dia)
 
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
-    if err == "multiples":
-        return formatear_opciones_human_in_the_loop(
-            nombre_o_tel_alumna, 
-            matches, 
-            f"anotarla para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs"
-        )
+    # Detectar si el texto pide explícitamente inscripción manual o sin app
+    patron_manual = r'[\(\[\{]?(?:que\s+|q\s+)?(?:manual|manuales|sin\s+app|no\s+tiene\s+app|sin\s+cuenta|de\s+prueba|invitada|externa|alumna\s+manual)[\)\]\}]?'
+    if re.search(patron_manual, nombre_o_tel_alumna, re.IGNORECASE):
+        es_manual = True
+
+    # Extraer teléfono si viene incluido (ej: "Marcela tel: 1162051543")
+    tel_extraido = ""
+    m_tel = re.search(r'(?:tel(?:[eé]fono)?|cel(?:ular)?|wpp)?[:\s]*(\+?\d{8,14})\b', nombre_o_tel_alumna, re.IGNORECASE)
+    if m_tel:
+        tel_extraido = m_tel.group(1).strip()
+
+    # Limpiar nombre de etiquetas
+    nom_limpio = re.sub(patron_manual, '', nombre_o_tel_alumna, flags=re.IGNORECASE)
+    if tel_extraido:
+        nom_limpio = nom_limpio.replace(tel_extraido, '')
+    nom_limpio = re.sub(r'\b(?:tel(?:[eé]fono)?|cel(?:ular)?|wpp)[:\s]*', '', nom_limpio, flags=re.IGNORECASE)
+    nom_limpio = re.sub(r'[\(\[\{\)\]\}]', '', nom_limpio).strip()
+    if not nom_limpio:
+        nom_limpio = nombre_o_tel_alumna.strip()
+
+    alumna = None
+    matches = []
+    err = None
+
+    if not es_manual:
+        alumna, matches, err = buscar_alumna_flexible(nom_limpio)
+        if err == "multiples":
+            return formatear_opciones_human_in_the_loop(
+                nom_limpio, 
+                matches, 
+                f"anotarla para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs"
+            )
 
     turnos = Turno.objects.filter(
         fecha=target_date,
         hora_inicio__startswith=hora_clean,
         estado='PROGRAMADO'
     ).select_related('clase')
+
+    if not turnos.exists():
+        h_dt = resolver_hora(hora_clean)
+        turnos = Turno.objects.filter(
+            fecha=target_date,
+            hora_inicio__hour=h_dt.hour,
+            hora_inicio__minute=h_dt.minute,
+            estado='PROGRAMADO'
+        ).select_related('clase')
 
     if not turnos.exists():
         # Si la hora exacta no existe, buscar los turnos disponibles de ese día para sugerirlos
@@ -707,36 +743,44 @@ def agendar_alumna_en_turno_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, ho
                 p_item = obtener_profesor_de_turno(t_item)
                 p_str = f" (Profe: {p_item.nombre})" if p_item and hasattr(p_item, 'nombre') else ""
                 lista_horarios.append(f"• {t_item.hora_inicio.strftime('%H:%M')} hs: {t_item.cupo_actual} camilla(s) libre(s){p_str}")
-            return f"✦ No encontré una clase programada exactamente a las {hora_clean} hs para el {target_date.strftime('%d/%m/%Y')}.\n\nLos horarios con camillas disponibles para ese día son:\n" + "\n".join(lista_horarios) + f"\n\n¿En cuál de estos querés que anote a {nombre_o_tel_alumna}?"
+            return f"✦ No encontré una clase programada exactamente a las {hora_clean} hs para el {target_date.strftime('%d/%m/%Y')}.\n\nLos horarios con camillas disponibles para ese día son:\n" + "\n".join(lista_horarios) + f"\n\n¿En cuál de estos querés que anote a {nom_limpio}?"
         else:
             return f"✦ No encontré ninguna clase programada para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs, y para esa fecha todas las camillas están completas o no hay grilla."
 
     turno = turnos.first()
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nom = dias_es[target_date.weekday()]
+    prof_obj = obtener_profesor_de_turno(turno)
+    profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
 
-    # Si la alumna no está registrada en el sistema, la anotamos como reserva puntual/manual
-    if not alumna:
+    # Si se solicitó explícitamente manual o la alumna no está registrada en el sistema
+    if es_manual or not alumna:
         if turno.cupo_actual <= 0:
-            return f"La clase del {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
+            return f"La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
         reserva = Reserva.objects.create(
             turno=turno,
             usuario=None,
-            nombre_temporal=nombre_o_tel_alumna.strip(),
+            nombre_temporal=nom_limpio,
+            telefono_temporal=tel_extraido,
             tipo_reserva='MANUAL_TEMPORAL',
             es_recurrente=False,
             estado='CONFIRMADA'
         )
         turno.cupo_actual = max(0, turno.cupo_actual - 1)
-        turno.save()
-        prof_obj = obtener_profesor_de_turno(turno)
-        profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
-        return f"✦ ¡Listo Deby! Anoté a {nombre_o_tel_alumna.strip()} para el {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs{profe_str} (como alumna invitada). Quedan {turno.cupo_actual} camilla(s) libre(s) en ese bloque."
+        turno.save(update_fields=['cupo_actual'])
+        from backend_core.hooks import registry
+        try:
+            registry.execute('reserva_creada', reserva)
+        except Exception as ex_h:
+            logger.warning(f"Error hook reserva_creada en agendar_alumna_en_turno_duena: {ex_h}")
+        return f"✦ ¡Listo Deby! Anoté a {nom_limpio} para el {dia_nom} {target_date.strftime('%d/%m/%Y')} a las {turno.hora_inicio.strftime('%H:%M')} hs{profe_str} (alumna manual / sin app). Quedan {turno.cupo_actual} camilla(s) libre(s) en ese bloque."
 
-    # Verificar si ya está anotada
+    # Verificar si ya está anotada como alumna registrada
     if Reserva.objects.filter(turno=turno, usuario=alumna, estado='CONFIRMADA').exists():
-        return f"{alumna.nombre} ya tiene una camilla reservada en ese horario ({target_date.strftime('%d/%m')} a las {hora_clean} hs)."
+        return f"{alumna.nombre} ya tiene una camilla reservada en ese horario ({dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs)."
 
     if turno.cupo_actual <= 0:
-        return f"La clase del {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
+        return f"La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
 
     # Verificar situación de créditos antes de agendar
     from core.services import analizar_creditos_y_motivo_alumna, registrar_log_movimiento
@@ -924,22 +968,33 @@ def consultar_agenda_completa_dia(fecha_o_dia: str = "hoy", hora_str: str = "") 
 
 
 @tool
-def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o_tel_alumna: str = "", forzar: bool = False) -> str:
+def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o_tel_alumna: str = "", forzar: bool = False, es_manual: bool = False) -> str:
     """
     Comando exclusivo de la dueña (Deby) para ABRIR o CREAR una clase/turno nuevo fuera de la grilla habitual
-    en una fecha y horario puntual, y opcionalmente dejar anotada a una alumna en el mismo paso.
+    en una fecha y horario puntual, y opcionalmente dejar anotada a una alumna en el mismo paso (registrada o manual sin app).
     Parámetros:
     - fecha_o_dia: Día de la semana o fecha (ej: 'sábado', 'mañana', 'hoy', '07/11/2026').
-    - hora_str: Hora de inicio de la clase (ej: '17:00', '17hs', '17').
-    - nombre_o_tel_alumna: Nombre o teléfono de la alumna a inscribir (ej: 'Alex Agüero', 'Martina'). Opcional.
+    - hora_str: Hora de inicio de la clase (ej: '17:00', '17hs', '17', '15;30').
+    - nombre_o_tel_alumna: Nombre o teléfono de la alumna a inscribir (ej: 'Alex Agüero', 'Martina', 'Camila manual'). Opcional.
+    - es_manual: True si se anota como alumna manual sin app.
     """
     target_date = resolver_fecha(fecha_o_dia)
-    hora_clean = hora_str.lower().replace('hs', '').replace('h', '').strip()
-    if ':' not in hora_clean:
-        try:
-            hora_clean = f"{int(hora_clean):02d}:00"
-        except ValueError:
-            hora_clean = "18:00"
+    hora_clean = normalizar_hora_str(hora_str, fecha_o_dia)
+
+    patron_manual = r'[\(\[\{]?(?:que\s+|q\s+)?(?:manual|manuales|sin\s+app|no\s+tiene\s+app|sin\s+cuenta|de\s+prueba|invitada|externa|alumna\s+manual)[\)\]\}]?'
+    if re.search(patron_manual, nombre_o_tel_alumna, re.IGNORECASE):
+        es_manual = True
+
+    tel_extraido = ""
+    m_tel = re.search(r'(?:tel(?:[eé]fono)?|cel(?:ular)?|wpp)?[:\s]*(\+?\d{8,14})\b', nombre_o_tel_alumna, re.IGNORECASE)
+    if m_tel:
+        tel_extraido = m_tel.group(1).strip()
+
+    nom_limpio = re.sub(patron_manual, '', nombre_o_tel_alumna, flags=re.IGNORECASE)
+    if tel_extraido:
+        nom_limpio = nom_limpio.replace(tel_extraido, '')
+    nom_limpio = re.sub(r'\b(?:tel(?:[eé]fono)?|cel(?:ular)?|wpp)[:\s]*', '', nom_limpio, flags=re.IGNORECASE)
+    nom_limpio = re.sub(r'[\(\[\{\)\]\}]', '', nom_limpio).strip()
 
     clase_obj = Clase.objects.filter(is_active=True).first()
     if not clase_obj:
@@ -969,17 +1024,19 @@ def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o
     dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
     dia_nom = dias_es[target_date.weekday()]
 
-    if not nombre_o_tel_alumna or not nombre_o_tel_alumna.strip():
+    if not nom_limpio:
         accion_str = "Creé la nueva clase" if es_nueva else "Ya existía la clase"
         return f"✦ ¡Listo Deby! {accion_str} de {clase_obj.nombre} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ({turno.cupo_actual} camillas disponibles)."
 
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
-    if err == "multiples":
-        return formatear_opciones_human_in_the_loop(
-            nombre_o_tel_alumna,
-            matches,
-            f"anotarla para la clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs"
-        )
+    alumna = None
+    if not es_manual:
+        alumna, matches, err = buscar_alumna_flexible(nom_limpio)
+        if err == "multiples":
+            return formatear_opciones_human_in_the_loop(
+                nom_limpio,
+                matches,
+                f"anotarla para la clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs"
+            )
 
     # Validar si ya está anotada
     if alumna:
@@ -1039,17 +1096,24 @@ def crear_clase_y_agendar_alumna_duena(fecha_o_dia: str, hora_str: str, nombre_o
         if turno.cupo_actual <= 0:
             return f"✦ La clase del {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs ya tiene todas sus camillas ocupadas."
 
-        Reserva.objects.create(
+        res_manual = Reserva.objects.create(
             turno=turno,
             usuario=None,
-            nombre_temporal=nombre_o_tel_alumna,
+            nombre_temporal=nom_limpio,
+            telefono_temporal=tel_extraido,
+            tipo_reserva='MANUAL_TEMPORAL',
             estado='CONFIRMADA'
         )
         turno.cupo_actual = max(0, turno.cupo_actual - 1)
         turno.save()
+        from backend_core.hooks import registry
+        try:
+            registry.execute('reserva_creada', res_manual)
+        except Exception as ex_h:
+            logger.warning(f"Error hook reserva_creada en crear_clase_y_agendar_alumna_duena: {ex_h}")
 
         accion_str = "Creé la nueva clase" if es_nueva else "En la clase"
-        return f"✦ ¡Listo Deby! {accion_str} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs y aparté una camilla a nombre de '{nombre_o_tel_alumna}'. Quedan {turno.cupo_actual} camillas libres."
+        return f"✦ ¡Listo Deby! {accion_str} para el {dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs y aparté una camilla para '{nom_limpio}' (alumna manual / sin app). Quedan {turno.cupo_actual} camillas libres."
 
 
 @tool
@@ -1170,18 +1234,25 @@ def consultar_esquema_fijo_alumna(nombre_o_tel_alumna: str) -> str:
 @tool
 def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, hora_str: str) -> str:
     """
-    Comando para la dueña: asigna un horario fijo semanal a una alumna en la grilla
-    (ej: 'poner fija a Alex los sábados a las 11hs', 'horario fijo para Marcela martes 18hs').
+    Comando para la dueña: asigna un horario fijo semanal a una alumna en la grilla del Esquema Semanal
+    (ej: 'poner fija a Alex los sábados a las 11hs', 'horario fijo para Marcela martes 18hs', 'poné fija a Norma (sin app / manual) los martes 18hs').
+    Soporta tanto alumnas registradas con app como alumnas manuales sin app (+ 1 manual en el esquema).
     Parámetros:
-    - nombre_o_tel_alumna: Nombre de la alumna.
+    - nombre_o_tel_alumna: Nombre de la alumna o 'alumna manual'.
     - dia_semana_str: 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'.
-    - hora_str: Hora de inicio (ej: '11:00', '18', '19:30').
+    - hora_str: Hora de inicio (ej: '11:00', '18', '19:30', '15;30').
     """
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
-    if err == "multiples":
-        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, f"asignarle horario fijo {dia_semana_str} {hora_str}")
-    elif not alumna:
-        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+    patron_manual = r'[\(\[\{]?(?:que\s+|q\s+)?(?:manual|manuales|sin\s+app|no\s+tiene\s+app|sin\s+cuenta|de\s+prueba|invitada|externa|alumna\s+manual)[\)\]\}]?'
+    es_manual = bool(re.search(patron_manual, nombre_o_tel_alumna, re.IGNORECASE))
+    nom_limpio = re.sub(patron_manual, '', nombre_o_tel_alumna, flags=re.IGNORECASE).strip()
+    if not nom_limpio:
+        nom_limpio = nombre_o_tel_alumna.strip()
+
+    alumna = None
+    if not es_manual:
+        alumna, matches, err = buscar_alumna_flexible(nom_limpio)
+        if err == "multiples":
+            return formatear_opciones_human_in_the_loop(nom_limpio, matches, f"asignarle horario fijo {dia_semana_str} {hora_str}")
 
     dias_map = {
         'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
@@ -1207,6 +1278,7 @@ def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, h
 
         rec, created = Recurrencia.objects.get_or_create(
             usuario=alumna,
+            nombre_temporal=nom_limpio if not alumna else '',
             clase=clase_reformer,
             dia_semana=dia_num,
             hora_inicio=hora_clean,
@@ -1237,8 +1309,11 @@ def asignar_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str, h
 
         dias_nombres = {1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo'}
         dia_display = dias_nombres.get(dia_num, dia_semana_str)
-        nombre_comp = f"{alumna.nombre} {alumna.apellido}".strip()
 
+        if not alumna:
+            return f"✦ ¡Listo Deby! ✦ Dejé a *{nom_limpio}* registrada fija en el Esquema Semanal los *{dia_display} a las {hora_clean} hs* (alumna manual / sin app). El sistema le reservará su camilla automáticamente todas las semanas."
+
+        nombre_comp = f"{alumna.nombre} {alumna.apellido}".strip()
         sub = Suscripcion.objects.filter(usuario=alumna, estado='ACTIVO').order_by('-fecha_inicio').first()
         agendadas = 0
         if sub:
@@ -1261,26 +1336,36 @@ def dar_baja_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str =
     Comando para la dueña: desactiva los horarios fijos semanales de una alumna
     (ej: 'sacale el horario fijo a Alex', 'dar de baja la recurrencia de Marcela').
     """
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    patron_manual = r'[\(\[\{]?(?:que\s+|q\s+)?(?:manual|manuales|sin\s+app|no\s+tiene\s+app|sin\s+cuenta|de\s+prueba|invitada|externa|alumna\s+manual)[\)\]\}]?'
+    nom_limpio = re.sub(patron_manual, '', nombre_o_tel_alumna, flags=re.IGNORECASE).strip()
+    if not nom_limpio:
+        nom_limpio = nombre_o_tel_alumna.strip()
+
+    alumna, matches, err = buscar_alumna_flexible(nom_limpio)
     if err == "multiples":
-        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, "desactivar su horario fijo")
-    elif not alumna:
-        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+        return formatear_opciones_human_in_the_loop(nom_limpio, matches, "desactivar su horario fijo")
 
     try:
         from plugins.recurrencias.backend.models import Recurrencia
-        qs = Recurrencia.objects.filter(usuario=alumna, is_active=True)
+        if alumna:
+            qs = Recurrencia.objects.filter(usuario=alumna, is_active=True)
+        else:
+            qs = Recurrencia.objects.filter(nombre_temporal__icontains=nom_limpio, is_active=True)
+
         cant = qs.count()
         if cant == 0:
-            return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún horario fijo semanal activo."
+            nom_mostrar = f"{alumna.nombre} {alumna.apellido}".strip() if alumna else nom_limpio
+            return f"✦ {nom_mostrar} no tiene ningún horario fijo semanal activo."
 
         qs.update(is_active=False)
-        try:
-            from plugins.comunicaciones.backend.whatsapp_service import notificar_horario_fijo_alumna
-            notificar_horario_fijo_alumna(alumna, 1, "fijo", "Pilates Reformer", "", "dada_de_baja")
-        except Exception as ex_notif:
-            logger.warning(f"Error notificando baja horario fijo: {ex_notif}")
-        return f"✦ ¡Listo Deby! Desactivé los {cant} horario(s) fijo(s) de {alumna.nombre} {alumna.apellido} y le avisamos por WhatsApp."
+        nom_mostrar = f"{alumna.nombre} {alumna.apellido}".strip() if alumna else nom_limpio
+        if alumna:
+            try:
+                from plugins.comunicaciones.backend.whatsapp_service import notificar_horario_fijo_alumna
+                notificar_horario_fijo_alumna(alumna, 1, "fijo", "Pilates Reformer", "", "dada_de_baja")
+            except Exception as ex_notif:
+                logger.warning(f"Error notificando baja horario fijo: {ex_notif}")
+        return f"✦ ¡Listo Deby! Desactivé los {cant} horario(s) fijo(s) de {nom_mostrar} en el Esquema Semanal."
     except Exception as e:
         return f"✦ Error desactivando horario fijo: {e}"
 
@@ -1761,33 +1846,41 @@ def enviar_mensaje_whatsapp_alumna_duena(nombre_o_tel_alumna: str, mensaje: str)
 @tool
 def reprogramar_o_mover_reserva_alumna_duena(nombre_o_tel_alumna: str, fecha_origen: str, hora_origen: str, fecha_destino: str, hora_destino: str) -> str:
     """
-    Comando para la dueña: mueve, cambia o reprograma la clase de una alumna a otro día u horario
-    (ej: 'Cambiale la clase a Alex del sábado 17hs para el sábado a las 18hs', 'Pasá a Martina de mañana 18hs a las 19hs').
-    Automáticamente libera la camilla anterior, reserva la nueva y le envía un WhatsApp avisándole a la alumna.
+    Comando para la dueña: mueve, cambia o reprograma la clase de una alumna (registrada o manual) a otro día u horario
+    (ej: 'Cambiale la clase a Alex del sábado 17hs para el sábado a las 18hs', 'Pasá a Martina de mañana 18hs a las 19hs', 'Mové a Carmen (manual) de mañana 18hs para el viernes 19hs').
+    Automáticamente libera la camilla anterior y reserva la nueva.
     """
-    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    patron_manual = r'[\(\[\{]?(?:que\s+|q\s+)?(?:manual|manuales|sin\s+app|no\s+tiene\s+app|sin\s+cuenta|de\s+prueba|invitada|externa|alumna\s+manual)[\)\]\}]?'
+    nom_limpio = re.sub(patron_manual, '', nombre_o_tel_alumna, flags=re.IGNORECASE).strip()
+    if not nom_limpio:
+        nom_limpio = nombre_o_tel_alumna.strip()
+
+    alumna, matches, err = buscar_alumna_flexible(nom_limpio)
     if err == "multiples":
-        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, f"reprogramarle la clase")
-    elif not alumna:
-        return f"✦ No encontré a la alumna '{nombre_o_tel_alumna}' en el sistema."
+        return formatear_opciones_human_in_the_loop(nom_limpio, matches, f"reprogramarle la clase")
 
     f_origen = resolver_fecha(fecha_origen)
     h_orig_clean = normalizar_hora_str(hora_origen, fecha_origen)
     h_orig_dt = resolver_hora(h_orig_clean) if h_orig_clean else None
 
-    # Buscar reserva origen
+    # Buscar reserva origen (registrada o manual)
     qs_res = Reserva.objects.filter(
-        usuario=alumna,
         estado='CONFIRMADA',
         turno__fecha=f_origen
     ).select_related('turno', 'turno__clase')
+
+    if alumna:
+        qs_res = qs_res.filter(usuario=alumna)
+    else:
+        qs_res = qs_res.filter(nombre_temporal__icontains=nom_limpio)
 
     if h_orig_dt:
         qs_res = qs_res.filter(turno__hora_inicio__hour=h_orig_dt.hour, turno__hora_inicio__minute=h_orig_dt.minute)
 
     res_origen = qs_res.first()
+    nom_mostrar = f"{alumna.nombre} {alumna.apellido}".strip() if alumna else nom_limpio
     if not res_origen:
-        return f"✦ No encontré ninguna reserva confirmada de {alumna.nombre} para el {f_origen.strftime('%d/%m')} a las {h_orig_clean} hs."
+        return f"✦ No encontré ninguna reserva confirmada de {nom_mostrar} para el {f_origen.strftime('%d/%m')} a las {h_orig_clean} hs."
 
     turno_anterior = res_origen.turno
 
@@ -1838,35 +1931,40 @@ def reprogramar_o_mover_reserva_alumna_duena(nombre_o_tel_alumna: str, fecha_ori
         res_nueva = Reserva.objects.create(
             turno=turno_destino,
             usuario=alumna,
+            nombre_temporal=nom_limpio if not alumna else getattr(res_origen, 'nombre_temporal', ''),
+            telefono_temporal=getattr(res_origen, 'telefono_temporal', ''),
+            tipo_reserva='MANUAL_TEMPORAL' if not alumna else 'REGISTRADO',
             estado='CONFIRMADA'
         )
         turno_destino.cupo_actual = max(0, turno_destino.cupo_actual - 1)
         turno_destino.save()
 
-        # Mantener o vincular suscripción
-        try:
-            from plugins.membresias.backend.models import ReservaMembresia
-            rm = ReservaMembresia.objects.filter(reserva=res_origen).first()
-            if rm:
-                ReservaMembresia.objects.create(reserva=res_nueva, suscripcion=rm.suscripcion)
-                rm.delete()
-        except Exception:
-            pass
+        # Mantener o vincular suscripción si aplica
+        if alumna:
+            try:
+                from plugins.membresias.backend.models import ReservaMembresia
+                rm = ReservaMembresia.objects.filter(reserva=res_origen).first()
+                if rm:
+                    ReservaMembresia.objects.create(reserva=res_nueva, suscripcion=rm.suscripcion)
+                    rm.delete()
+            except Exception:
+                pass
 
-    # Notificar a la alumna por WhatsApp
-    try:
-        from plugins.comunicaciones.backend.whatsapp_service import notificar_reprogramacion_alumna
-        notificar_reprogramacion_alumna(alumna, turno_destino, turno_anterior)
-    except Exception as ex_not:
-        logger.warning(f"Error notificando reprogramación a {alumna.nombre}: {ex_not}")
+    # Notificar a la alumna por WhatsApp si es registrada
+    if alumna:
+        try:
+            from plugins.comunicaciones.backend.whatsapp_service import notificar_reprogramacion_alumna
+            notificar_reprogramacion_alumna(alumna, turno_destino, turno_anterior)
+        except Exception as ex_not:
+            logger.warning(f"Error notificando reprogramación a {alumna.nombre}: {ex_not}")
 
     dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
     dia_dest_nom = dias_semana[f_destino.weekday()]
+    extra_txt = f"\n• Le envié un mensaje de WhatsApp a {nom_mostrar} confirmándole el cambio 🌸." if alumna else f" (alumna manual / sin app)."
     return (
-        f"✦ ¡Listo Deby! Moví la clase de {alumna.nombre} {alumna.apellido}:\n"
+        f"✦ ¡Listo Deby! Moví la clase de {nom_mostrar}:\n"
         f"• *Anterior:* {turno_anterior.fecha.strftime('%d/%m')} a las {turno_anterior.hora_inicio.strftime('%H:%M')} hs (camilla liberada)\n"
-        f"• *Nuevo horario:* {dia_dest_nom} {f_destino.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs\n"
-        f"• Le envié un mensaje de WhatsApp a {alumna.nombre} confirmándole el cambio 🌸."
+        f"• *Nuevo horario:* {dia_dest_nom} {f_destino.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs{extra_txt}"
     )
 
 

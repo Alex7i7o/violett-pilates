@@ -66,12 +66,12 @@ def resolver_fecha(fecha_str: str) -> datetime.date:
 
 
 def resolver_hora(hora_str: str) -> datetime.time:
-    """Interpreta cadenas horarias como '18', '18:00', '18hs', '10:30', '6pm'."""
-    s = hora_str.strip().lower()
-    m = re.search(r'(\d{1,2})(?::(\d{2}))?', s)
+    """Interpreta cadenas horarias como '18', '18:00', '18;30', '18.30', '18hs', '10:30', '6pm'."""
+    s = str(hora_str).strip().lower()
+    m = re.search(r'(\d{1,2})(?:[:;.](?P<min>\d{2}))?', s)
     if m:
         hour = int(m.group(1))
-        minute = int(m.group(2)) if m.group(2) else 0
+        minute = int(m.group('min')) if m.group('min') else 0
         if 'pm' in s and hour < 12:
             hour += 12
         return datetime.time(hour, minute)
