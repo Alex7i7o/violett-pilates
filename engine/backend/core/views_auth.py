@@ -5,5 +5,7 @@ class AuthThrottle(ScopedRateThrottle):
     scope = 'auth'
 
 class ThrottledLoginView(LoginView):
+    authentication_classes = []
+    throttle_scope = 'auth'
     throttle_classes = [AuthThrottle]
 

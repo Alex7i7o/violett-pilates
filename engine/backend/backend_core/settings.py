@@ -170,7 +170,7 @@ SITE_ID = 1
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+        'core.authentication.GracefulJWTCookieAuthentication',
     ),
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
@@ -181,6 +181,7 @@ REST_FRAMEWORK = {
         'user': '200/min' if DEBUG else '100/min',
         'reserva': '60/min' if DEBUG else '10/min',
         'auth': '60/min' if DEBUG else '5/min',
+        'dj_rest_auth': '60/min' if DEBUG else '5/min',
         'webhook': '200/min'
     }
 }
