@@ -46,6 +46,27 @@ def run_solicitar_asistencia_profesores_job():
     except Exception as e:
         logger.error(f"[ASISTENTE SOLICITAR ASISTENCIA PROFESORES ERROR] {e}")
 
+def run_alertar_vencimiento_abonos_job():
+    from django.core.management import call_command
+    try:
+        call_command("alertar_vencimiento_abonos")
+    except Exception as e:
+        logger.error(f"[ASISTENTE ALERTA VENCIMIENTO ABONOS ERROR] {e}")
+
+def run_resumen_diario_duena_job():
+    from django.core.management import call_command
+    try:
+        call_command("enviar_resumen_diario_duena")
+    except Exception as e:
+        logger.error(f"[ASISTENTE RESUMEN DIARIO DUENA ERROR] {e}")
+
+def run_feedback_primera_clase_job():
+    from django.core.management import call_command
+    try:
+        call_command("solicitar_feedback_primera_clase")
+    except Exception as e:
+        logger.error(f"[ASISTENTE FEEDBACK PRIMERA CLASE ERROR] {e}")
+
 class AsistenteConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'plugins.asistente.backend'
@@ -118,6 +139,16 @@ class AsistenteConfig(AppConfig):
 
         # Iniciar Scheduler proactivo en background si no es un comando de migración/shell/check
         if not any(cmd in arg for arg in sys.argv for cmd in ['makemigrations', 'migrate', 'collectstatic', 'shell', 'test', 'check']):
+            # En entornos multi-worker (como Gunicorn con 3 workers), garantizar que SOLO 1 worker inicie el scheduler
+            try:
+                import socket
+                _scheduler_lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                _scheduler_lock_socket.bind(('127.0.0.1', 47832))
+                self._lock_socket = _scheduler_lock_socket
+            except (socket.error, OSError):
+                logger.info("[ASISTENTE IA] Scheduler ya activo en otro worker de Gunicorn. Omitiendo instancia duplicada.")
+                return
+
             try:
                 from apscheduler.schedulers.background import BackgroundScheduler
                 from django_apscheduler.jobstores import DjangoJobStore
@@ -157,8 +188,9 @@ class AsistenteConfig(AppConfig):
                 )
                 scheduler.add_job(
                     run_notificar_clases_una_alumna_job,
-                    trigger="interval",
-                    hours=3,
+                    trigger="cron",
+                    hour=9,
+                    minute=15,
                     id="asistente_notificar_clases_una_alumna_job",
                     replace_existing=True
                 )
@@ -169,7 +201,31 @@ class AsistenteConfig(AppConfig):
                     id="asistente_solicitar_asistencia_profesores_job",
                     replace_existing=True
                 )
+                scheduler.add_job(
+                    run_alertar_vencimiento_abonos_job,
+                    trigger="cron",
+                    hour=10,
+                    minute=30,
+                    id="asistente_alertar_vencimiento_abonos_job",
+                    replace_existing=True
+                )
+                scheduler.add_job(
+                    run_feedback_primera_clase_job,
+                    trigger="cron",
+                    hour=20,
+                    minute=30,
+                    id="asistente_feedback_primera_clase_job",
+                    replace_existing=True
+                )
+                scheduler.add_job(
+                    run_resumen_diario_duena_job,
+                    trigger="cron",
+                    hour=21,
+                    minute=5,
+                    id="asistente_resumen_diario_duena_job",
+                    replace_existing=True
+                )
                 scheduler.start()
-                logger.info("[ASISTENTE IA] Scheduler proactivo iniciado: ocupación (30m), recordatorios (15m), cancelación bajo cupo (60m), agenda profes (21hs).")
+                logger.info("[ASISTENTE IA] Scheduler proactivo iniciado: ocupación (30m), recordatorios (15m), cancelación bajo cupo (60m), agenda profes (21hs), vencimientos (10:30hs), feedback (20:30hs), resumen dueña (21:05hs).")
             except Exception as e:
                 logger.warning(f"[ASISTENTE IA] Scheduler proactivo no iniciado: {e}")

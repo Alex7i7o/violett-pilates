@@ -66,6 +66,7 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
 
     
     reservas_creadas = 0
+    reservas_creadas_objs = []
     for ft in future_turnos_list:
         if suscripcion.clases_restantes <= 0:
             break
@@ -78,7 +79,7 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
             existing_reserva.estado = 'CONFIRMADA'
             existing_reserva.save()
             ReservaMembresia.objects.get_or_create(reserva=existing_reserva, defaults={'suscripcion': suscripcion})
-            registry.execute('reserva_creada', existing_reserva)
+            reservas_creadas_objs.append(existing_reserva)
         else:
             r = Reserva.objects.create(
                 turno=ft,
@@ -87,7 +88,7 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
                 estado='CONFIRMADA'
             )
             ReservaMembresia.objects.create(reserva=r, suscripcion=suscripcion)
-            registry.execute('reserva_creada', r)
+            reservas_creadas_objs.append(r)
         
         ft.cupo_actual -= 1
         ft.save()
@@ -102,6 +103,13 @@ def on_book_turno_recurrente(data, request=None, user=None, turno=None, suscripc
     if reservas_creadas == 0:
         return {'success': False, 'detail': 'No se pudieron agendar turnos recurrentes (falta de cupo o plan agotado).'}
         
+    try:
+        from plugins.comunicaciones.backend.whatsapp_service import notificar_recurrencias_autoagendadas_alumna
+        notificar_recurrencias_autoagendadas_alumna(user, suscripcion, reservas_creadas_objs)
+    except Exception as e_wpp:
+        import logging
+        logging.getLogger(__name__).warning(f"Error enviando notificacion consolidada de recurrencias: {e_wpp}")
+
     return {'success': True, 'detail': 'Reserva fija confirmada exitosamente.'}
 
 registry.register('profile_data', on_profile_data)
@@ -154,6 +162,16 @@ def handle_plantilla_alumnos(data, instance=None, old_dia=None, old_hora=None, o
                 if not created and not rec.is_active:
                     rec.is_active = True
                     rec.save()
+
+                try:
+                    from plugins.membresias.backend.models import Suscripcion
+                    sub = Suscripcion.objects.filter(usuario=usuario, estado='ACTIVO', clases_restantes__gt=0).order_by('-fecha_inicio').first()
+                    if sub:
+                        from .services import auto_agendar_recurrencias_usuario
+                        auto_agendar_recurrencias_usuario(usuario, sub)
+                except Exception as e_sub:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Error auto-agendando en handle_plantilla_alumnos: {e_sub}")
                     
         # To remove
         for rec in current_recs:

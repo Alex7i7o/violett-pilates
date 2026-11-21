@@ -15,13 +15,14 @@ from ..agents import (
     TURNOS_TOOLS,
     FINANZAS_TOOLS,
     PROFESORES_TOOLS,
-    DIRECCION_TOOLS
+    DIRECCION_TOOLS,
+    RECEPCIONISTA_TOOLS
 )
 
 logger = logging.getLogger(__name__)
 
 # Consolidación total de tools para el nodo ejecutor
-ALL_ACTIVE_TOOLS = list({t.name: t for t in (TURNOS_TOOLS + FINANZAS_TOOLS + PROFESORES_TOOLS + DIRECCION_TOOLS)}.values())
+ALL_ACTIVE_TOOLS = list({t.name: t for t in (TURNOS_TOOLS + FINANZAS_TOOLS + PROFESORES_TOOLS + DIRECCION_TOOLS + RECEPCIONISTA_TOOLS)}.values())
 
 def build_asistente_graph():
     """
@@ -85,15 +86,23 @@ def build_asistente_graph():
         if not isinstance(mensajes_tools, list):
             mensajes_tools = [mensajes_tools]
 
-        ultimo_tool_msg = mensajes_tools[-1] if mensajes_tools else None
-        texto_tool = getattr(ultimo_tool_msg, 'content', '') if ultimo_tool_msg else ''
+        rol_user = state.get("rol", "")
+        target_agent = state.get("target_agent", "")
 
-        # Criterio Return-Direct: respuesta prolija para WhatsApp (>20 chars y sin errores de sistema)
+        # Criterio Return-Direct:
+        # NUNCA activar Return-Direct si:
+        # 1. El usuario es la Dueña ('DUENA') o el agente es 'agente_direccion':
+        #    Deby requiere soporte multitarea, razonamiento en cadena (iteración) y consolidación ejecutiva.
+        # 2. Se ejecutaron múltiples tools (len(mensajes_tools) > 1):
+        #    El LLM debe sintetizar y reportar el estado de cada tool/alumna ejecutada, nunca descartar las anteriores.
         es_respuesta_directa = False
-        if isinstance(texto_tool, str) and len(texto_tool.strip()) >= 20:
-            no_es_error_interno = not any(err_k in texto_tool.lower() for err_k in ['traceback', 'exception:', 'internal server error'])
-            if no_es_error_interno:
-                es_respuesta_directa = True
+        if target_agent != 'agente_direccion' and rol_user != 'DUENA' and len(mensajes_tools) == 1:
+            ultimo_tool_msg = mensajes_tools[-1] if mensajes_tools else None
+            texto_tool = getattr(ultimo_tool_msg, 'content', '') if ultimo_tool_msg else ''
+            if isinstance(texto_tool, str) and len(texto_tool.strip()) >= 20:
+                no_es_error_interno = not any(err_k in texto_tool.lower() for err_k in ['traceback', 'exception:', 'internal server error'])
+                if no_es_error_interno:
+                    es_respuesta_directa = True
 
         mensajes_salida = list(mensajes_tools)
         if es_respuesta_directa:
@@ -132,11 +141,8 @@ def build_asistente_graph():
             return "tools"
         return END
 
-    # Recepcionista no tiene tools: finaliza directo
-    workflow.add_edge("agente_recepcionista", END)
-
-    # Agentes con tools
-    for agent_node_name in ["agente_turnos", "agente_finanzas", "agente_profesores", "agente_direccion"]:
+    # Todos los agentes cuentan con tools o derivación
+    for agent_node_name in ["agente_recepcionista", "agente_turnos", "agente_finanzas", "agente_profesores", "agente_direccion"]:
         workflow.add_conditional_edges(
             agent_node_name,
             should_continue,

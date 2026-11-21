@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from django.db import models
 from django.utils import timezone
 from plugins.estetica_servicios.backend.models import ServicioEstetica
@@ -39,6 +39,7 @@ class ReservaEstetica(models.Model):
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
     estado = models.CharField(max_length=20, choices=ESTADOS, default='CONFIRMADA')
+    google_event_id = models.CharField(max_length=255, blank=True, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:

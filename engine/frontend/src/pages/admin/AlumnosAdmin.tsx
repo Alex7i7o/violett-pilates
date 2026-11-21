@@ -39,11 +39,25 @@ export function AlumnosAdmin() {
   const [alumnoToDelete, setAlumnoToDelete] = useState<string | null>(null);
   
   const [planes, setPlanes] = useState<any[]>([]);
+  const [billeterasEstetica, setBilleterasEstetica] = useState<any[]>([]);
   
   useEffect(() => {
     fetchAlumnos();
-    fetchPlanes();
+    if (isEstetica) {
+      fetchBilleteras();
+    } else {
+      fetchPlanes();
+    }
   }, []);
+
+  const fetchBilleteras = async () => {
+    try {
+      const res = await api.get('/billeteras/');
+      setBilleterasEstetica(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchPlanes = async () => {
     try {
@@ -205,6 +219,31 @@ export function AlumnosAdmin() {
                       
                       <div className="mt-5">
                         {(() => {
+                          if (isEstetica) {
+                            const userBilleteras = billeterasEstetica.filter(
+                              (b: any) => String(b.usuario) === String(alumno.id) && b.estado === 'ACTIVO' && b.sesiones_restantes > 0
+                            );
+                            const totalSesiones = userBilleteras.reduce((acc: number, b: any) => acc + Number(b.sesiones_restantes || 0), 0);
+                            if (totalSesiones > 0) {
+                              return (
+                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                                  <p className="text-sm font-bold text-emerald-800">
+                                    {totalSesiones} {totalSesiones === 1 ? 'sesión disponible' : 'sesiones disponibles'}
+                                  </p>
+                                  <p className="text-xs text-emerald-700 mt-1">
+                                    {userBilleteras.map((b: any) => `${b.servicio_detalle?.nombre || 'Servicio'} (${b.sesiones_restantes})`).join(' • ')}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+                                <p className="text-sm font-bold text-neutral-600">Sin sesiones activas</p>
+                                <p className="text-xs text-neutral-400 mt-0.5">Podés acreditarle sesiones desde su ficha</p>
+                              </div>
+                            );
+                          }
+
                           const plan = alumno.plan_activo;
                           const estado = plan?.estado || 'Sin plan';
                           
@@ -307,6 +346,7 @@ export function AlumnosAdmin() {
         tabGroup={modalTabGroup}
         onUpdate={(shouldClose: boolean = false) => {
           fetchAlumnos();
+          if (isEstetica) fetchBilleteras();
           if (shouldClose) {
             setSelectedAlumno(null);
           } else if (selectedAlumno) {

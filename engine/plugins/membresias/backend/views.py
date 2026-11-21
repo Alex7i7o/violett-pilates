@@ -29,6 +29,19 @@ class SuscripcionViewSet(viewsets.ModelViewSet):
     serializer_class = SuscripcionSerializer
     permission_classes = [IsAdminUser]
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        if instance.estado in ['ACTIVO', 'AGOTADO'] and instance.clases_restantes > 0:
+            if instance.estado == 'AGOTADO':
+                instance.estado = 'ACTIVO'
+                instance.save(update_fields=['estado'])
+            try:
+                from plugins.recurrencias.backend.services import auto_agendar_recurrencias_usuario
+                auto_agendar_recurrencias_usuario(instance.usuario, instance)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Error auto-agendando en SuscripcionViewSet.perform_update: {e}")
+
 class AsignarPlanView(APIView):
     permission_classes = [IsAdminUser]
 

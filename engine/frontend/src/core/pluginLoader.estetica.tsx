@@ -1,21 +1,19 @@
 /* Developed by FireSeed - Fueling Innovation */
 /**
  * Plugin Loader — ESTETICA BUILD
- * Only loads plugins that belong to the Estetica instance.
- * Pilates-specific plugins are physically excluded from this bundle.
+ * Only loads plugins that belong to the Estética instance.
+ * Pilates-specific plugins (profesores, resenas, membresias, recurrencias) are physically excluded from this bundle.
  */
 import React from 'react';
 
 const modules = import.meta.glob([
-  '@plugins/estetica_agenda/frontend/routes.tsx',
-  '@plugins/estetica_paquetes/frontend/routes.tsx',
-  '@plugins/estetica_servicios/frontend/routes.tsx',
-  '@plugins/resenas/frontend/routes.tsx',
   '@plugins/auth/frontend/routes.tsx',
-  '@plugins/membresias/frontend/routes.tsx',
   '@plugins/pagos/frontend/routes.tsx',
-  '@plugins/recurrencias/frontend/routes.tsx',
   '@plugins/webpush/frontend/routes.tsx',
+  '@plugins/analitica/frontend/routes.tsx',
+  '@plugins/estetica_servicios/frontend/routes.tsx',
+  '@plugins/estetica_paquetes/frontend/routes.tsx',
+  '@plugins/estetica_agenda/frontend/routes.tsx',
 ], { eager: true });
 
 export interface PluginRoute {
@@ -26,6 +24,7 @@ export interface PluginRoute {
 export interface PluginSidebarItem {
   name: string;
   path: string;
+  icon?: any;
 }
 
 const getPluginNameFromPath = (path: string): string => {
@@ -70,7 +69,6 @@ export const getPluginPublicRoutes = (activePlugins: string[]): PluginRoute[] =>
   for (const path in modules) {
     const pluginName = getPluginNameFromPath(path);
     if (!activePlugins.includes(pluginName) && pluginName !== 'auth') continue;
-    
     const mod = modules[path] as any;
     if (mod && mod.publicRoutes) {
       routes.push(...mod.publicRoutes);

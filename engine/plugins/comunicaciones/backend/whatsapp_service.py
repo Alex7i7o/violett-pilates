@@ -533,3 +533,209 @@ def notificar_duena_reprogramacion(usuario, turno_nuevo, turno_anterior=None):
             _registrar_log_saliente(t_dest, None, msg_duena, "notificacion_duena")
         except Exception:
             pass
+
+def notificar_cancelacion_tardia_alumna(usuario, turno):
+    client = WhatsAppClient()
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno.fecha.weekday()]
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    clase_nombre = turno.clase.nombre if turno.clase else "Pilates Reformer"
+
+    texto = (
+        f"¡Hola {nombre}! ✦ Confirmamos desde Violett Pilates que cancelaste tu lugar en la clase de "
+        f"*{clase_nombre}* del *{dia_nombre} {fecha_str} a las {hora_str} hs*.\n\n"
+        f"Al realizarse con menos de 24 hs de anticipación, de acuerdo a las políticas del estudio el crédito no pudo ser reintegrado. "
+        f"Tu camilla ya quedó liberada. ¡Te esperamos en tu próxima práctica! 🌸"
+    )
+    enviado = client.send_text_message(phone, texto)
+    if not enviado:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": usuario.nombre},
+                {"type": "text", "text": f"{clase_nombre} el {turno.fecha}"}
+            ]
+        }]
+        client._send_template(phone, "reserva_cancelada_usuario", components)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_cancelacion_tardia")
+    try:
+        notificar_duena_cancelacion(usuario, turno, motivo="Cancelación tardía (<24hs) - Camilla liberada")
+    except Exception as ex_d:
+        logger.warning(f"Error notificando cancelacion tardia a la dueña: {ex_d}")
+
+def notificar_plan_asignado_alumna(usuario, plan, suscripcion):
+    client = WhatsAppClient()
+    if not usuario:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    plan_nom = plan.nombre if hasattr(plan, 'nombre') else "Plan Pilates"
+    venc_str = suscripcion.fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(suscripcion, 'fecha_vencimiento') and suscripcion.fecha_vencimiento else "30 días"
+    clases_txt = f"{suscripcion.clases_restantes} clases" if hasattr(suscripcion, 'clases_restantes') else ""
+
+    texto = (
+        f"¡Hola {nombre}! ✦ ¡Bienvenida a un nuevo ciclo en Violett Pilates! ✨\n\n"
+        f"Confirmamos que ya tenés activo tu plan *{plan_nom}*:\n"
+        f"• *Créditos disponibles:* {clases_txt}\n"
+        f"• *Válido hasta el:* {venc_str}\n\n"
+        f"Podés ingresar a la app para reservar tus días y horarios preferidos. ¡Que disfrutes mucho de cada sesión! 🌸"
+    )
+    enviado = client.send_text_message(phone, texto)
+    if not enviado:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": nombre},
+                {"type": "text", "text": plan_nom},
+                {"type": "text", "text": venc_str}
+            ]
+        }]
+        client._send_template(phone, "bienvenida_plan", components)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_plan_asignado")
+    try:
+        notificar_duena_plan_asignado(usuario, plan, suscripcion)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando plan asignado a la dueña: {ex_d}")
+
+def notificar_duena_plan_asignado(usuario, plan, suscripcion):
+    tel_duena = obtener_telefono_duena()
+    if not tel_duena:
+        return
+    tel_user = getattr(usuario, 'telefono', '') if usuario else ''
+    if tel_user and str(tel_user).replace('+', '').replace('-', '').replace(' ', '') == tel_duena:
+        return
+
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Una alumna"
+    plan_nom = plan.nombre if hasattr(plan, 'nombre') else "Plan"
+    venc_str = suscripcion.fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(suscripcion, 'fecha_vencimiento') and suscripcion.fecha_vencimiento else "-"
+    clases_cant = getattr(suscripcion, 'clases_restantes', 0)
+
+    msg_duena = (
+        f"✦ *Aviso Dirección - Alta / Renovación de Plan* ✦\n\n"
+        f"• *Alumna:* {nombre_alumna}\n"
+        f"• *Plan:* {plan_nom} ({clases_cant} clases)\n"
+        f"• *Vence:* {venc_str}"
+    )
+
+    client = WhatsAppClient()
+    for t_dest in obtener_telefonos_staff_alertas():
+        if tel_user and (t_dest == str(tel_user).replace('+', '').replace('-', '').replace(' ', '') or t_dest.endswith(str(tel_user)[-8:])):
+            continue
+        try:
+            client.send_text_message(t_dest, msg_duena)
+            _registrar_log_saliente(t_dest, None, msg_duena, "notificacion_duena")
+        except Exception:
+            pass
+
+def notificar_recurrencias_autoagendadas_alumna(usuario, suscripcion, reservas):
+    client = WhatsAppClient()
+    if not usuario or not reservas:
+        return
+    phone = getattr(usuario, 'telefono', None)
+    if not phone:
+        return
+
+    nombre = usuario.nombre.split()[0] if usuario.nombre else "Alumna"
+    plan_nom = suscripcion.plan.nombre if hasattr(suscripcion, 'plan') and hasattr(suscripcion.plan, 'nombre') else "tu abono"
+    cant = len(reservas)
+
+    # Agrupar días y horarios únicos
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    slots_resumen = []
+    seen = set()
+    for r in reservas:
+        t = r.turno
+        slot_key = (t.fecha.weekday(), t.hora_inicio)
+        if slot_key not in seen:
+            seen.add(slot_key)
+            dia_nom = dias_semana[t.fecha.weekday()]
+            slots_resumen.append(f"• Todos los {dia_nom}s a las {t.hora_inicio.strftime('%H:%M')} hs")
+
+    slots_txt = "\n".join(slots_resumen)
+    venc_str = suscripcion.fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(suscripcion, 'fecha_vencimiento') and suscripcion.fecha_vencimiento else ""
+
+    texto = (
+        f"¡Hola {nombre}! ✦ Tu abono *{plan_nom}* está activo ✨.\n\n"
+        f"Ya dejamos agendadas automáticamente tus *{cant} clases* en tus horarios fijos habituales hasta el {venc_str}:\n"
+        f"{slots_txt}\n\n"
+        f"Podés ver todas tus fechas confirmadas desde la app. ¡Que disfrutes tu práctica! 🌸"
+    )
+    client.send_text_message(phone, texto)
+    _registrar_log_saliente(phone, usuario, texto, "notificacion_recurrencias_alumna")
+    try:
+        notificar_duena_recurrencias_agendadas(usuario, suscripcion, reservas)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando recurrencias a la dueña: {ex_d}")
+
+def notificar_duena_recurrencias_agendadas(usuario, suscripcion, reservas):
+    tel_duena = obtener_telefono_duena()
+    if not tel_duena:
+        return
+    tel_user = getattr(usuario, 'telefono', '') if usuario else ''
+    if tel_user and str(tel_user).replace('+', '').replace('-', '').replace(' ', '') == tel_duena:
+        return
+
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else "Una alumna"
+    plan_nom = suscripcion.plan.nombre if hasattr(suscripcion, 'plan') and hasattr(suscripcion.plan, 'nombre') else "Abono"
+    cant = len(reservas)
+    venc_str = suscripcion.fecha_vencimiento.strftime('%d/%m/%Y') if hasattr(suscripcion, 'fecha_vencimiento') and suscripcion.fecha_vencimiento else "-"
+
+    msg_duena = (
+        f"✦ *Aviso Dirección - Turnos Fijos Auto-Agendados* ✦\n\n"
+        f"• *Alumna:* {nombre_alumna}\n"
+        f"• *Plan:* {plan_nom} (Vence: {venc_str})\n"
+        f"• *Clases reservadas:* Se agendaron {cant} turnos fijos automáticamente."
+    )
+
+    client = WhatsAppClient()
+    for t_dest in obtener_telefonos_staff_alertas():
+        if tel_user and (t_dest == str(tel_user).replace('+', '').replace('-', '').replace(' ', '') or t_dest.endswith(str(tel_user)[-8:])):
+            continue
+        try:
+            client.send_text_message(t_dest, msg_duena)
+            _registrar_log_saliente(t_dest, None, msg_duena, "notificacion_duena")
+        except Exception:
+            pass
+
+def notificar_profesor_cambio_clase(profesor, turno, motivo="", accion="cancelada"):
+    client = WhatsAppClient()
+    if not profesor:
+        return
+    phone = getattr(profesor, 'telefono', None)
+    if not phone:
+        return
+
+    nombre_prof = profesor.nombre.split()[0] if profesor.nombre else "Profe"
+    dias_semana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nombre = dias_semana[turno.fecha.weekday()]
+    fecha_str = turno.fecha.strftime('%d/%m')
+    hora_str = turno.hora_inicio.strftime('%H:%M')
+    clase_nombre = turno.clase.nombre if turno.clase else "Pilates Reformer"
+    motivo_str = f" ({motivo})" if motivo else ""
+
+    if accion == "cancelada":
+        texto = (
+            f"¡Hola {nombre_prof}! ✦ Te avisamos desde Violett Pilates que la clase de "
+            f"*{clase_nombre}* del *{dia_nombre} {fecha_str} a las {hora_str} hs* fue cancelada{motivo_str}. "
+            f"No es necesario que asistas en ese horario. ¡Que tengas un excelente día! 🌿"
+        )
+    else:
+        texto = (
+            f"¡Hola {nombre_prof}! ✦ Te avisamos desde Violett Pilates de una modificación en tu clase de "
+            f"*{clase_nombre}* del *{dia_nombre} {fecha_str} a las {hora_str} hs*{motivo_str}. "
+            f"Por favor revisá tu panel de profesor para ver los detalles actualizados ✦."
+        )
+
+    client.send_text_message(phone, texto)
+    _registrar_log_saliente(phone, profesor, texto, "notificacion_profe_cambio_clase")

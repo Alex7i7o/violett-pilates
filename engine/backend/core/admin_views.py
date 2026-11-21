@@ -64,22 +64,52 @@ class AdminTurnoViewSet(viewsets.ModelViewSet):
                 estado__in=['CONFIRMADA', 'PENDIENTE']
             ).select_related('usuario'))
             
-            from backend_core.hooks import registry
             for res in reservas_activas:
                 res.estado = 'CANCELADA_TIEMPO'
                 res.save()
+                # Reintegrar crédito a la alumna
                 try:
-                    registry.execute('reserva_cancelada_a_tiempo', res)
-                except Exception as ex:
+                    from plugins.membresias.backend.models import ReservaMembresia, Suscripcion
+                    rm = ReservaMembresia.objects.filter(reserva=res).first()
+                    sub = None
+                    if rm:
+                        sub = rm.suscripcion
+                        rm.delete()
+                    elif getattr(res, 'usuario', None):
+                        sub = Suscripcion.objects.filter(usuario=res.usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+                    if sub:
+                        sub.clases_restantes += 1
+                        if sub.estado == 'AGOTADO':
+                            sub.estado = 'ACTIVO'
+                        sub.save(update_fields=['clases_restantes', 'estado'])
+                except Exception as ex_ref:
                     import logging
-                    logging.getLogger(__name__).warning(f'Error hook reserva_cancelada_a_tiempo en cancelacion puntual: {ex}')
+                    logging.getLogger(__name__).warning(f'Error reintegrando credito en cancelacion puntual: {ex_ref}')
             
             instance.save()
             
+            # Notificar formalmente que la clase fue cancelada por la administración
+            from backend_core.hooks import registry
             try:
                 registry.execute('turno_cancelado_por_falta_cupo', instance)
             except Exception:
                 pass
+
+            # Notificar al profesor/a asignado de la cancelación
+            try:
+                profesor = getattr(instance, 'profesor', None)
+                if not profesor:
+                    try:
+                        from plugins.asistente.backend.tools.profesores_tools import obtener_profesor_de_turno
+                        profesor = obtener_profesor_de_turno(instance)
+                    except Exception:
+                        pass
+                if profesor:
+                    from plugins.comunicaciones.backend.whatsapp_service import notificar_profesor_cambio_clase
+                    notificar_profesor_cambio_clase(profesor, instance, motivo="Cancelada por administración", accion="cancelada")
+            except Exception as ex_prof:
+                import logging
+                logging.getLogger(__name__).warning(f'Error notificando al profesor de cancelacion: {ex_prof}')
                 
         return Response(status=204)
 

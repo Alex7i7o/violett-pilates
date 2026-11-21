@@ -56,7 +56,10 @@ export function Header() {
                 </a>
               );
             })}
-            <a href="#contacto" className="ml-4 px-5 py-2.5 rounded-xl bg-primary-main text-white text-sm font-bold hover:bg-primary-hover shadow-sm transition-transform active:scale-95">
+            <a href="/estetica/app/login" className="ml-2 px-4 py-2 rounded-xl border border-primary-main text-primary-main text-sm font-bold hover:bg-primary-main/10 transition-colors">
+              Ingresar al Portal
+            </a>
+            <a href="#contacto" className="ml-2 px-5 py-2.5 rounded-xl bg-primary-main text-white text-sm font-bold hover:bg-primary-hover shadow-sm transition-transform active:scale-95">
               Reservar Turno
             </a>
           </nav>
@@ -97,7 +100,10 @@ export function Header() {
                 </a>
               ))}
             </div>
-            <div className="p-6 pb-safe border-t border-primary-light bg-background">
+            <div className="p-6 pb-safe border-t border-primary-light bg-background space-y-3">
+              <a href="/estetica/app/login" onClick={() => setMobileMenu(false)} className="w-full py-3.5 rounded-xl flex items-center justify-center border border-primary-main text-primary-main font-bold text-base">
+                Ingresar al Portal
+              </a>
               <a href="#contacto" onClick={() => setMobileMenu(false)} className="w-full py-4 rounded-xl flex items-center justify-center bg-primary-main text-white font-bold text-lg shadow-sm">
                 Reservar Turno
               </a>

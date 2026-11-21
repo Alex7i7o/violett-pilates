@@ -116,6 +116,28 @@ def on_reserva_cancelada_a_tiempo(data, **kwargs):
 
 registry.register('reserva_cancelada_a_tiempo', on_reserva_cancelada_a_tiempo)
 
+def on_turno_cancelado_reintegrar_creditos(data, **kwargs):
+    turno = data
+    if turno:
+        from core.models import Reserva
+        from .models import ReservaMembresia, Suscripcion
+        for r in Reserva.objects.filter(turno=turno):
+            rm = ReservaMembresia.objects.filter(reserva=r).first()
+            sub = None
+            if rm:
+                sub = rm.suscripcion
+                rm.delete()
+            elif getattr(r, 'usuario', None):
+                sub = Suscripcion.objects.filter(usuario=r.usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+            if sub:
+                sub.clases_restantes += 1
+                if sub.estado == 'AGOTADO':
+                    sub.estado = 'ACTIVO'
+                sub.save(update_fields=['clases_restantes', 'estado'])
+    return data
+
+registry.register('turno_cancelado_por_falta_cupo', on_turno_cancelado_reintegrar_creditos)
+
 def on_pago_confirmado(data, usuario=None, plan=None, payment_id=None, **kwargs):
     if usuario and plan:
         # Desactivar otras suscripciones

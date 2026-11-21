@@ -51,9 +51,10 @@ from ..tools.gestion_tools import (
     reprogramar_o_mover_reserva_alumna_duena,
     mover_o_reprogramar_clase_completa_duena,
     cancelar_o_eliminar_clase_agenda_duena,
-    responder_propuesta_cancelacion_duena
+    responder_propuesta_cancelacion_duena,
+    reactivar_ia_conversacion_duena
 )
-from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
+from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str, extraer_texto
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,8 @@ TOOLS_ALUMNAS_PLANES = [
     vincular_alumnas_inseparables,
     guardar_preferencia_alumna,
     consultar_preferencias_o_vinculos,
-    enviar_mensaje_whatsapp_alumna_duena
+    enviar_mensaje_whatsapp_alumna_duena,
+    reactivar_ia_conversacion_duena
 ]
 
 TOOLS_FINANZAS = [
@@ -132,34 +134,83 @@ DIRECCION_TOOLS = list({t.name: t for t in (
 def seleccionar_herramientas_direccion(mensaje: str) -> list:
     """
     Sub-Routing dinámico de herramientas (Dynamic Tool Sub-Routing) para la Dueña.
-    En lugar de serializar las 42 herramientas en cada llamada (~8.500 tokens fijos),
-    analiza el mensaje y adjunta únicamente las 5 a 12 herramientas pertinentes.
-    Reduce más del 85% el payload de tokens de entrada por turno.
+    Analiza el mensaje e intenciones del turno y adjunta el conjunto de herramientas pertinentes.
+    Permite combinar intenciones mixtas (ej: agendar alumna + reasignar profesora o borrar clase fija).
     """
     msg = (mensaje or "").lower().strip()
+    tools_dict = {}
+
+    def _add_tools(tool_list):
+        for t in tool_list:
+            if hasattr(t, 'name'):
+                tools_dict[t.name] = t
 
     # 1. Reportes y Facturación
     if any(k in msg for k in ['factur', 'ingreso', 'recaudaci', 'balance', 'plata', 'dinero', 'ocupaci', 'cuanto se factur', 'cuánto se factur', 'ganancia', 'métric', 'metric', 'prospecto']):
-        return list({t.name: t for t in (TOOLS_REPORTES + [consultar_agenda_completa_dia])}.values())
+        _add_tools(TOOLS_REPORTES)
+        _add_tools([consultar_agenda_completa_dia])
 
-    # 2. Profesores y Esquema Semanal
-    if any(k in msg for k in ['profe', 'profesor', 'reemplazo', 'cubrir', 'ausencia', 'esquema', 'fijo todos los', 'fija todos los', 'grilla fija']):
-        return list({t.name: t for t in (TOOLS_PROFESORES_ESQUEMA + [consultar_agenda_completa_dia])}.values())
+    # 2. Profesores y Reemplazos
+    if any(k in msg for k in ['profe', 'profesor', 'profesora', 'reemplazo', 'cubrir', 'ausencia']):
+        _add_tools([
+            reasignar_profesora_directo,
+            reasignar_todas_las_clases_profesor_duena,
+            buscar_reemplazo_orden_duena,
+            registrar_asistencia_clase_profesor,
+            consultar_clases_sin_asistencia_hoy,
+            consultar_agenda_completa_dia
+        ])
 
-    # 3. Comprobantes y Pagos bancarios
+    # 3. Esquema Semanal / Grilla Fija / Eliminar o agregar para siempre
+    if any(k in msg for k in ['esquema', 'grilla', 'para siempre', 'fijo', 'fija', 'plantilla']) or (
+        any(k in msg for k in ['borrar', 'elimin', 'sacar', 'quitar', 'baja']) and any(d in msg for d in ['lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes', 'sábado', 'sabado', 'domingo', 'semana'])
+    ):
+        _add_tools(TOOLS_PROFESORES_ESQUEMA)
+        _add_tools([
+            dar_baja_horario_esquema_semanal_duena,
+            agregar_horario_esquema_semanal_duena,
+            consultar_esquema_semanal_completo_duena,
+            cancelar_o_eliminar_clase_agenda_duena,
+            mover_o_reprogramar_clase_completa_duena
+        ])
+
+    # 4. Agenda, turnos y clases (crear, mover, cancelar, camillas, agendar)
+    if any(k in msg for k in ['agenda', 'turno', 'clase', 'camilla', 'anot', 'inscrib', 'agend', 'sacá', 'saca', 'bajá', 'baja', 'abrir', 'crear', 'mové', 'move', 'traslad', 'feriado', 'reprogram', 'apartar', 'bloquear', 'cancelar', 'mantener']):
+        _add_tools(TOOLS_AGENDA)
+        _add_tools([
+            consultar_alumna_detalle,
+            reasignar_profesora_directo,
+            renovar_o_asignar_plan_alumna,
+            dar_baja_horario_esquema_semanal_duena
+        ])
+
+    # 5. Alumnas, planes, fichas, asistencias, créditos y reactivación IA
+    if any(k in msg for k in ['alumn', 'plan', 'abono', 'ficha', 'asist', 'vino', 'falt', 'credit', 'crédit', 'sumale', 'cargale', 'agregale', 'mensaje', 'whatsapp', 'inseparable', 'preferenc', 'renov', 'activar', 'pagar', 'pagaron', 'reactiv', 'habilitar', 'bot', 'pausa', 'humano']):
+        _add_tools(TOOLS_ALUMNAS_PLANES)
+        _add_tools([
+            consultar_agenda_completa_dia,
+            agendar_alumna_en_turno_duena,
+            renovar_o_asignar_plan_alumna,
+            ajustar_creditos_alumna_duena
+        ])
+
+    # 6. Comprobantes y Pagos
     if any(k in msg for k in ['comprobante', 'transfer', 'aprobar', 'aprobá', 'rechazar', 'rechazá', 'acreditar', 'acreditá', 'reseña', 'resena', 'opinion']):
-        return list({t.name: t for t in (TOOLS_FINANZAS + [renovar_o_asignar_plan_alumna, consultar_alumna_detalle])}.values())
+        _add_tools(TOOLS_FINANZAS)
+        _add_tools([renovar_o_asignar_plan_alumna, consultar_alumna_detalle])
 
-    # 4. Agenda, turnos y clases (crear, mover, cancelar, camillas)
-    if any(k in msg for k in ['agenda', 'turno', 'clase', 'camilla', 'anot', 'inscrib', 'sacá', 'saca', 'bajá', 'baja', 'abrir', 'crear', 'mové', 'move', 'traslad', 'feriado', 'reprogram', 'apartar', 'bloquear']):
-        return list({t.name: t for t in (TOOLS_AGENDA + [consultar_alumna_detalle])}.values())
+    # Si no hubo coincidencia (ej: respuestas breves de confirmación "1 y 2", "a las 18hs", "dale", "sí", números):
+    if not tools_dict:
+        _add_tools(TOOLS_CORE_RAPIDAS)
+        _add_tools([
+            responder_propuesta_cancelacion_duena,
+            cancelar_o_eliminar_clase_agenda_duena,
+            dar_baja_horario_esquema_semanal_duena,
+            reasignar_profesora_directo,
+            renovar_o_asignar_plan_alumna
+        ])
 
-    # 5. Alumnas, planes, fichas, asistencias y créditos
-    if any(k in msg for k in ['alumn', 'plan', 'abono', 'ficha', 'asist', 'vino', 'falt', 'credit', 'crédit', 'sumale', 'cargale', 'agregale', 'mensaje', 'whatsapp', 'inseparable', 'preferenc', 'fij']):
-        return list({t.name: t for t in (TOOLS_ALUMNAS_PLANES + [consultar_agenda_completa_dia])}.values())
-
-    # Por defecto (mensajes generales, saludos o sin coincidencia clara): set core + facturación + esquema
-    return list({t.name: t for t in (TOOLS_CORE_RAPIDAS + [obtener_reporte_facturacion, consultar_esquema_semanal_completo_duena])}.values())
+    return list(tools_dict.values())
 
 SYSTEM_PROMPT_DIRECCION = """Sos el Agente Ejecutivo de Dirección y Gestión Operativa de Violett Pilates ✦.
 Estás hablando directamente con Deby (Débora Zárate), la dueña y directora del estudio.
@@ -171,15 +222,52 @@ REGLA DE ORO DE FIDELIDAD (ANTI-ALUCINACIÓN):
 - Si una alumna no figura en la base de datos, o una clase no existe, o no hay turnos, comunícaselo a Deby con exactitud. NUNCA inventes datos que no provengan del sistema.
 
 CONTINUIDAD DE CONTEXTO DE ALUMNAS (REGLA FUNDAMENTAL):
-- Prestá máxima atención al hilo de la conversación y a la última alumna consultada o gestionada.
-- Si recién estuviste consultando o mostrando la ficha/abono de una alumna (ej: consultaste la ficha de Alex Aguero) y a continuación Deby dice:
+- Prestá máxima atención al hilo de la conversación y a la última alumna o alumnas consultadas o gestionadas.
+- Si recién estuviste consultando, mostrando o anotando a una o más alumnas (ej: Karina Filiel y Norma Staino) y a continuación Deby dice:
   * "Agrégale a su plan 4 clases"
   * "Renovale su plan"
+  * "Y activarles nuevos planes de 8 clases" / "Renovales a las dos"
   * "Sumale 1 clase"
   * "Anotala el sábado a las 17hs"
   * "Sacala de la clase"
-  DEBÉS pasar como parámetro 'nombre_o_tel_alumna' el nombre de la alumna sobre la que acaban de hablar (ej: 'Alex Aguero').
-  NUNCA pases la frase completa del comando ("Agrégale a su plan 4 clases") ni pronombres ("su plan", "a su plan") como nombre de la persona. Pasá siempre el nombre limpio ('Alex Aguero').
+  DEBÉS invocar la herramienta correspondiente ('renovar_o_asignar_plan_alumna', 'ajustar_creditos_alumna_duena', 'agendar_alumna_en_turno_duena') para CADA una de las alumnas activas en el contexto (ej: una llamada para 'Karina Filiel' y otra para 'Norma Staino').
+  NUNCA pases la frase completa del comando ("Y activarles nuevos planes de 8 clases") ni pronombres ("su plan", "a su plan") como nombre de la persona. Pasá siempre el nombre limpio ('Karina Filiel', 'Norma Staino').
+
+COMANDOS COMPUESTOS, MULTITAREA Y SÍNTESIS CONSOLIDADA (REGLA DE ORO):
+- Si Deby pide anotar o gestionar a varias personas en un mismo mensaje (ej: "Anotar para sábado 21/11 a las 9am A Karina Filiel, Norma Staino, Martina Filiel"):
+  1. DEBÉS invocar la herramienta correspondiente para CADA UNA de las personas indicadas (llamada 1 para Karina, llamada 2 para Norma, llamada 3 para Martina).
+  2. NUNCA respondas con el resultado de una sola ni omitas a las demás. Al responderle a Deby, consolidá el estado de TODAS las alumnas solicitadas en un formato claro con viñetas:
+     ✦ ¡Listo Deby! Estado de las inscripciones para el Sábado 21/11 a las 09:00 hs:
+     • Karina Filiel: Anotada con éxito (quedan X camillas libres).
+     • Norma Staino: Su plan venció el 19/11 y no tiene créditos libres. ¿Querés renovarle el abono o anotarla igual?
+     • Martina Filiel: Ya tenía su camilla reservada en ese horario.
+- Si Deby pide varias cosas mixtas en un mismo mensaje (ej: anotar a dos personas y cambiar la profesora):
+  * "Para la clase del 19 del 11 a las 20 horas hay que agregar a Rubén y a Alejandra Rivarola. Y la profesora es Débora":
+    1. Llamá a 'agendar_alumna_en_turno_duena' para 'Rubén' el 19/11 a las 20:00 hs.
+    2. Llamá a 'agendar_alumna_en_turno_duena' para 'Alejandra Rivarola' el 19/11 a las 20:00 hs.
+    3. Llamá a 'reasignar_profesora_directo' para poner a 'Débora' en esa clase.
+
+RESOLUCIÓN EN CADENA E ITERACIÓN COMPLETA (NO DEJAR TAREAS A MEDIAS):
+- Si le avisaste a Deby que una alumna no tenía créditos para un turno puntual y Deby te responde:
+  * "Ya pagó, renovale el plan" / "Renovale el abono" / "Renovale a Norma":
+    1. Ejecutá 'renovar_o_asignar_plan_alumna'.
+    2. Como el objetivo de Deby era que la alumna esté en esa clase, verificá la respuesta de la renovación: si no quedó agendada automáticamente en ese turno por no tener esquema fijo, ejecutá 'agendar_alumna_en_turno_duena' para esa clase.
+    3. Respondé confirmando AMBAS cosas: que el plan fue renovado y que la alumna ya quedó agendada en la camilla correspondiente.
+  * "Agregale un crédito y ya fue" / "Sumale 1 clase y anotala" / "Es un recupero":
+    1. Ejecutá 'ajustar_creditos_alumna_duena'.
+    2. Ejecutá 'agendar_alumna_en_turno_duena' con forzar=True.
+    3. Confirmale a Deby ambas acciones con calidez.
+
+DISAMBIGUACIÓN OBLIGATORIA DÍA vs HORA:
+- Si Deby dice "el 19 del 11 a las 20 horas", "19/11 a las 20hs", "hoy 19 a las 18hs":
+  * El DÍA es 19/11 (fecha).
+  * La HORA de la clase es 20:00 hs (o 18:00 hs).
+  * NUNCA confundas el número del día (19) con la hora del turno.
+
+ELIMINAR O BORRAR CLASES FIJAS DEL ESQUEMA SEMANAL ("PARA SIEMPRE"):
+- Si Deby pide borrar, eliminar o dar de baja un horario fijo recurrente de la aplicación (ej: "¿Me podés cancelar para siempre la clase de los miércoles a las 20 horas? ¿Borrarla de la aplicación?", "Quiero eliminar la clase de los miércoles 20hs", "Sacá la clase de los viernes a las 18hs del esquema"):
+  -> Usá 'dar_baja_horario_esquema_semanal_duena(dia_semana_str="miercoles", hora_str="20:00")'.
+  Esto la eliminará de las plantillas y de los turnos futuros no tomados, confirmando a Deby de forma impecable.
 
 COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
 - Fecha de referencia hoy: {fecha_hoy}
@@ -201,7 +289,17 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si Deby pide agregar, anotar o inscribir a una alumna en una clase puntual existente (ej: "Agregá a Martina Filiel a la clase de las 18 hs", "Anotá a Marcela hoy a las 18 hs", "Inscribí a Alejandra Rivarola en el turno de mañana a las 15:30", "Agenda a Alex para el sábado 17hs", "Anotá a Carmen manual para mañana 18hs"):
      -> Usá 'agendar_alumna_en_turno_duena'.
      ¡ALUMNAS MANUALES / GENTE SIN APP!: Si la persona no tiene la app o Deby pide agendarla "de manera manual", "sin app" o "alumna manual", la herramienta la inscribe directamente en la camilla apartando el lugar con su nombre (sin trabarse ni requerir créditos).
-     ¡CONTROL DE CRÉDITOS Y MOTIVO OBLIGATORIO!: Si la alumna está registrada pero la herramienta te responde que no tiene créditos disponibles, transmitile a Deby el motivo exacto que te dio la herramienta (si el plan venció, si ya asistió a todas las clases del abono, o si no tiene créditos libres porque ya tiene todas sus clases agendadas para otros días, indicándole las fechas). Si Deby te confirma que la anotes igual ("anotala igual", "anotala de cortesía", "anotala de todas formas"), ejecutá 'agendar_alumna_en_turno_duena' con forzar=True.
+     ¡CONTROL DE CRÉDITOS, RECUPEROS Y CONFIRMACIÓN DE LA DUEÑA!:
+     - Si la alumna está registrada pero no tiene créditos disponibles, transmitile a Deby el motivo exacto que te dio la herramienta (plan vencido, ya asistió a todas las clases o créditos ya ocupados en otros turnos futuros).
+     - Si a continuación Deby responde con CUALQUIERA de estas intenciones:
+       a) Expresa que es un recupero, cambio de clase o que le corresponde ("cambió una clase", "tendría que recuperar", "le queda un crédito", "le queda una clase", "es un recupero"):
+          -> Ejecutá PRIMERO 'ajustar_creditos_alumna_duena(nombre_o_tel_alumna=..., cantidad_creditos=1, motivo="Recupero de clase autorizado por Deby")'
+          -> Y SEGUIDO ejecutá 'agendar_alumna_en_turno_duena(nombre_o_tel_alumna=..., fecha_o_dia=..., hora_str=..., forzar=True)' para inscribirla de inmediato en la clase que se estaba gestionando.
+       b) Pide sumarle el crédito y cerrar el tema ("agregale un crédito y ya fue", "sumale 1 clase y anotala", "ponele el crédito", "cargale una"):
+          -> Ejecutá 'ajustar_creditos_alumna_duena' y luego 'agendar_alumna_en_turno_duena(forzar=True)'.
+       c) Confirma forzar la inscripción ("anotale igual", "anotala igual", "metela igual", "anotala de cortesía", "anotala de todas formas", "anotala y ya fue", "ya fue anotala"):
+          -> Ejecutá directamente 'agendar_alumna_en_turno_duena(forzar=True)'.
+     - ¡PROHIBIDO REPETIR EL MENSAJE DE ADVERTENCIA! Si Deby ya respondió a tu aviso de falta de créditos dándote una indicación como "agregale un crédito y ya fue", "recupera clase", o "anotala igual", NUNCA le vuelvas a enviar la misma advertencia con las opciones 1, 2 y 3. Ejecutá las herramientas y confirmale la resolución.
    * Si Deby pide ABRIR o CREAR una clase que no existe en la grilla y opcionalmente anotar a una alumna (ej: "Podés agregar una clase el sábado a las 17hs y que esté anotado Alex?", "Creá una clase el sábado a las 17hs", "Abrí un turno el sábado a las 17hs y anotalo a Alex"):
      -> Usá 'crear_clase_y_agendar_alumna_duena'.
    * Si Deby pide poner fija a una persona en el Esquema Semanal (incluso si no tiene app o de forma manual):
@@ -296,6 +394,10 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
      -> Usá 'dar_baja_plan_alumna_duena'.
    * Si Deby consulta por las opiniones, calificaciones de estrellas o reseñas de las alumnas (ej: "¿Qué reseñas tenemos?", "Cómo vienen las opiniones de la web?", "Últimas reseñas"):
      -> Usá 'consultar_ultimas_resenas_duena'.
+
+14. REACTIVACIÓN DE RESPUESTAS AUTOMÁTICAS DE LA IA (TRAS ATENCIÓN HUMANA):
+   * Si Deby terminó de atender a una clienta o alumna por WhatsApp cuyo chat estaba en pausa de atención manual y pide volver a encender o habilitar la IA (ej: "Reactivá la IA para Karina", "Habilitá el bot para 11...", "Activá de nuevo la IA en el chat de Luz"):
+     -> Usá 'reactivar_ia_conversacion_duena(nombre_o_tel_contacto=...)'.
 
 {formato_rules}
 """

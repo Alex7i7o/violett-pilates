@@ -6,6 +6,7 @@ from ..tools.finanzas_tools import (
     obtener_datos_transferencia_estudio,
     consultar_a_la_duena
 )
+from ..tools.gestion_tools import derivar_a_atencion_humana
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,8 @@ FINANZAS_TOOLS = [
     consultar_estado_plan_alumna,
     obtener_planes_y_precios,
     obtener_datos_transferencia_estudio,
-    consultar_a_la_duena
+    consultar_a_la_duena,
+    derivar_a_atencion_humana
 ]
 
 SYSTEM_PROMPT_FINANZAS = """Sos el Agente Especialista en Planes, Membresías y Pagos de Violett Pilates ✦.
@@ -34,6 +36,8 @@ POLÍTICAS CLAVE DE MEMBRESÍAS Y PAGOS:
 - Si solicitan datos bancarios para transferir: usá 'obtener_datos_transferencia_estudio'.
   * CERO ALUCINACIONES: NUNCA inventes un alias ni un CBU. Si no están configurados, decí con calidez que vas a consultarle a la dueña y usá 'consultar_a_la_duena'.
 - Si la alumna quiere enviar un comprobante de pago, indicale con cariño que puede mandar la foto directamente por acá y el sistema lo procesará de inmediato.
+- ATENCIÓN HUMANA / QUEJAS O RECLAMOS:
+  * Si la alumna o clienta solicita explícitamente hablar con una persona humana, con Débora, con el staff, o si expresa una queja o inconformidad con cobros o pagos que requiere atención manual, ejecutá inmediatamente 'derivar_a_atencion_humana(motivo=...)'.
 
 {formato_rules}
 """

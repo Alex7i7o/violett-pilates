@@ -18,6 +18,8 @@ test_env/
 # Environment Variables
 .env
 .env.local
+*.pem
+*service_account*.json
 
 # Frontend (Node)
 frontend/node_modules/
@@ -41,7 +43,7 @@ Thumbs.db
 
 # Temporales
 temporales/
+scratch/
 temp_extract/
 *.tar.gz
 *.zip
-temporales/

@@ -4,6 +4,16 @@ from .base import get_llm, extraer_texto
 
 logger = logging.getLogger(__name__)
 
+KEYWORDS_HUMANO = [
+    r'\b(hablar|comunicar\w*|pasame|atenci[oó]n|charlar|contactar)\b.*?\b(persona|humano|recepcion\w*|alguien|deby|d[eé]bora|real)\b',
+    r'\b(queja|reclamo|inconform\w+|disconform\w+|inconveniente)\b',
+    r'\b(quiero|necesito)\s+(hablar\s+con\s+)?(una\s+persona|alguien|un\s+humano)\b',
+    r'\bno\s+quiero\s+(un\s+|el\s+)?bot\b',
+    r'\bpersona\s+real\b',
+    r'\bhumano\b',
+    r'\batenci[oó]n\s+al\s+cliente\b'
+]
+
 KEYWORDS_TURNOS = [
     r'\bturnos?\b', r'\bhorarios?\b', r'\bdisponib', r'\bcamillas?\b',
     r'\banotarme?\b', r'\breserv\w+', r'\bcancelo?\b', r'\bcancelar?\b',
@@ -66,6 +76,11 @@ def clasificar_intencion_fast(texto: str, rol: str) -> str:
             return 'agente_recepcionista'
         return 'agente_profesores'
 
+    # Solicitud de atención humana, queja o persona real (Alumnas y prospectos)
+    for pattern in KEYWORDS_HUMANO:
+        if re.search(pattern, t):
+            return 'agente_recepcionista'
+
     # Turnos & Reservas (Alumnas y prospectos)
     for pattern in KEYWORDS_TURNOS:
         if re.search(pattern, t):
@@ -114,8 +129,10 @@ def router_node(state):
                     break
     
     # 2. Si es recepcionista pero el mensaje tiene contenido analizable, evaluamos con LLM para triaje inteligente
+    # (Excepto si fue clasificado como solicitud de atención humana o es un saludo puro)
+    es_humano = any(re.search(p, last_user_msg.lower()) for p in KEYWORDS_HUMANO)
     es_saludo_puro = any(last_user_msg.lower().strip() == s for s in ['hola', 'buenas', 'buen dia', 'buen día', 'buenas tardes', 'chau', 'gracias', 'dale', 'ok'])
-    if target == 'agente_recepcionista' and not es_saludo_puro and len(last_user_msg.strip().split()) >= 2:
+    if target == 'agente_recepcionista' and not es_saludo_puro and not es_humano and len(last_user_msg.strip().split()) >= 2:
         llm = get_llm(tools=None, max_tokens=15, temperature=0.0)
         if llm:
             try:

@@ -87,8 +87,25 @@ class Command(BaseCommand):
                 f"Recordá llegar 5 minutitos antes para cambiarte con calma y arrancar tu práctica relajada ✦."
             )
 
-            # Enviar mensaje
+            # Enviar mensaje de texto
             ok = client.send_text_message(clean_phone, texto_recordatorio)
+
+            # Si falla (ej: ventana Meta de 24hs vencida), reintentar automáticamente con plantilla aprobada
+            if not ok:
+                try:
+                    clase_nombre = turno.clase.nombre if turno.clase else "Pilates Reformer"
+                    hora_txt = turno.hora_inicio.strftime('%H:%M')
+                    components = [{
+                        "type": "body",
+                        "parameters": [
+                            {"type": "text", "text": nombre},
+                            {"type": "text", "text": clase_nombre},
+                            {"type": "text", "text": hora_txt}
+                        ]
+                    }]
+                    ok = client._send_template(clean_phone, "recordatorio_clase", components)
+                except Exception as ex_t:
+                    logger.warning(f"Error fallback plantilla recordatorio a {clean_phone}: {ex_t}")
 
             # Registrar en log
             MensajeWhatsAppLog.objects.create(

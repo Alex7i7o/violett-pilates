@@ -28,3 +28,5 @@ langchain-anthropic>=0.3.0
 groq>=0.37.0
 langchain-groq>=1.1.0
 langchain-google-genai>=2.0.0
+google-auth
+google-api-python-client

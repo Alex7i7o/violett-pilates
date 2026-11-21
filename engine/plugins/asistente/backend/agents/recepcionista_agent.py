@@ -1,9 +1,14 @@
 import logging
 from langchain_core.messages import SystemMessage
 from ..config_loader import get_brand_persona, get_asistente_config
+from ..tools.gestion_tools import derivar_a_atencion_humana
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
 logger = logging.getLogger(__name__)
+
+RECEPCIONISTA_TOOLS = [
+    derivar_a_atencion_humana
+]
 
 def agente_recepcionista_node(state):
     config = get_asistente_config()
@@ -45,6 +50,11 @@ TUS CAPACIDADES (QUÉ PODÉS HACER):
   * SI ES DEBY (Rol: DUENA): Explicale con entusiasmo ejecutivo que sos su asistente de dirección y gestión del estudio: podés darle la facturación del mes y balances contables, ver la agenda completa del día, anotar o pasar alumnas de turno, abrir clases extraordinarias fuera de grilla, asignar o renovar abonos de alumnas, consultar fichas completas y validar comprobantes de pago.
   * SI ES ALUMNA O PROSPECTO: Explicá con entusiasmo y claridad que podés consultar horarios libres en tiempo real, reservar o cancelar camillas, decir cuántas clases le quedan en su abono mensual, informar los precios y medios de pago, o resolver dudas sobre el estudio y el método 🌸.
 
+DERIVACIÓN A ATENCIÓN HUMANA (DÉBORA / RECEPCIÓN):
+- Si la clienta o alumna solicita hablar con una persona humana, con alguien del staff, con Débora, o si expresa una queja, reclamo, descontento o situación especial:
+  -> DEBES ejecutar inmediatamente la herramienta `derivar_a_atencion_humana(motivo=...)`.
+  -> NO intentes retenerla ni contestar con rodeos si pide una persona. Ejecutá la herramienta para avisar al staff de inmediato.
+
 REGLAS CONVERSACIONALES:
 - NUNCA repitas el saludo de bienvenida institucional ("Bienvenida a Violett Pilates...") si la persona ya está conversando con vos en el historial.
 - Respondé de forma directa, cálida y natural a lo que te pregunten.
@@ -53,7 +63,7 @@ REGLAS CONVERSACIONALES:
 {FORMATO_WHATSAPP_RULES}
 """
 
-    llm = get_llm(tools=None, max_tokens=400)
+    llm = get_llm(tools=RECEPCIONISTA_TOOLS, max_tokens=400)
     if not llm:
         return {"messages": [], "agente_responsable": "agente_recepcionista"}
 

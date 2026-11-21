@@ -408,23 +408,30 @@ def renovar_o_asignar_plan_alumna(nombre_o_tel_alumna: str, nombre_o_clases_plan
     except Exception as e:
         logger.warning(f"Error ejecutando hook 'plan_asignado': {e}")
 
-    # 4. Auto-agendar en turnos recurrentes fijos si la alumna tiene esquema configurado
-    reservas_agendadas = 0
+    # 4. Auto-agendar en turnos recurrentes fijos si la alumna tiene esquema configurado y no fue procesado
     try:
         from plugins.recurrencias.backend.services import auto_agendar_recurrencias_usuario
-        reservas_agendadas = auto_agendar_recurrencias_usuario(alumna, nueva_sub)
+        auto_agendar_recurrencias_usuario(alumna, nueva_sub)
     except Exception as e:
         logger.warning(f"Error auto-agendando recurrencias: {e}")
 
     nueva_sub.refresh_from_db()
+    from plugins.membresias.backend.models import ReservaMembresia
+    reservas_agendadas = ReservaMembresia.objects.filter(suscripcion=nueva_sub).count()
+
     nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip() or alumna.email.split('@')[0]
     precio_str = f"${plan_seleccionado.precio:,.0f}".replace(",", ".") if hasattr(plan_seleccionado, 'precio') and plan_seleccionado.precio else "Consultar"
+
+    detalle_fijo = f"{reservas_agendadas} turnos fijos del mes" if reservas_agendadas > 0 else "0 (no tiene horarios fijos configurados)"
+    detalle_libres = f"{nueva_sub.clases_restantes}"
+    if nueva_sub.clases_restantes == 0 and reservas_agendadas > 0:
+        detalle_libres += f" (los {plan_seleccionado.cantidad_clases} créditos se asignaron a sus turnos fijos)"
 
     return f"""✦ ¡Listo Deby! Le renové el plan a {nombre_completo}:
 • Plan acreditado: {plan_seleccionado.nombre} ({precio_str})
 • Créditos cargados: {plan_seleccionado.cantidad_clases} clases
-• Créditos libres disponibles: {nueva_sub.clases_restantes}
-• Clases fijas agendadas automáticamente: {reservas_agendadas}
+• Clases fijas agendadas automáticamente: {detalle_fijo}
+• Créditos libres restantes: {detalle_libres}
 • Vigencia: Hasta el {vencimiento.strftime('%d/%m/%Y')} (30 días)
 
 El abono ya quedó registrado y activo en el sistema 🌸."""
@@ -1182,12 +1189,14 @@ def ajustar_creditos_alumna_duena(nombre_o_tel_alumna: str, cantidad_creditos: i
 
     try:
         from plugins.membresias.backend.models import Suscripcion
-        sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
+        sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO', 'VENCIDO']).order_by('-fecha_inicio').first()
         if not sub:
-            return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún abono activo en este momento para ajustarle clases."
+            sub = Suscripcion.objects.filter(usuario=alumna).order_by('-fecha_inicio').first()
+        if not sub:
+            return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún abono registrado en este momento para ajustarle clases."
 
         sub.clases_restantes = max(0, sub.clases_restantes + cantidad_creditos)
-        if sub.clases_restantes > 0 and sub.estado == 'AGOTADO':
+        if sub.clases_restantes > 0 and sub.estado in ['AGOTADO', 'VENCIDO']:
             sub.estado = 'ACTIVO'
         if sub.fecha_vencimiento and sub.fecha_vencimiento < timezone.localdate():
             sub.fecha_vencimiento = timezone.localdate() + datetime.timedelta(days=30)
@@ -1357,12 +1366,16 @@ def dar_baja_horario_fijo_alumna(nombre_o_tel_alumna: str, dia_semana_str: str =
             nom_mostrar = f"{alumna.nombre} {alumna.apellido}".strip() if alumna else nom_limpio
             return f"✦ {nom_mostrar} no tiene ningún horario fijo semanal activo."
 
+        recs_list = list(qs.select_related('clase'))
         qs.update(is_active=False)
         nom_mostrar = f"{alumna.nombre} {alumna.apellido}".strip() if alumna else nom_limpio
-        if alumna:
+        if alumna and recs_list:
             try:
                 from plugins.comunicaciones.backend.whatsapp_service import notificar_horario_fijo_alumna
-                notificar_horario_fijo_alumna(alumna, 1, "fijo", "Pilates Reformer", "", "dada_de_baja")
+                for r in recs_list:
+                    h_str = r.hora_inicio.strftime('%H:%M') if hasattr(r.hora_inicio, 'strftime') else str(r.hora_inicio)
+                    clase_nom = r.clase.nombre if getattr(r, 'clase', None) else "Pilates Reformer"
+                    notificar_horario_fijo_alumna(alumna, r.dia_semana, h_str, clase_nom, "", "dada_de_baja")
             except Exception as ex_notif:
                 logger.warning(f"Error notificando baja horario fijo: {ex_notif}")
         return f"✦ ¡Listo Deby! Desactivé los {cant} horario(s) fijo(s) de {nom_mostrar} en el Esquema Semanal."
@@ -2361,7 +2374,8 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
         if hora_str:
             hora_norm = hora_str.replace('hs', '').replace(':', '').strip()
             for p in propuestas:
-                p_hora = p.metadata.get('hora', '').replace(':', '').strip()
+                p_payload = p.payload or {}
+                p_hora = p_payload.get('hora', '').replace(':', '').strip()
                 if hora_norm in p_hora or p_hora in hora_norm:
                     propuesta_elegida = p
                     break
@@ -2369,7 +2383,7 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
         if not propuesta_elegida:
             propuesta_elegida = propuestas.first()
 
-        meta = propuesta_elegida.metadata or {}
+        meta = propuesta_elegida.payload or {}
         turno_id = meta.get('turno_id')
         dia_nom = meta.get('dia_nom', 'Día')
         f_str = meta.get('fecha_str', meta.get('fecha', ''))
@@ -2420,11 +2434,6 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
                             except Exception as e:
                                 logger.error(f"Error reintegrando credito a alumna: {e}")
 
-                        try:
-                            registry.execute('reserva_cancelada_a_tiempo', r)
-                        except Exception:
-                            pass
-
                         tel_alumna_clean = alumna_tel.replace('+', '').replace(' ', '').replace('-', '') if alumna_tel else ''
                         if tel_alumna_clean and len(tel_alumna_clean) >= 8:
                             msg_alumna = (
@@ -2444,8 +2453,10 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
                     )
                     client.send_text_message(clean_prof_tel, msg_prof)
 
-            propuesta_elegida.resultado = 'CONFIRMADA'
-            propuesta_elegida.save(update_fields=['resultado'])
+            if not isinstance(propuesta_elegida.payload, dict):
+                propuesta_elegida.payload = {}
+            propuesta_elegida.payload['resultado'] = 'CONFIRMADA'
+            propuesta_elegida.save(update_fields=['payload'])
 
             detalle_alumna_res = f"\n• Le reintegramos el crédito a *{alumna_nombre}* y le enviamos el aviso por WhatsApp." if inscriptas >= 1 else "\n• La clase estaba sin alumnas."
             return (
@@ -2456,8 +2467,10 @@ def responder_propuesta_cancelacion_duena(decision: str, fecha_str: str = "", ho
 
         # CASO 2: DEBY DECIDE MANTENER LA CLASE
         else:
-            propuesta_elegida.resultado = 'RECHAZADA'
-            propuesta_elegida.save(update_fields=['resultado'])
+            if not isinstance(propuesta_elegida.payload, dict):
+                propuesta_elegida.payload = {}
+            propuesta_elegida.payload['resultado'] = 'RECHAZADA'
+            propuesta_elegida.save(update_fields=['payload'])
             return (
                 f"✦ ¡Perfecto Deby! La clase de *{clase_nom}* del *{dia_nom} {f_str} a las {h_str} hs* "
                 f"queda *MANTENIDA* y activa en la grilla. No se cancelará ✨."
@@ -2665,3 +2678,115 @@ def confirmar_sincronizacion_ficha_duena(decision: str = "CONFIRMAR", correccion
         f"• Cada clase quedó identificada con el badge ✦ **Modificada** y guardada en el historial de auditoría.{info_abono}\n\n"
         f"El historial de {usuario.nombre} ya quedó 100% al día con su ficha en papel."
     )
+
+
+@tool
+def derivar_a_atencion_humana(motivo: str = "Solicitud de atención con una persona") -> str:
+    """
+    Deriva la conversación actual al equipo de atención humana y administración del estudio.
+    Úsala OBLIGATORIAMENTE cuando la alumna, cliente o persona pida hablar con una persona de carne y hueso,
+    con la dueña (Deby), con una recepcionista, cuando exprese un reclamo, queja, disconformidad,
+    o una situación especial que requiera atención humana directa.
+    Pausa automáticamente a la IA en este chat y avisa de inmediato al staff por WhatsApp.
+    """
+    try:
+        from plugins.comunicaciones.backend.whatsapp_service import WhatsAppClient, obtener_telefonos_staff_alertas, _registrar_log_saliente
+        from plugins.asistente.backend.models import RegistroAccionIA
+
+        conv = get_conversacion_activa()
+        if not conv:
+            return (
+                "¡Por supuesto! ✦ Ya le avisé al equipo de recepción y a la administración del estudio "
+                "para que una persona se ponga en contacto con vos a la brevedad 🌸."
+            )
+
+        # Pausar la conversación para atención humana (no responderá más automáticamente)
+        conv.estado = 'ESPERANDO_HUMANO'
+        conv.save(update_fields=['estado', 'updated_at'])
+
+        # Datos del contacto
+        usuario = conv.usuario
+        nombre = f"{usuario.nombre} {usuario.apellido}".strip() if usuario and hasattr(usuario, 'nombre') else "Contacto"
+        phone = conv.telefono
+        rol = conv.rol_detectado
+
+        # Avisar inmediatamente al staff y a Débora por WhatsApp
+        msg_staff = (
+            f"✦ *Aviso Staff — Solicitud de Atención Humana* ✦\n\n"
+            f"• *Contacto:* {nombre} ({phone})\n"
+            f"• *Rol:* {rol}\n"
+            f"• *Motivo:* \"{motivo}\"\n\n"
+            f"⏸️ *Acción:* La IA fue pausada automáticamente en este chat. Podés responderle directamente por WhatsApp o desde el panel web."
+        )
+
+        client = WhatsAppClient()
+        telefonos_staff = obtener_telefonos_staff_alertas()
+        for t_dest in telefonos_staff:
+            clean_dest = str(t_dest).replace('+', '').replace('-', '').replace(' ', '')
+            clean_user = str(phone).replace('+', '').replace('-', '').replace(' ', '')
+            if clean_dest == clean_user or clean_dest.endswith(clean_user[-8:]):
+                continue
+            try:
+                client.send_text_message(t_dest, msg_staff)
+                _registrar_log_saliente(t_dest, None, msg_staff, "aviso_staff_atencion_humana")
+            except Exception as e_send:
+                logger.warning(f"Error enviando aviso de atención humana a staff {t_dest}: {e_send}")
+
+        RegistroAccionIA.objects.create(
+            conversacion=conv,
+            tipo_accion='OFERTA_PROACTIVA',
+            descripcion=f"Conversación pausada y derivada a atención humana para {nombre} ({phone}). Motivo: {motivo}",
+            payload={'derivado_a_humano': True, 'motivo': motivo, 'telefono': phone}
+        )
+
+        nombre_pila = nombre.split()[0] if nombre and nombre != "Contacto" else ""
+        nombre_saludo = f" {nombre_pila}" if nombre_pila else ""
+
+        return (
+            f"¡Por supuesto{nombre_saludo}! ✦ Ya le avisé al equipo de recepción y a la administración del estudio "
+            f"para que una persona se comunique con vos por este mismo chat a la brevedad 🌸.\n\n"
+            f"Pausé mis respuestas automáticas por acá para que puedan conversar tranquilamente. ¡Muchas gracias por tu paciencia! ✨"
+        )
+    except Exception as e:
+        logger.error(f"Error en derivar_a_atencion_humana: {e}", exc_info=True)
+        return (
+            "¡Por supuesto! ✦ Ya le avisé al equipo del estudio para que una persona se comunique con vos a la brevedad 🌸.\n\n"
+            "Pausé mis respuestas automáticas por acá para que puedan conversar directamente."
+        )
+
+
+@tool
+def reactivar_ia_conversacion_duena(nombre_o_tel_contacto: str) -> str:
+    """
+    Comando para la dueña (Deby): reactiva las respuestas automáticas de la IA en una conversación que estaba pausada en 'ESPERANDO_HUMANO'.
+    (ej: 'reactivá la IA para Luz', 'reanudá el bot para 1162051543', 'activá de nuevo el bot en el chat de Marcela').
+    """
+    try:
+        from plugins.asistente.backend.models import ConversacionWhatsApp
+
+        nom_clean = nombre_o_tel_contacto.strip().lower()
+        conv = None
+
+        # 1. Buscar por teléfono si hay dígitos
+        digits = re.sub(r'\D', '', nom_clean)
+        if len(digits) >= 8:
+            conv = ConversacionWhatsApp.objects.filter(telefono__icontains=digits[-8:]).first()
+
+        # 2. Buscar por nombre de usuario asociado
+        if not conv:
+            conv = ConversacionWhatsApp.objects.filter(
+                usuario__nombre__icontains=nom_clean
+            ).first() or ConversacionWhatsApp.objects.filter(
+                usuario__apellido__icontains=nom_clean
+            ).first()
+
+        if not conv:
+            return f"✦ No encontré ninguna conversación registrada para '{nombre_o_tel_contacto}'."
+
+        conv.estado = 'ACTIVO'
+        conv.save(update_fields=['estado', 'updated_at'])
+
+        nombre_mostrar = f"{conv.usuario.nombre} {conv.usuario.apellido}".strip() if conv.usuario and hasattr(conv.usuario, 'nombre') else conv.telefono
+        return f"✦ ¡Listo Deby! Reactivé las respuestas automáticas de la IA para *{nombre_mostrar}* ({conv.telefono}) ✨."
+    except Exception as e:
+        return f"✦ Error reactivando la IA: {e}"

@@ -43,6 +43,7 @@ def auto_agendar_recurrencias_usuario(usuario, suscripcion):
     ).select_related('clase').order_by('fecha', 'hora_inicio')
 
     reservas_creadas = 0
+    reservas_creadas_objs = []
 
     for t in future_turnos:
         if suscripcion.clases_restantes <= 0:
@@ -66,7 +67,7 @@ def auto_agendar_recurrencias_usuario(usuario, suscripcion):
             existing_reserva.save()
             if ReservaMembresia:
                 ReservaMembresia.objects.get_or_create(reserva=existing_reserva, defaults={'suscripcion': suscripcion})
-            registry.execute('reserva_creada', existing_reserva)
+            reservas_creadas_objs.append(existing_reserva)
         else:
             res = Reserva.objects.create(
                 turno=t,
@@ -76,7 +77,7 @@ def auto_agendar_recurrencias_usuario(usuario, suscripcion):
             )
             if ReservaMembresia:
                 ReservaMembresia.objects.create(reserva=res, suscripcion=suscripcion)
-            registry.execute('reserva_creada', res)
+            reservas_creadas_objs.append(res)
 
         t.cupo_actual -= 1
         t.save()
@@ -86,6 +87,14 @@ def auto_agendar_recurrencias_usuario(usuario, suscripcion):
     if suscripcion.clases_restantes <= 0:
         suscripcion.estado = 'AGOTADO'
     suscripcion.save()
+
+    # Enviar una única notificación consolidada a la alumna y a la dueña en vez de N mensajes
+    if reservas_creadas > 0:
+        try:
+            from plugins.comunicaciones.backend.whatsapp_service import notificar_recurrencias_autoagendadas_alumna
+            notificar_recurrencias_autoagendadas_alumna(usuario, suscripcion, reservas_creadas_objs)
+        except Exception as e_wpp:
+            logger.warning(f"Error enviando notificacion consolidada de recurrencias: {e_wpp}")
 
     logger.info(f"Auto-agendadas {reservas_creadas} clases fijas para {usuario.email}. Créditos restantes: {suscripcion.clases_restantes}")
     return reservas_creadas

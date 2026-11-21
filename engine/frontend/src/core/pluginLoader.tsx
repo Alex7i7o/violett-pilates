@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 // Load all routes.tsx from all plugins eagerly
 const modules = import.meta.glob('@plugins/*/frontend/routes.tsx', { eager: true });
@@ -11,6 +11,7 @@ export interface PluginRoute {
 export interface PluginSidebarItem {
   name: string;
   path: string;
+  icon?: any;
 }
 
 const getPluginNameFromPath = (path: string): string => {

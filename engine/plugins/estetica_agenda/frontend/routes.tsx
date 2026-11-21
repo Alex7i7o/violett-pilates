@@ -1,13 +1,17 @@
-﻿import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
 import { EsteticaClientApp } from './EsteticaClientApp';
 import { EsteticaAdminHorarios } from './views/EsteticaAdminHorarios';
+import { EsteticaAgendaAdmin } from './views/EsteticaAgendaAdmin';
 
 export const roleRoutes = {
   CLIENTE: <EsteticaClientApp />
 };
 
 export const adminRoutes = [
+  {
+    path: 'agenda',
+    element: <EsteticaAgendaAdmin />
+  },
   {
     path: 'estetica/horarios',
     element: <EsteticaAdminHorarios />
@@ -17,6 +21,6 @@ export const adminRoutes = [
 export const adminSidebarItems = [
   {
     name: 'Horarios Estética',
-    path: 'estetica/horarios'
+    path: '/admin/estetica/horarios'
   }
 ];

@@ -26,6 +26,28 @@ def on_reserva_cancelada_a_tiempo(data, **kwargs):
         send_webpush(usuario, title, body, data={'url': '/perfil'})
     return data
 
+def on_reserva_cancelada_tardia(data, **kwargs):
+    reserva = data
+    if reserva and reserva.turno:
+        usuario = reserva.usuario
+        turno = reserva.turno
+        clase = turno.clase
+        title = "Reserva Cancelada"
+        body = f"Cancelaste tu lugar en {clase.nombre} del {turno.fecha.strftime('%d/%m')} a las {turno.hora_inicio.strftime('%H:%M')} hs (sin reintegro por política <24hs)."
+        send_webpush(usuario, title, body, data={'url': '/perfil'})
+    return data
+
+def on_reserva_reprogramada(data, origen=None, destino=None, **kwargs):
+    reserva = data
+    if reserva and getattr(reserva, 'usuario', None):
+        usuario = reserva.usuario
+        turno_nuevo = destino or reserva.turno
+        clase = turno_nuevo.clase
+        title = "Clase Reprogramada"
+        body = f"Tu clase de {clase.nombre} fue reprogramada para el {turno_nuevo.fecha.strftime('%d/%m')} a las {turno_nuevo.hora_inicio.strftime('%H:%M')} hs."
+        send_webpush(usuario, title, body, data={'url': '/perfil'})
+    return data
+
 def on_turno_cancelado_por_falta_cupo(data, **kwargs):
     turno = data
     if turno:
@@ -63,8 +85,9 @@ def on_reserva_recordatorio(data, **kwargs):
     return data
 
 registry.register('reserva_creada', on_reserva_creada)
-
+registry.register('reserva_reprogramada', on_reserva_reprogramada)
 registry.register('reserva_cancelada_a_tiempo', on_reserva_cancelada_a_tiempo)
+registry.register('reserva_cancelada_tardia', on_reserva_cancelada_tardia)
 registry.register('turno_cancelado_por_falta_cupo', on_turno_cancelado_por_falta_cupo)
 
 from django.db.models.signals import post_save

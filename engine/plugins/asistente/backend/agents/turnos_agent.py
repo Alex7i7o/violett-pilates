@@ -7,6 +7,7 @@ from ..tools.turnos_tools import (
     cancelar_reserva_alumna,
     reprogramar_reserva_alumna
 )
+from ..tools.gestion_tools import derivar_a_atencion_humana
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ TURNOS_TOOLS = [
     reservar_camilla_turno,
     consultar_mis_reservas_alumna,
     cancelar_reserva_alumna,
-    reprogramar_reserva_alumna
+    reprogramar_reserva_alumna,
+    derivar_a_atencion_humana
 ]
 
 SYSTEM_PROMPT_TURNOS = """Sos el Agente Especialista en Turnos y Reservas de Violett Pilates ✦.
@@ -45,6 +47,8 @@ POLÍTICAS CLAVE DE TURNOS:
   * Si la alumna responde eligiendo cuál cambiar (ej: "Cambiame la del miércoles", "Pasá la del 18", "Cambiame la primera", "Mové esa"), usá 'reprogramar_reserva_alumna(usuario_id="{usuario_id}", ...)'.
   * NUNCA le digas que no se puede mover o que tiene que hablar con Débora para un cambio de clase: ¡ejecutá 'reprogramar_reserva_alumna' directamente para que sea rápido y fácil!
 - Si no tiene créditos y tampoco tiene ninguna clase futura agendada: explicáselo con cariño y coméntale que puede consultar los planes para renovar.
+- ATENCIÓN HUMANA / QUEJAS O RECLAMOS:
+  * Si la alumna o clienta solicita explícitamente hablar con una persona humana, con Débora, con el staff, o si expresa una queja, reclamo o desacuerdo que requiere atención manual, ejecutá inmediatamente 'derivar_a_atencion_humana(motivo=...)'.
 
 {formato_rules}
 """
