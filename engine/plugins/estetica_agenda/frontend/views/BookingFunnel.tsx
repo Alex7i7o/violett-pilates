@@ -12,10 +12,10 @@ import {
   Callout,
   EmptyState,
   AnimateIn,
-  DatePicker,
+  Calendar as FSCalendar,
   haptics
 } from 'fireseed-ui';
-import { Calendar, Clock, Sparkles, CheckCircle2, WalletCards, ArrowLeft, ShoppingBag, MapPin } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Sparkles, CheckCircle2, WalletCards, ArrowLeft, ShoppingBag, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -138,19 +138,71 @@ export const BookingFunnel = () => {
 
   return (
     <div className="w-full pb-16 sm:pb-20">
-      {/* Stepper interactivo */}
+      {/* Indicador de Progreso: Mobile Native + Desktop Stepper */}
       <div className="mb-6 pt-1">
-        <Stepper
-          steps={stepperItems}
-          currentStep={step >= 4 ? 2 : step - 1}
-          onStepClick={(stepIndex) => {
-            if (stepIndex < step - 1 && step < 4) {
-              haptics.light();
-              setStep(stepIndex + 1);
-            }
-          }}
-          className="estetica-stepper max-w-xl mx-auto"
-        />
+        {/* Vista Móvil: Limpia, espaciosa y sin saturación */}
+        <div className="sm:hidden px-1 space-y-2 mb-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold tracking-widest uppercase text-[#C5A059] font-mono">
+              Paso {step >= 4 ? 3 : step} de 3
+            </span>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={s > step}
+                  onClick={() => {
+                    if (s < step && step < 4) {
+                      haptics.light();
+                      setStep(s);
+                    }
+                  }}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    s <= (step >= 4 ? 3 : step)
+                      ? 'w-7 bg-[#C5A059]'
+                      : 'w-2.5 bg-neutral-200'
+                  }`}
+                  aria-label={`Ir al paso ${s}`}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-[#34236F] font-serif">
+              {step === 1 && '1. Elegí tu Tratamiento'}
+              {step === 2 && '2. Seleccioná Día y Horario'}
+              {step >= 3 && '3. Confirmá tu Reserva'}
+            </h2>
+            {step > 1 && step < 4 && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.light();
+                  setStep(step - 1);
+                }}
+                className="text-xs text-neutral-500 hover:text-[#34236F] font-medium underline flex items-center gap-1"
+              >
+                <ArrowLeft size={12} /> Volver
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Vista Desktop: Stepper completo horizontal */}
+        <div className="hidden sm:block">
+          <Stepper
+            steps={stepperItems}
+            currentStep={step >= 4 ? 2 : step - 1}
+            onStepClick={(stepIndex) => {
+              if (stepIndex < step - 1 && step < 4) {
+                haptics.light();
+                setStep(stepIndex + 1);
+              }
+            }}
+            className="estetica-stepper max-w-xl mx-auto"
+          />
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -257,22 +309,38 @@ export const BookingFunnel = () => {
                 </div>
               )}
 
-              <div className="space-y-1">
-                <DatePicker
-                  label="Seleccioná la fecha"
-                  placeholder="Elegí el día para tu turno..."
-                  value={fecha ? new Date(`${fecha}T12:00:00`) : null}
-                  minDate={new Date()}
-                  className="estetica-datepicker"
-                  onChange={(d: Date) => {
-                    haptics.light();
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    setFecha(`${y}-${m}-${day}`);
-                    setSelectedHora('');
-                  }}
-                />
+              {/* Calendario Interactivo Inline de fireseed-ui */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#34236F] flex items-center gap-1.5">
+                    <CalendarIcon size={14} className="text-[#C5A059]" /> Seleccioná la fecha
+                  </label>
+                  {fecha && (
+                    <span className="text-xs font-bold text-[#C5A059] bg-[#F9F6ED] px-3 py-1 rounded-full border border-[#C5A059]/30 font-serif">
+                      {new Date(`${fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                  )}
+                </div>
+
+                <div className="w-full flex justify-center">
+                  <FSCalendar
+                    mode="single"
+                    selected={fecha ? new Date(`${fecha}T12:00:00`) : new Date()}
+                    minDate={new Date()}
+                    locale="es"
+                    showTodayButton={true}
+                    enableHaptics={true}
+                    onSelect={(d: Date) => {
+                      haptics.light();
+                      const y = d.getFullYear();
+                      const m = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      setFecha(`${y}-${m}-${day}`);
+                      setSelectedHora('');
+                    }}
+                    className="estetica-calendar w-full max-w-full sm:max-w-[370px]"
+                  />
+                </div>
               </div>
 
               {fecha && (
