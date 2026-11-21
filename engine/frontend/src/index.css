@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "fireseed-ui/style.css";
 @source "../../plugins/**/*.tsx";
+@source "../node_modules/fireseed-ui/dist/**/*.js";
+@source "../../node_modules/fireseed-ui/dist/**/*.js";
 
 @font-face {
   font-family: 'LaLuxes';
@@ -133,6 +135,16 @@ h2, h3, h4, h5, h6 {
   z-index: 50 !important;
 }
 
+/* Ensure 7-column grid layout for calendar header and days */
+.estetica-datepicker .grid-cols-7,
+.estetica-calendar .grid-cols-7,
+.grid-cols-7 {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 0.25rem !important;
+  width: 100% !important;
+}
+
 /* Calendar box (both inside DatePicker and standalone) */
 .estetica-datepicker .absolute.top-full > div,
 .estetica-calendar {
@@ -141,6 +153,9 @@ h2, h3, h4, h5, h6 {
   box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(197, 160, 89, 0.1) !important;
   border-radius: 1.25rem !important;
   color: #34236F !important;
+  width: 340px !important;
+  max-width: 92vw !important;
+  box-sizing: border-box !important;
 }
 
 /* Calendar header month & year */
@@ -206,6 +221,17 @@ h2, h3, h4, h5, h6 {
 /* Days cells default */
 .estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button,
 .estetica-calendar .grid-cols-7.gap-1 button {
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  min-width: 2.35rem !important;
+  min-height: 2.35rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.813rem !important;
+  line-height: 1 !important;
+  margin: 0 auto !important;
   color: #34236F !important;
   font-weight: 500 !important;
   transition: all 0.15s ease !important;
