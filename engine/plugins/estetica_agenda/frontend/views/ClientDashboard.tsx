@@ -9,6 +9,7 @@ import {
   Modal,
   ConfirmModal,
   EmptyState,
+  DatePicker,
   haptics
 } from 'fireseed-ui';
 import {
@@ -432,17 +433,20 @@ export const ClientDashboard = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] mb-1.5">Nueva Fecha</label>
-            <input
-              type="date"
-              min={todayStr}
-              value={newFecha}
-              onChange={e => {
+            <DatePicker
+              label="Nueva Fecha"
+              placeholder="Seleccionar nueva fecha..."
+              value={newFecha ? new Date(`${newFecha}T12:00:00`) : null}
+              minDate={new Date()}
+              className="estetica-datepicker"
+              onChange={(d: Date) => {
                 haptics.light();
-                setNewFecha(e.target.value);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                setNewFecha(`${y}-${m}-${day}`);
                 setNewHora('');
               }}
-              className="w-full p-3 rounded-xl bg-white border border-neutral-200 text-[#34236F] text-sm focus:border-[#C5A059] outline-none"
             />
           </div>
 

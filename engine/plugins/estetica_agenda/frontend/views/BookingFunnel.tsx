@@ -12,6 +12,7 @@ import {
   Callout,
   EmptyState,
   AnimateIn,
+  DatePicker,
   haptics
 } from 'fireseed-ui';
 import { Calendar, Clock, Sparkles, CheckCircle2, WalletCards, ArrowLeft, ShoppingBag, MapPin } from 'lucide-react';
@@ -256,20 +257,21 @@ export const BookingFunnel = () => {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] mb-2 flex items-center gap-1.5">
-                  <Calendar size={14} className="text-[#C5A059]" /> Seleccioná la fecha
-                </label>
-                <input
-                  type="date"
-                  value={fecha}
-                  onChange={e => {
+              <div className="space-y-1">
+                <DatePicker
+                  label="Seleccioná la fecha"
+                  placeholder="Elegí el día para tu turno..."
+                  value={fecha ? new Date(`${fecha}T12:00:00`) : null}
+                  minDate={new Date()}
+                  className="estetica-datepicker"
+                  onChange={(d: Date) => {
                     haptics.light();
-                    setFecha(e.target.value);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    setFecha(`${y}-${m}-${day}`);
                     setSelectedHora('');
                   }}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full p-4 rounded-xl bg-white border border-neutral-200 text-[#34236F] focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all font-medium text-sm"
                 />
               </div>
 

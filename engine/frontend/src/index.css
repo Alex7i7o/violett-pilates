@@ -80,3 +80,174 @@ h2, h3, h4, h5, h6 {
     text-wrap: balance;
   }
 }
+
+/* =========================================================================
+   Violett Estética - FireSeed UI DatePicker & Calendar Skin (White & Gold)
+   ========================================================================= */
+
+.estetica-datepicker {
+  width: 100%;
+}
+
+.estetica-datepicker label {
+  color: #34236F !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+/* Trigger button */
+.estetica-datepicker > div:first-of-type {
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #E5E7EB !important;
+  color: #34236F !important;
+  padding: 0.875rem 1rem !important;
+  border-radius: 0.875rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s ease !important;
+}
+
+.estetica-datepicker > div:first-of-type:hover {
+  border-color: #C5A059 !important;
+}
+
+.estetica-datepicker > div:first-of-type[class*="ring-2"],
+.estetica-datepicker > div:first-of-type:focus-within {
+  border-color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+}
+
+.estetica-datepicker > div:first-of-type svg {
+  color: #C5A059 !important;
+}
+
+.estetica-datepicker > div:first-of-type span {
+  color: #34236F !important;
+  font-size: 0.938rem !important;
+  font-weight: 500 !important;
+}
+
+/* Calendar popover wrapper */
+.estetica-datepicker .absolute.top-full {
+  z-index: 50 !important;
+}
+
+/* Calendar box (both inside DatePicker and standalone) */
+.estetica-datepicker .absolute.top-full > div,
+.estetica-calendar {
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(197, 160, 89, 0.25) !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(197, 160, 89, 0.1) !important;
+  border-radius: 1.25rem !important;
+  color: #34236F !important;
+}
+
+/* Calendar header month & year */
+.estetica-datepicker .absolute.top-full h2,
+.estetica-calendar h2 {
+  color: #34236F !important;
+  font-family: var(--font-marcellus), serif !important;
+  font-weight: 600 !important;
+}
+
+.estetica-datepicker .absolute.top-full h2 span,
+.estetica-calendar h2 span {
+  color: #C5A059 !important;
+  font-family: monospace;
+}
+
+.estetica-datepicker .absolute.top-full svg.text-accent-main,
+.estetica-calendar svg.text-accent-main {
+  color: #C5A059 !important;
+}
+
+/* "Hoy" button */
+.estetica-datepicker .absolute.top-full button[title="Ir a hoy"],
+.estetica-calendar button[title="Ir a hoy"] {
+  background-color: #F9F6ED !important;
+  color: #C5A059 !important;
+  border: 1px solid rgba(197, 160, 89, 0.4) !important;
+  font-weight: 600 !important;
+}
+
+.estetica-datepicker .absolute.top-full button[title="Ir a hoy"]:hover,
+.estetica-calendar button[title="Ir a hoy"]:hover {
+  background-color: #C5A059 !important;
+  color: #FFFFFF !important;
+}
+
+/* Previous / Next buttons */
+.estetica-datepicker .absolute.top-full button[aria-label="Mes anterior"],
+.estetica-datepicker .absolute.top-full button[aria-label="Mes siguiente"],
+.estetica-calendar button[aria-label="Mes anterior"],
+.estetica-calendar button[aria-label="Mes siguiente"] {
+  color: #71717A !important;
+}
+
+.estetica-datepicker .absolute.top-full button[aria-label="Mes anterior"]:hover,
+.estetica-datepicker .absolute.top-full button[aria-label="Mes siguiente"]:hover,
+.estetica-calendar button[aria-label="Mes anterior"]:hover,
+.estetica-calendar button[aria-label="Mes siguiente"]:hover {
+  background-color: #F4F4F5 !important;
+  color: #34236F !important;
+}
+
+/* Day-of-week labels (Lu, Ma, Mi...) */
+.estetica-datepicker .absolute.top-full .grid-cols-7:not(.gap-1) span,
+.estetica-calendar .grid-cols-7:not(.gap-1) span,
+.estetica-datepicker .absolute.top-full .text-tech-periwinkle,
+.estetica-calendar .text-tech-periwinkle {
+  color: #C5A059 !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+}
+
+/* Days cells default */
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button,
+.estetica-calendar .grid-cols-7.gap-1 button {
+  color: #34236F !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+}
+
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button:hover:not(:disabled),
+.estetica-calendar .grid-cols-7.gap-1 button:hover:not(:disabled) {
+  background-color: #F9F6ED !important;
+  color: #C5A059 !important;
+}
+
+/* Days from other months */
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button[class*="periwinkle"],
+.estetica-calendar .grid-cols-7.gap-1 button[class*="periwinkle"] {
+  color: #D1D5DB !important;
+  opacity: 0.45 !important;
+}
+
+/* Selected day */
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button.bg-accent-main,
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button[class*="bg-accent-main"],
+.estetica-calendar .grid-cols-7.gap-1 button.bg-accent-main,
+.estetica-calendar .grid-cols-7.gap-1 button[class*="bg-accent-main"] {
+  background: linear-gradient(135deg, #C5A059 0%, #B38E4C 100%) !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(197, 160, 89, 0.4) !important;
+}
+
+/* Today cell indicator */
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button[class*="border-accent-main"],
+.estetica-calendar .grid-cols-7.gap-1 button[class*="border-accent-main"] {
+  border: 1.5px solid #C5A059 !important;
+  color: #C5A059 !important;
+  font-weight: 700 !important;
+}
+
+/* Disabled past dates */
+.estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button:disabled,
+.estetica-calendar .grid-cols-7.gap-1 button:disabled {
+  opacity: 0.25 !important;
+  color: #9CA3AF !important;
+  text-decoration: line-through !important;
+  cursor: not-allowed !important;
+}
