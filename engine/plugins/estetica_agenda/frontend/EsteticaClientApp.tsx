@@ -90,7 +90,7 @@ export const EsteticaClientApp = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={() => haptics.selection()}
+                  onClick={() => haptics.light()}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     active
                       ? 'bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30 shadow-xs'
@@ -178,7 +178,7 @@ export const EsteticaClientApp = () => {
               <Link
                 key={item.name}
                 to={item.path}
-                onClick={() => haptics.selection()}
+                onClick={() => haptics.light()}
                 className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-transform active:scale-95 ${
                   active ? 'text-[#C5A059] font-bold' : 'text-neutral-400 hover:text-neutral-600'
                 }`}

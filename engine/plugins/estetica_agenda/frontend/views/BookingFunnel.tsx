@@ -145,7 +145,7 @@ export const BookingFunnel = () => {
           currentStep={step >= 4 ? 2 : step - 1}
           onStepClick={(stepIndex) => {
             if (stepIndex < step - 1 && step < 4) {
-              haptics.selection();
+              haptics.light();
               setStep(stepIndex + 1);
             }
           }}
@@ -248,7 +248,7 @@ export const BookingFunnel = () => {
                     <Button
                       variant="solid"
                       size="sm"
-                      onClick={() => haptics.selection()}
+                      onClick={() => haptics.light()}
                       className="!bg-[#C5A059] !text-white hover:!bg-[#B38E4C] text-xs font-bold shrink-0"
                     >
                       <ShoppingBag size={13} className="mr-1.5" /> Ir a la Tienda
@@ -295,7 +295,7 @@ export const BookingFunnel = () => {
                         <button
                           key={hora}
                           onClick={() => {
-                            haptics.selection();
+                            haptics.light();
                             setSelectedHora(hora);
                             setStep(3);
                           }}
@@ -387,7 +387,7 @@ export const BookingFunnel = () => {
                     <Button
                       variant="solid"
                       size="lg"
-                      onClick={() => haptics.selection()}
+                      onClick={() => haptics.light()}
                       className="w-full !bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold text-sm flex items-center justify-center gap-2 py-4 rounded-xl"
                     >
                       <ShoppingBag size={16} /> Adquirir Paquete en la Tienda
@@ -418,7 +418,7 @@ export const BookingFunnel = () => {
                   href={buildGoogleCalendarUrl()}
                   target="_blank"
                   rel="noreferrer"
-                  onClick={() => haptics.selection()}
+                  onClick={() => haptics.light()}
                   className="block"
                 >
                   <Button

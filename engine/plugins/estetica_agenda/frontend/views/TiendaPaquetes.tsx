@@ -149,7 +149,7 @@ export const TiendaPaquetes = () => {
                   <select
                     value={selectedServicio}
                     onChange={e => {
-                      haptics.selection();
+                      haptics.light();
                       setSelectedServicio(e.target.value);
                     }}
                     className="w-full p-4 pl-5 pr-12 rounded-xl border border-neutral-200 bg-white outline-none focus:border-[#C5A059] transition-all appearance-none text-[#34236F] font-medium text-sm"
@@ -172,7 +172,7 @@ export const TiendaPaquetes = () => {
                   <select
                     value={selectedRegla}
                     onChange={e => {
-                      haptics.selection();
+                      haptics.light();
                       setSelectedRegla(e.target.value);
                     }}
                     className="w-full p-4 pl-5 pr-12 rounded-xl border border-neutral-200 bg-white outline-none focus:border-[#C5A059] transition-all appearance-none text-[#34236F] font-medium text-sm"

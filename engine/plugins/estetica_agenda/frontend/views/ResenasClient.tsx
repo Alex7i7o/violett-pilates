@@ -75,7 +75,7 @@ export const ResenasClient = () => {
             <StarRating
               value={estrellas}
               onChange={val => {
-                haptics.selection();
+                haptics.light();
                 setEstrellas(val);
               }}
               size="lg"

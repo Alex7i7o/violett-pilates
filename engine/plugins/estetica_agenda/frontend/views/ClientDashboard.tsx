@@ -169,7 +169,7 @@ export const ClientDashboard = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  haptics.selection();
+                  haptics.light();
                   setShowHistory(!showHistory);
                 }}
                 className="text-xs border-neutral-200 text-[#34236F] hover:bg-neutral-50 rounded-xl"
@@ -373,7 +373,7 @@ export const ClientDashboard = () => {
                           variant="glow"
                           size="sm"
                           onClick={() => {
-                            haptics.selection();
+                            haptics.light();
                             navigate(`/?servicio_id=${bill.servicio}`);
                           }}
                           className="!bg-[#F9F6ED] !text-[#C5A059] hover:!bg-[#C5A059] hover:!text-white border border-[#C5A059]/40 text-xs font-bold rounded-full px-3.5"
@@ -464,7 +464,7 @@ export const ClientDashboard = () => {
                       key={h}
                       type="button"
                       onClick={() => {
-                        haptics.selection();
+                        haptics.light();
                         setNewHora(h);
                       }}
                       className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
