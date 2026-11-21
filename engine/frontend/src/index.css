@@ -262,13 +262,16 @@ h2, h3, h4, h5, h6 {
   line-height: 1 !important;
 }
 
-/* Hover */
-.estetica-calendar .grid-cols-7 button:hover:not(:disabled) {
+/* Unselected Day Hover - Soft luxury champagne tint and gold border (never washes out or blends into background) */
+.estetica-calendar .grid-cols-7 button:not([class*="bg-accent-main"]):hover:not(:disabled) {
   background-color: #F9F6ED !important;
+  border: 1px solid rgba(197, 160, 89, 0.45) !important;
+  box-shadow: 0 2px 8px rgba(197, 160, 89, 0.15) !important;
 }
 
-.estetica-calendar .grid-cols-7 button:hover:not(:disabled) span {
+.estetica-calendar .grid-cols-7 button:not([class*="bg-accent-main"]):hover:not(:disabled) span {
   color: #C5A059 !important;
+  font-weight: 700 !important;
 }
 
 /* Selected day - Solid Gold Gradient with Bold White Number */
@@ -283,24 +286,42 @@ h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 14px rgba(197, 160, 89, 0.45) !important;
 }
 
+/* Selected day on HOVER: Keep bold white number, never allow text to turn gold or fade! */
+.estetica-calendar button.bg-accent-main:hover,
+.estetica-calendar button[class*="bg-accent-main"]:hover,
+.estetica-calendar .grid-cols-7 button.bg-accent-main:hover,
+.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"]:hover,
+.estetica-datepicker button.bg-accent-main:hover,
+.estetica-datepicker button[class*="bg-accent-main"]:hover {
+  background: linear-gradient(135deg, #B38E4C 0%, #9E7B3B 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px rgba(197, 160, 89, 0.55) !important;
+}
+
 .estetica-calendar button.bg-accent-main *,
 .estetica-calendar button[class*="bg-accent-main"] *,
+.estetica-calendar button.bg-accent-main:hover *,
+.estetica-calendar button[class*="bg-accent-main"]:hover *,
 .estetica-calendar .grid-cols-7 button.bg-accent-main span,
 .estetica-calendar .grid-cols-7 button[class*="bg-accent-main"] span,
+.estetica-calendar .grid-cols-7 button.bg-accent-main:hover span,
+.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"]:hover span,
 .estetica-datepicker button.bg-accent-main *,
-.estetica-datepicker button[class*="bg-accent-main"] * {
+.estetica-datepicker button[class*="bg-accent-main"] *,
+.estetica-datepicker button.bg-accent-main:hover *,
+.estetica-datepicker button[class*="bg-accent-main"]:hover * {
   color: #FFFFFF !important;
   font-weight: 700 !important;
   opacity: 1 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
 }
 
 /* Today cell indicator */
-.estetica-calendar .grid-cols-7 button[class*="border-accent-main"] {
+.estetica-calendar .grid-cols-7 button[class*="border-accent-main"]:not([class*="bg-accent-main"]) {
   border: 1.5px solid #C5A059 !important;
 }
 
-.estetica-calendar .grid-cols-7 button[class*="border-accent-main"] span {
+.estetica-calendar .grid-cols-7 button[class*="border-accent-main"]:not([class*="bg-accent-main"]) span {
   color: #C5A059 !important;
   font-weight: 700 !important;
 }
@@ -323,6 +344,64 @@ h2, h3, h4, h5, h6 {
 
 .estetica-calendar .grid-cols-7 button[class*="periwinkle"] span {
   color: #CBD5E1 !important;
+}
+
+/* =========================================================================
+   Violett Estética - Stepper Styling (White & Gold Luxury Theme)
+   ========================================================================= */
+
+/* Completed Step (e.g. Paso 1 "Tratamiento") */
+.estetica-stepper span.text-cream-silk,
+.estetica-stepper [class*="text-cream-silk"],
+.estetica-stepper .cursor-pointer:has(.bg-accent-main) .text-left span:first-child {
+  color: #34236F !important; /* Deep Imperial Violet - crisp and readable! */
+  font-weight: 700 !important;
+}
+
+.estetica-stepper .bg-accent-main {
+  background-color: #C5A059 !important;
+  border-color: #C5A059 !important;
+  color: #FFFFFF !important;
+}
+
+.estetica-stepper .bg-accent-main svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+/* Active Step (e.g. Paso 2 "Día y Hora") */
+.estetica-stepper .bg-primary-surface {
+  background-color: #FFFFFF !important;
+  border-color: #C5A059 !important;
+  color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.25) !important;
+}
+
+.estetica-stepper .text-accent-main {
+  color: #C5A059 !important;
+  font-weight: 700 !important;
+}
+
+/* Inactive / Future Step (e.g. Paso 3 "Confirmar") */
+.estetica-stepper div[class*="bg-primary-main"]:not(.bg-accent-main):not(.bg-primary-surface) {
+  background-color: #F4F4F5 !important;
+  border-color: #E4E4E7 !important;
+  color: #71717A !important;
+  box-shadow: none !important;
+}
+
+.estetica-stepper .text-tech-periwinkle\/60,
+.estetica-stepper [class*="text-tech-periwinkle"] {
+  color: #71717A !important;
+}
+
+/* Connecting track lines between steps */
+.estetica-stepper .flex-1.mx-3 {
+  background-color: #E5E7EB !important; /* Visible clean track */
+}
+
+.estetica-stepper .flex-1.mx-3 > div {
+  background-color: #C5A059 !important; /* Gold progress bar */
 }
 
 /* =========================================================================

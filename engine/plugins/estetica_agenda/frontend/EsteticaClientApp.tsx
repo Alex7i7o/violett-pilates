@@ -21,7 +21,7 @@ const esteticaThemeTokens = {
   accentAmber: "#D4AF37",
   accentGlow: "rgba(197, 160, 89, 0.25)",
   techPeriwinkle: "#34236F",
-  creamSilk: "#FFFFFF",
+  creamSilk: "#34236F",
   background: "#FAFAFA",
   card: "#FFFFFF",
   foreground: "#34236F",
