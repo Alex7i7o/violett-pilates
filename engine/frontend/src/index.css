@@ -130,8 +130,16 @@ h2, h3, h4, h5, h6 {
   font-weight: 500 !important;
 }
 
-/* Calendar popover wrapper */
+/* Calendar popover wrapper - Mobile First: 100% width on mobile, fixed width on desktop */
+.estetica-datepicker {
+  position: relative !important;
+  width: 100% !important;
+}
+
 .estetica-datepicker .absolute.top-full {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
   z-index: 50 !important;
 }
 
@@ -153,9 +161,21 @@ h2, h3, h4, h5, h6 {
   box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(197, 160, 89, 0.1) !important;
   border-radius: 1.25rem !important;
   color: #34236F !important;
-  width: 340px !important;
-  max-width: 92vw !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0.875rem !important;
   box-sizing: border-box !important;
+}
+
+@media (min-width: 640px) {
+  .estetica-datepicker .absolute.top-full {
+    width: auto !important;
+    right: auto !important;
+  }
+  .estetica-datepicker .absolute.top-full > div {
+    width: 350px !important;
+    padding: 1.25rem !important;
+  }
 }
 
 /* Calendar header month & year */
@@ -221,33 +241,46 @@ h2, h3, h4, h5, h6 {
 /* Days cells default */
 .estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button,
 .estetica-calendar .grid-cols-7.gap-1 button {
-  width: 2.35rem !important;
-  height: 2.35rem !important;
-  min-width: 2.35rem !important;
-  min-height: 2.35rem !important;
+  width: 100% !important;
+  max-width: 2.5rem !important;
+  height: 2.25rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 0.75rem !important;
-  font-size: 0.813rem !important;
-  line-height: 1 !important;
+  border-radius: 0.625rem !important;
   margin: 0 auto !important;
-  color: #34236F !important;
-  font-weight: 500 !important;
   transition: all 0.15s ease !important;
 }
 
+/* Ensure the day number text inside button span is visible and dark */
+.estetica-datepicker .grid-cols-7 button span,
+.estetica-calendar .grid-cols-7 button span {
+  color: #34236F !important;
+  font-weight: 600 !important;
+  font-size: 0.813rem !important;
+  line-height: 1 !important;
+}
+
+/* Hover */
 .estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button:hover:not(:disabled),
 .estetica-calendar .grid-cols-7.gap-1 button:hover:not(:disabled) {
   background-color: #F9F6ED !important;
+}
+
+.estetica-datepicker .grid-cols-7 button:hover:not(:disabled) span,
+.estetica-calendar .grid-cols-7 button:hover:not(:disabled) span {
   color: #C5A059 !important;
 }
 
 /* Days from other months */
 .estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button[class*="periwinkle"],
 .estetica-calendar .grid-cols-7.gap-1 button[class*="periwinkle"] {
-  color: #D1D5DB !important;
   opacity: 0.45 !important;
+}
+
+.estetica-datepicker .grid-cols-7 button[class*="periwinkle"] span,
+.estetica-calendar .grid-cols-7 button[class*="periwinkle"] span {
+  color: #CBD5E1 !important;
 }
 
 /* Selected day */
@@ -256,15 +289,23 @@ h2, h3, h4, h5, h6 {
 .estetica-calendar .grid-cols-7.gap-1 button.bg-accent-main,
 .estetica-calendar .grid-cols-7.gap-1 button[class*="bg-accent-main"] {
   background: linear-gradient(135deg, #C5A059 0%, #B38E4C 100%) !important;
+  box-shadow: 0 4px 14px rgba(197, 160, 89, 0.4) !important;
+}
+
+.estetica-datepicker .grid-cols-7 button[class*="bg-accent-main"] span,
+.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"] span {
   color: #FFFFFF !important;
   font-weight: 700 !important;
-  box-shadow: 0 4px 14px rgba(197, 160, 89, 0.4) !important;
 }
 
 /* Today cell indicator */
 .estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button[class*="border-accent-main"],
 .estetica-calendar .grid-cols-7.gap-1 button[class*="border-accent-main"] {
   border: 1.5px solid #C5A059 !important;
+}
+
+.estetica-datepicker .grid-cols-7 button[class*="border-accent-main"] span,
+.estetica-calendar .grid-cols-7 button[class*="border-accent-main"] span {
   color: #C5A059 !important;
   font-weight: 700 !important;
 }
@@ -272,8 +313,50 @@ h2, h3, h4, h5, h6 {
 /* Disabled past dates */
 .estetica-datepicker .absolute.top-full .grid-cols-7.gap-1 button:disabled,
 .estetica-calendar .grid-cols-7.gap-1 button:disabled {
-  opacity: 0.25 !important;
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+}
+
+.estetica-datepicker .grid-cols-7 button:disabled span,
+.estetica-calendar .grid-cols-7 button:disabled span {
   color: #9CA3AF !important;
   text-decoration: line-through !important;
-  cursor: not-allowed !important;
+}
+
+/* =========================================================================
+   Mobile-First Stepper Tuning (No overflow on 320px - 390px screens)
+   ========================================================================= */
+
+@media (max-width: 639px) {
+  /* Hide verbose descriptions on mobile so steps fit side-by-side */
+  .estetica-stepper .flex-col > span:last-child {
+    display: none !important;
+  }
+  
+  /* Compact circle badges */
+  .estetica-stepper .w-9.h-9 {
+    width: 1.875rem !important;
+    height: 1.875rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.5rem !important;
+  }
+  
+  /* Compact step titles */
+  .estetica-stepper .text-xs,
+  .estetica-stepper span.font-semibold {
+    font-size: 0.688rem !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Tighter gap between circle and label */
+  .estetica-stepper .flex.items-center.gap-3 {
+    gap: 0.313rem !important;
+  }
+  
+  /* Tighter connecting lines */
+  .estetica-stepper .flex-1.mx-3 {
+    margin-left: 0.25rem !important;
+    margin-right: 0.25rem !important;
+    min-width: 0.5rem !important;
+  }
 }

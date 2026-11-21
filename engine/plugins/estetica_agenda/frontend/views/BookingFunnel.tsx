@@ -133,13 +133,13 @@ export const BookingFunnel = () => {
   const stepperItems = [
     { title: 'Tratamiento', description: 'Elegí el servicio' },
     { title: 'Día y Hora', description: 'Agenda tu turno' },
-    { title: 'Confirmación', description: 'Revisa y reserva' },
+    { title: 'Confirmar', description: 'Revisa y reserva' },
   ];
 
   return (
-    <div className="w-full pb-20">
+    <div className="w-full pb-16 sm:pb-20">
       {/* Stepper interactivo */}
-      <div className="mb-8 pt-2">
+      <div className="mb-6 pt-1">
         <Stepper
           steps={stepperItems}
           currentStep={step >= 4 ? 2 : step - 1}
@@ -149,7 +149,7 @@ export const BookingFunnel = () => {
               setStep(stepIndex + 1);
             }
           }}
-          className="max-w-xl mx-auto"
+          className="estetica-stepper max-w-xl mx-auto"
         />
       </div>
 
@@ -178,7 +178,7 @@ export const BookingFunnel = () => {
                       setSelectedHora('');
                       setStep(2);
                     }}
-                    className="text-left p-6 rounded-2xl bg-white border-2 border-neutral-100 hover:border-[#C5A059] shadow-soft hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
+                    className="text-left p-4 sm:p-6 rounded-2xl bg-white border-2 border-neutral-100 hover:border-[#C5A059] shadow-soft hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
@@ -219,7 +219,7 @@ export const BookingFunnel = () => {
 
         {step === 2 && (
           <motion.div key="step2" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-neutral-100 shadow-soft space-y-6">
+            <div className="bg-white p-4 sm:p-8 rounded-2xl border border-neutral-100 shadow-soft space-y-5 sm:space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b border-neutral-100">
                 <Button
                   variant="ghost"
@@ -290,7 +290,7 @@ export const BookingFunnel = () => {
                       No hay turnos libres para esta fecha. Probá seleccionando otro día en el selector.
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2.5">
+                    <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 sm:gap-2.5">
                       {horarios.map(hora => (
                         <button
                           key={hora}
@@ -299,7 +299,7 @@ export const BookingFunnel = () => {
                             setSelectedHora(hora);
                             setStep(3);
                           }}
-                          className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all cursor-pointer ${
+                          className={`px-2.5 py-2.5 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-full font-bold text-xs text-center border-2 transition-all cursor-pointer ${
                             selectedHora === hora
                               ? 'bg-[#C5A059] text-white border-[#C5A059] shadow-md shadow-[#C5A059]/25'
                               : 'border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059] hover:text-white bg-white'
@@ -318,7 +318,7 @@ export const BookingFunnel = () => {
 
         {step === 3 && (
           <motion.div key="step3" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
-            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-neutral-100 shadow-soft space-y-6">
+            <div className="bg-white p-4 sm:p-8 rounded-2xl border border-neutral-100 shadow-soft space-y-5 sm:space-y-6">
               <Button
                 variant="ghost"
                 size="sm"
@@ -331,7 +331,7 @@ export const BookingFunnel = () => {
                 <ArrowLeft size={14} className="mr-1.5" /> Cambiar fecha u horario
               </Button>
 
-              <div className="bg-[#F9F6ED] p-6 rounded-2xl border border-[#C5A059]/30 space-y-4">
+              <div className="bg-[#F9F6ED] p-4 sm:p-6 rounded-2xl border border-[#C5A059]/30 space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles size={18} className="text-[#C5A059]" />
                   <h3 className="font-bold text-lg text-[#34236F] font-serif">Resumen de tu turno</h3>

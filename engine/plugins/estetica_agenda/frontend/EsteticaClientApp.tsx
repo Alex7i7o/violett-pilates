@@ -148,7 +148,7 @@ export const EsteticaClientApp = () => {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 pb-24 sm:pb-8 sm:pt-8 relative">
+      <main className="flex-1 w-full max-w-4xl mx-auto px-3 sm:px-6 pb-24 sm:pb-8 sm:pt-8 relative">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
