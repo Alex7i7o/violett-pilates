@@ -51,6 +51,9 @@
 :root {
   --background: #FAFAFA;
   --foreground: var(--color-text-foreground, #2B1A53);
+  --color-card: #FFFFFF !important;
+  --color-background: #FAFAFA !important;
+  --color-foreground: var(--color-text-foreground, #2B1A53) !important;
 }
 
 body {

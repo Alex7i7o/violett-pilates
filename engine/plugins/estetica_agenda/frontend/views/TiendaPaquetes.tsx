@@ -4,16 +4,12 @@ import { useClientConfig } from '@/context/ClientConfigContext';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Card,
-  CardTitle,
-  CardDescription,
   Badge,
   Button,
   Modal,
-  FeedbackButton,
   haptics
 } from 'fireseed-ui';
-import { ShoppingBag, Tag, ChevronDown, Copy, Check, MessageCircle, Sparkles } from 'lucide-react';
+import { ShoppingBag, Tag, ChevronDown, Copy, Check, MessageCircle } from 'lucide-react';
 
 export const TiendaPaquetes = () => {
   const config = useClientConfig();
@@ -114,8 +110,8 @@ export const TiendaPaquetes = () => {
   if (loading) {
     return (
       <div className="w-full space-y-6">
-        <div className="h-40 bg-white/5 border border-white/10 rounded-2xl animate-pulse"></div>
-        <div className="h-24 bg-white/5 border border-white/10 rounded-2xl animate-pulse"></div>
+        <div className="h-40 bg-white rounded-2xl border border-neutral-100 shadow-soft animate-pulse"></div>
+        <div className="h-24 bg-white rounded-2xl border border-neutral-100 shadow-soft animate-pulse"></div>
       </div>
     );
   }
@@ -129,24 +125,24 @@ export const TiendaPaquetes = () => {
         className="space-y-6"
       >
         <motion.div variants={itemVariants}>
-          <Card variant="elevated" className="bg-[#190826]/90 border border-[#C5A059]/25 p-6 sm:p-8 rounded-2xl space-y-6">
+          <div className="bg-white border border-neutral-100 shadow-soft p-6 sm:p-8 rounded-2xl space-y-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] rounded-2xl shadow-sm">
+              <div className="p-3 bg-[#F9F6ED] border border-[#C5A059]/30 text-[#C5A059] rounded-2xl shadow-xs">
                 <ShoppingBag size={24} />
               </div>
               <div>
-                <CardTitle className="text-xl sm:text-2xl font-bold text-[#FFF8EE] font-serif tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold text-[#34236F] font-serif tracking-tight">
                   Tienda de Paquetes
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm text-[#FFF8EE]/60 mt-0.5">
+                </h2>
+                <p className="text-xs sm:text-sm text-neutral-500 mt-0.5">
                   Seleccioná un tratamiento estético y la cantidad de sesiones con descuento.
-                </CardDescription>
+                </p>
               </div>
             </div>
 
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] ml-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] ml-1">
                   Tratamiento
                 </label>
                 <div className="relative">
@@ -156,10 +152,10 @@ export const TiendaPaquetes = () => {
                       haptics.selection();
                       setSelectedServicio(e.target.value);
                     }}
-                    className="w-full p-4 pl-5 pr-12 rounded-xl border border-white/15 bg-white/5 outline-none focus:border-[#C5A059] focus:bg-[#190826] transition-all appearance-none text-[#FFF8EE] font-medium text-sm"
+                    className="w-full p-4 pl-5 pr-12 rounded-xl border border-neutral-200 bg-white outline-none focus:border-[#C5A059] transition-all appearance-none text-[#34236F] font-medium text-sm"
                   >
                     {servicios.map(s => (
-                      <option key={s.id} value={s.id} className="bg-[#190826] text-[#FFF8EE]">
+                      <option key={s.id} value={s.id} className="text-[#34236F]">
                         {s.nombre} (${parseFloat(s.precio_base).toLocaleString('es-AR')} por sesión)
                       </option>
                     ))}
@@ -169,7 +165,7 @@ export const TiendaPaquetes = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] ml-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] ml-1">
                   Cantidad de Sesiones
                 </label>
                 <div className="relative">
@@ -179,10 +175,10 @@ export const TiendaPaquetes = () => {
                       haptics.selection();
                       setSelectedRegla(e.target.value);
                     }}
-                    className="w-full p-4 pl-5 pr-12 rounded-xl border border-white/15 bg-white/5 outline-none focus:border-[#C5A059] focus:bg-[#190826] transition-all appearance-none text-[#FFF8EE] font-medium text-sm"
+                    className="w-full p-4 pl-5 pr-12 rounded-xl border border-neutral-200 bg-white outline-none focus:border-[#C5A059] transition-all appearance-none text-[#34236F] font-medium text-sm"
                   >
                     {reglas.map(r => (
-                      <option key={r.id} value={r.id} className="bg-[#190826] text-[#FFF8EE]">
+                      <option key={r.id} value={r.id} className="text-[#34236F]">
                         {r.cantidad_sesiones} Sesión{r.cantidad_sesiones > 1 ? 'es' : ''}
                         {parseFloat(r.descuento_porcentaje) > 0 ? ` (${parseFloat(r.descuento_porcentaje)}% OFF)` : ''}
                       </option>
@@ -192,11 +188,11 @@ export const TiendaPaquetes = () => {
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
         </motion.div>
       </motion.div>
 
-      {/* Floating Luxury Checkout Bar */}
+      {/* Floating Checkout Bar */}
       <AnimatePresence>
         {currentServicio && currentRegla && (
           <motion.div
@@ -207,9 +203,9 @@ export const TiendaPaquetes = () => {
             className="fixed bottom-[4.5rem] sm:bottom-8 left-0 right-0 z-40 px-4 sm:px-0 pointer-events-none"
           >
             <div className="max-w-4xl mx-auto flex justify-center">
-              <div className="bg-[#150720]/95 backdrop-blur-xl border border-[#C5A059]/40 text-[#FFF8EE] rounded-full shadow-2xl p-2 pl-6 pr-2 flex items-center justify-between w-full max-w-[95%] sm:max-w-md pointer-events-auto">
+              <div className="bg-[#34236F] text-white rounded-full shadow-2xl p-2 pl-6 pr-2 flex items-center justify-between w-full max-w-[95%] sm:max-w-md pointer-events-auto border border-[#C5A059]/30">
                 <div className="flex flex-col mr-4">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#FFF8EE]/60">Total a abonar</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-white/70">Total a abonar</span>
                   <div className="flex items-center gap-2">
                     <span className="text-lg sm:text-xl font-bold font-mono text-[#C5A059]">
                       ${totalCalculado.toLocaleString('es-AR')}
@@ -230,7 +226,7 @@ export const TiendaPaquetes = () => {
                     handleBuy();
                   }}
                   disabled={buying}
-                  className="!bg-gradient-to-r !from-[#C5A059] !to-[#E5C788] !text-[#150720] font-bold text-xs rounded-full px-5 py-3 whitespace-nowrap shadow-md shadow-[#C5A059]/20"
+                  className="!bg-[#C5A059] hover:!bg-[#B38E4C] !text-white font-bold text-xs rounded-full px-5 py-3 whitespace-nowrap shadow-md shadow-[#C5A059]/30"
                 >
                   {buying ? 'PROCESANDO...' : 'ADQUIRIR PAQUETE'}
                 </Button>
@@ -240,18 +236,18 @@ export const TiendaPaquetes = () => {
         )}
       </AnimatePresence>
 
-      {/* Modal Transferencia / Alias (FireSeed UI Modal) */}
+      {/* Modal Transferencia / Alias */}
       <Modal
         isOpen={Boolean(aliasModalInfo && currentServicio && currentRegla)}
         onClose={() => setAliasModalInfo(null)}
         title="Datos para Transferencia Bancaria"
         description="Acreditación instantánea tras enviar el comprobante"
-        className="bg-[#190826] border border-[#C5A059]/30 text-[#FFF8EE]"
+        className="bg-white border border-neutral-200 text-[#34236F]"
       >
         {aliasModalInfo && currentServicio && currentRegla && (
           <div className="space-y-5">
-            <div className="p-4 rounded-xl bg-white/5 border border-[#C5A059]/25 text-center">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#FFF8EE]/70">
+            <div className="p-4 rounded-xl bg-[#F9F6ED] border border-[#C5A059]/30 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-600">
                 {currentRegla.cantidad_sesiones} sesión(es) • {currentServicio.nombre}
               </p>
               <p className="text-2xl font-bold text-[#C5A059] font-mono mt-1">
@@ -259,11 +255,11 @@ export const TiendaPaquetes = () => {
               </p>
             </div>
 
-            <div className="space-y-3 bg-white/5 p-4 rounded-xl border border-white/10 text-xs sm:text-sm">
+            <div className="space-y-3 bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-xs sm:text-sm">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">Alias / CVU</p>
-                  <p className="font-mono font-bold text-[#FFF8EE] select-all mt-0.5">
+                  <p className="font-mono font-bold text-[#34236F] select-all mt-0.5">
                     {aliasModalInfo.alias || 'Consultar por WhatsApp'}
                   </p>
                 </div>
@@ -272,10 +268,10 @@ export const TiendaPaquetes = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleCopyAlias(aliasModalInfo.alias)}
-                    className="border-white/20 text-[#FFF8EE] hover:bg-white/10"
+                    className="border-neutral-200 text-neutral-600 hover:text-[#34236F] hover:bg-white"
                     title="Copiar Alias"
                   >
-                    {copiedAlias ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    {copiedAlias ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                   </Button>
                 )}
               </div>
@@ -283,28 +279,28 @@ export const TiendaPaquetes = () => {
               {aliasModalInfo.cbu && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">CBU</p>
-                  <p className="font-mono text-[#FFF8EE]/90 select-all mt-0.5">{aliasModalInfo.cbu}</p>
+                  <p className="font-mono text-neutral-700 select-all mt-0.5">{aliasModalInfo.cbu}</p>
                 </div>
               )}
 
               {aliasModalInfo.titular && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">Titular de la cuenta</p>
-                  <p className="text-[#FFF8EE] font-medium mt-0.5">{aliasModalInfo.titular}</p>
+                  <p className="text-[#34236F] font-medium mt-0.5">{aliasModalInfo.titular}</p>
                 </div>
               )}
             </div>
 
-            <p className="text-xs text-[#FFF8EE]/60 leading-relaxed">
+            <p className="text-xs text-neutral-500 leading-relaxed">
               Una vez realizada la transferencia, envianos el comprobante por WhatsApp para acreditar tus sesiones inmediatamente en tu billetera.
             </p>
 
-            <div className="flex gap-3 pt-2 border-t border-white/10">
+            <div className="flex gap-3 pt-2 border-t border-neutral-100">
               <Button
                 variant="outline"
                 size="md"
                 onClick={() => setAliasModalInfo(null)}
-                className="flex-1 text-xs border-white/20 text-[#FFF8EE]"
+                className="flex-1 text-xs border-neutral-200 text-neutral-600 rounded-xl"
               >
                 Cerrar
               </Button>
@@ -312,7 +308,7 @@ export const TiendaPaquetes = () => {
                 variant="glow"
                 size="md"
                 onClick={handleWhatsAppComprobante}
-                className="flex-1 text-xs !bg-emerald-600 hover:!bg-emerald-500 !text-white font-bold"
+                className="flex-1 text-xs !bg-emerald-600 hover:!bg-emerald-500 !text-white font-bold rounded-xl"
               >
                 <MessageCircle size={15} className="mr-1.5" /> Enviar Comprobante
               </Button>

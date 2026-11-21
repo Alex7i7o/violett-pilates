@@ -12,20 +12,20 @@ import { LogOut, Calendar, Wallet, Store, Star, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 
 const esteticaThemeTokens = {
-  primaryMain: "#150720",
-  primarySurface: "#240E34",
-  primaryHover: "#35144C",
-  primaryLight: "#F5E9DF",
+  primaryMain: "#C5A059",
+  primarySurface: "#FFFFFF",
+  primaryHover: "#B38E4C",
+  primaryLight: "#F9F6ED",
   accentMain: "#C5A059",
   accentHover: "#B38E4C",
   accentAmber: "#D4AF37",
-  accentGlow: "rgba(197, 160, 89, 0.35)",
-  techPeriwinkle: "#C084FC",
-  creamSilk: "#FFF8EE",
-  background: "#0D0414",
-  card: "#190826",
-  foreground: "#FFF8EE",
-  border: "rgba(197, 160, 89, 0.22)"
+  accentGlow: "rgba(197, 160, 89, 0.25)",
+  techPeriwinkle: "#34236F",
+  creamSilk: "#FFFFFF",
+  background: "#FAFAFA",
+  card: "#FFFFFF",
+  foreground: "#34236F",
+  border: "rgba(197, 160, 89, 0.25)"
 };
 
 export const EsteticaClientApp = () => {
@@ -55,20 +55,18 @@ export const EsteticaClientApp = () => {
   };
 
   return (
-    <FireSeedProvider theme={esteticaThemeTokens} className="min-h-screen bg-[#0D0414] text-[#FFF8EE] flex flex-col font-sans pb-[env(safe-area-inset-bottom)] selection:bg-[#C5A059]/30 selection:text-[#FFF8EE]">
+    <FireSeedProvider theme={esteticaThemeTokens} className="min-h-screen bg-[#FAFAFA] text-[#34236F] flex flex-col font-sans pb-[env(safe-area-inset-bottom)] selection:bg-[#C5A059]/20 selection:text-[#34236F]">
 
-      {/* Desktop Luxury Header */}
-      <header className="hidden sm:flex bg-[#150720]/80 backdrop-blur-xl border-b border-[#C5A059]/20 sticky top-0 z-50">
+      {/* Desktop Header */}
+      <header className="hidden sm:flex bg-white/90 backdrop-blur-xl border-b border-neutral-200/80 sticky top-0 z-50 shadow-xs">
         <div className="max-w-4xl mx-auto px-6 h-16 w-full flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group">
-            <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#C5A059] to-[#E5C788] flex items-center justify-center text-[#150720] shadow-md shadow-[#C5A059]/20 group-hover:scale-105 transition-transform">
-              <Sparkles size={16} strokeWidth={2.5} />
-            </span>
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <img src="/logo-estetica-icon.png" alt="Violett Estética" className="h-9 w-auto object-contain" />
             <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight text-[#FFF8EE] font-serif">
+              <span className="text-xl font-bold tracking-tight text-[#34236F] font-serif">
                 Violett
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-[#C5A059] font-semibold -mt-1">
+              <span className="text-[10px] uppercase tracking-widest text-[#C5A059] font-bold -mt-1">
                 Estética & Bienestar
               </span>
             </div>
@@ -80,7 +78,7 @@ export const EsteticaClientApp = () => {
                 variant="glow"
                 size="sm"
                 onClick={promptInstall}
-                className="text-xs !bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C]"
+                className="text-xs !bg-[#C5A059] !text-white hover:!bg-[#B38E4C] rounded-full px-4"
               >
                 Instalar App
               </Button>
@@ -93,10 +91,10 @@ export const EsteticaClientApp = () => {
                   key={item.path}
                   to={item.path}
                   onClick={() => haptics.selection()}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     active
-                      ? 'bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30 shadow-sm'
-                      : 'text-[#FFF8EE]/60 hover:text-[#FFF8EE] hover:bg-white/5'
+                      ? 'bg-[#C5A059]/15 text-[#C5A059] border border-[#C5A059]/30 shadow-xs'
+                      : 'text-neutral-500 hover:text-[#34236F] hover:bg-neutral-100/80'
                   }`}
                 >
                   <item.icon size={15} strokeWidth={active ? 2.5 : 2} />
@@ -105,13 +103,13 @@ export const EsteticaClientApp = () => {
               );
             })}
 
-            <div className="w-px h-5 bg-white/10 mx-1"></div>
+            <div className="w-px h-5 bg-neutral-200 mx-1"></div>
 
             <Button
               variant="ghost"
               size="icon"
               onClick={handleLogout}
-              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+              className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
               title="Cerrar Sesión"
             >
               <LogOut size={16} strokeWidth={2.5} />
@@ -121,12 +119,10 @@ export const EsteticaClientApp = () => {
       </header>
 
       {/* Mobile Top Header */}
-      <header className="sm:hidden flex items-center justify-between px-5 h-16 bg-[#150720]/90 backdrop-blur-md border-b border-[#C5A059]/15 z-40 sticky top-0">
+      <header className="sm:hidden flex items-center justify-between px-5 h-16 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 z-40 sticky top-0 shadow-xs">
         <div className="flex items-center gap-2.5">
-          <span className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#C5A059] to-[#E5C788] flex items-center justify-center text-[#150720] shadow-sm">
-            <Sparkles size={14} strokeWidth={2.5} />
-          </span>
-          <span className="text-lg font-bold text-[#FFF8EE] tracking-tight font-serif">
+          <img src="/logo-estetica-icon.png" alt="Violett Estética" className="h-8 w-auto object-contain" />
+          <span className="text-lg font-bold text-[#34236F] tracking-tight font-serif">
             {navItems.find(item => location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path)))?.name || 'Violett Estética'}
           </span>
         </div>
@@ -136,7 +132,7 @@ export const EsteticaClientApp = () => {
               variant="glow"
               size="sm"
               onClick={promptInstall}
-              className="text-[11px] h-8 px-2.5 !bg-[#C5A059] !text-[#150720]"
+              className="text-[11px] h-8 px-2.5 !bg-[#C5A059] !text-white"
             >
               Instalar
             </Button>
@@ -145,7 +141,7 @@ export const EsteticaClientApp = () => {
             variant="ghost"
             size="icon"
             onClick={handleLogout}
-            className="text-rose-400 hover:bg-rose-500/10 w-9 h-9"
+            className="text-rose-500 hover:bg-rose-50 w-9 h-9"
           >
             <LogOut size={16} strokeWidth={2.5} />
           </Button>
@@ -174,7 +170,7 @@ export const EsteticaClientApp = () => {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#150720]/90 backdrop-blur-[20px] saturate-[180%] border-t border-[#C5A059]/20 pb-[env(safe-area-inset-bottom)]">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-[20px] saturate-[180%] border-t border-neutral-200/80 pb-[env(safe-area-inset-bottom)] shadow-lg">
         <div className="flex items-center justify-around px-2 h-16">
           {navItems.map((item) => {
             const active = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
@@ -184,11 +180,11 @@ export const EsteticaClientApp = () => {
                 to={item.path}
                 onClick={() => haptics.selection()}
                 className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-transform active:scale-95 ${
-                  active ? 'text-[#C5A059]' : 'text-[#FFF8EE]/50 hover:text-[#FFF8EE]'
+                  active ? 'text-[#C5A059] font-bold' : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
                 <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
-                <span className="text-[10px] font-semibold">{item.name}</span>
+                <span className="text-[10px]">{item.name}</span>
               </Link>
             );
           })}
@@ -198,4 +194,3 @@ export const EsteticaClientApp = () => {
     </FireSeedProvider>
   );
 };
-

@@ -137,7 +137,7 @@ export const BookingFunnel = () => {
 
   return (
     <div className="w-full pb-20">
-      {/* Interactive Stepper from Fireseed UI */}
+      {/* Stepper interactivo */}
       <div className="mb-8 pt-2">
         <Stepper
           steps={stepperItems}
@@ -157,59 +157,59 @@ export const BookingFunnel = () => {
           <motion.div key="step1" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#FFF8EE] font-serif">Tratamientos Disponibles</h1>
-                <p className="text-xs sm:text-sm text-[#FFF8EE]/60 mt-0.5">Seleccioná el procedimiento estético para tu sesión</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#34236F] font-serif">Tratamientos Disponibles</h1>
+                <p className="text-xs sm:text-sm text-neutral-500 mt-0.5">Seleccioná el procedimiento estético para tu sesión</p>
               </div>
-              <Badge variant="glow" size="sm">Exclusivo Violett</Badge>
+              <Badge variant="solid" size="sm" className="!bg-[#F9F6ED] !text-[#C5A059] !border-[#C5A059]/40 font-bold">
+                Exclusivo Violett
+              </Badge>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {servicios.map(srv => {
                 const disponibles = getSesionesDisponibles(srv.id);
                 return (
-                  <Card
+                  <button
                     key={srv.id}
-                    variant="elevated"
-                    hoverable
                     onClick={() => {
                       haptics.light();
                       setSelectedServicio(srv);
                       setSelectedHora('');
                       setStep(2);
                     }}
-                    className="cursor-pointer border border-[#C5A059]/25 bg-[#190826]/80 hover:border-[#C5A059] transition-all group p-6 flex flex-col justify-between rounded-2xl"
+                    className="text-left p-6 rounded-2xl bg-white border-2 border-neutral-100 hover:border-[#C5A059] shadow-soft hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <CardTitle className="text-lg font-bold text-[#FFF8EE] group-hover:text-[#C5A059] transition-colors font-serif">
+                        <h3 className="text-lg font-bold text-[#34236F] group-hover:text-[#C5A059] transition-colors font-serif">
                           {srv.nombre}
-                        </CardTitle>
+                        </h3>
                         {disponibles > 0 ? (
-                          <Badge variant="success" size="sm" dot>
-                            {disponibles} disp.
-                          </Badge>
+                          <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                            <WalletCards size={12} /> {disponibles} disp.
+                          </span>
                         ) : (
-                          <Badge variant="secondary" size="sm">
+                          <span className="shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500">
                             Sin sesiones
-                          </Badge>
+                          </span>
                         )}
                       </div>
                       {srv.descripcion && (
-                        <CardDescription className="text-xs text-[#FFF8EE]/60 line-clamp-2 mb-4 leading-relaxed">
+                        <p className="text-xs text-neutral-500 line-clamp-2 mb-4 leading-relaxed">
                           {srv.descripcion}
-                        </CardDescription>
+                        </p>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-white/10 mt-3">
-                      <span className="text-xs text-[#FFF8EE]/60 flex items-center gap-1.5 font-medium">
-                        <Clock size={13} className="text-[#C5A059]" /> {srv.duracion_minutos} min
+                    <div className="flex items-center justify-between pt-3 border-t border-neutral-100 mt-3">
+                      <span className="text-xs text-neutral-500 flex items-center gap-1.5 font-medium">
+                        <Clock size={14} className="text-[#C5A059]" /> {srv.duracion_minutos} min
                       </span>
                       <span className="font-bold text-[#C5A059] text-base font-mono">
                         ${Number(srv.precio_base).toLocaleString('es-AR')}
                       </span>
                     </div>
-                  </Card>
+                  </button>
                 );
               })}
             </div>
@@ -218,8 +218,8 @@ export const BookingFunnel = () => {
 
         {step === 2 && (
           <motion.div key="step2" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
-            <Card variant="elevated" className="p-6 sm:p-8 bg-[#190826]/90 border border-[#C5A059]/25 rounded-2xl space-y-6">
-              <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b border-white/10">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-neutral-100 shadow-soft space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b border-neutral-100">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -227,106 +227,96 @@ export const BookingFunnel = () => {
                     haptics.light();
                     setStep(1);
                   }}
-                  className="text-xs text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5"
+                  className="text-xs text-neutral-600 hover:text-[#34236F] hover:bg-neutral-50"
                 >
                   <ArrowLeft size={14} className="mr-1.5" /> Cambiar tratamiento
                 </Button>
                 <div className="text-right">
                   <p className="text-[10px] text-[#C5A059] uppercase tracking-wider font-bold">Tratamiento seleccionado</p>
-                  <p className="text-sm font-bold text-[#FFF8EE] font-serif">{selectedServicio?.nombre} ({selectedServicio?.duracion_minutos} min)</p>
+                  <p className="text-sm font-bold text-[#34236F] font-serif">{selectedServicio?.nombre} ({selectedServicio?.duracion_minutos} min)</p>
                 </div>
               </div>
 
               {sesionesServicioActual === 0 && (
-                <Callout
-                  variant="warning"
-                  title={`No tenés sesiones activas para ${selectedServicio?.nombre}`}
-                  className="border-amber-500/30 bg-amber-500/10 text-amber-200"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1.5">
-                    <p className="text-xs text-[#FFF8EE]/80">Para confirmar la reserva necesitarás adquirir un paquete en la tienda.</p>
-                    <Link to="/tienda">
-                      <Button
-                        variant="solid"
-                        size="sm"
-                        onClick={() => haptics.selection()}
-                        className="!bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] text-xs font-bold shrink-0"
-                      >
-                        <ShoppingBag size={13} className="mr-1.5" /> Ir a la Tienda
-                      </Button>
-                    </Link>
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-sm mb-0.5">No tenés sesiones activas para {selectedServicio?.nombre}</p>
+                    <p className="text-neutral-600">Para confirmar la reserva necesitarás adquirir un paquete en la tienda.</p>
                   </div>
-                </Callout>
+                  <Link to="/tienda">
+                    <Button
+                      variant="solid"
+                      size="sm"
+                      onClick={() => haptics.selection()}
+                      className="!bg-[#C5A059] !text-white hover:!bg-[#B38E4C] text-xs font-bold shrink-0"
+                    >
+                      <ShoppingBag size={13} className="mr-1.5" /> Ir a la Tienda
+                    </Button>
+                  </Link>
+                </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-2 flex items-center gap-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] mb-2 flex items-center gap-1.5">
                   <Calendar size={14} className="text-[#C5A059]" /> Seleccioná la fecha
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={fecha}
-                    onChange={e => {
-                      haptics.light();
-                      setFecha(e.target.value);
-                      setSelectedHora('');
-                    }}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full p-4 rounded-xl bg-white/5 border border-white/15 text-[#FFF8EE] focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all font-medium text-sm"
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={fecha}
+                  onChange={e => {
+                    haptics.light();
+                    setFecha(e.target.value);
+                    setSelectedHora('');
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full p-4 rounded-xl bg-white border border-neutral-200 text-[#34236F] focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all font-medium text-sm"
+                />
               </div>
 
               {fecha && (
                 <div className="pt-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-3 flex items-center gap-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] mb-3 flex items-center gap-1.5">
                     <Clock size={14} className="text-[#C5A059]" /> Horarios disponibles (Sincronizado con Google Calendar)
                   </label>
                   {loading ? (
-                    <div className="p-8 text-center text-xs text-[#FFF8EE]/60 flex items-center justify-center gap-2">
+                    <div className="p-8 text-center text-xs text-neutral-500 flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin"></div>
                       Buscando disponibilidad en tiempo real...
                     </div>
                   ) : horarios.length === 0 ? (
-                    <EmptyState
-                      title="Sin horarios disponibles"
-                      description="No hay turnos libres para esta fecha. Probá seleccionando otro día en el selector."
-                      icon={<Clock className="w-6 h-6 text-[#C5A059]" />}
-                      className="my-2 border-[#C5A059]/20 bg-white/5"
-                    />
+                    <div className="p-8 text-center rounded-2xl bg-neutral-50 border border-neutral-100 text-xs text-neutral-500">
+                      No hay turnos libres para esta fecha. Probá seleccionando otro día en el selector.
+                    </div>
                   ) : (
                     <div className="flex flex-wrap gap-2.5">
                       {horarios.map(hora => (
-                        <Button
+                        <button
                           key={hora}
-                          variant={selectedHora === hora ? "glow" : "outline"}
-                          size="md"
                           onClick={() => {
                             haptics.selection();
                             setSelectedHora(hora);
                             setStep(3);
                           }}
-                          className={`rounded-full px-5 py-2 text-xs font-semibold transition-all ${
+                          className={`px-5 py-2.5 rounded-full font-bold text-xs border-2 transition-all cursor-pointer ${
                             selectedHora === hora
-                              ? '!bg-[#C5A059] !text-[#150720] !border-[#C5A059] shadow-md shadow-[#C5A059]/25 font-bold'
-                              : 'border-[#C5A059]/30 text-[#FFF8EE] hover:border-[#C5A059] hover:bg-[#C5A059]/10'
+                              ? 'bg-[#C5A059] text-white border-[#C5A059] shadow-md shadow-[#C5A059]/25'
+                              : 'border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059] hover:text-white bg-white'
                           }`}
                         >
                           {hora} hs
-                        </Button>
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
               )}
-            </Card>
+            </div>
           </motion.div>
         )}
 
         {step === 3 && (
           <motion.div key="step3" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
-            <Card variant="glow" className="p-6 sm:p-8 bg-[#190826]/95 border-[#C5A059]/35 rounded-2xl space-y-6">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-neutral-100 shadow-soft space-y-6">
               <Button
                 variant="ghost"
                 size="sm"
@@ -334,41 +324,41 @@ export const BookingFunnel = () => {
                   haptics.light();
                   setStep(2);
                 }}
-                className="text-xs text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5"
+                className="text-xs text-neutral-600 hover:text-[#34236F] hover:bg-neutral-50"
               >
                 <ArrowLeft size={14} className="mr-1.5" /> Cambiar fecha u horario
               </Button>
 
-              <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
+              <div className="bg-[#F9F6ED] p-6 rounded-2xl border border-[#C5A059]/30 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles size={18} className="text-[#C5A059]" />
-                  <h3 className="font-bold text-lg text-[#FFF8EE] font-serif">Resumen de tu turno</h3>
+                  <h3 className="font-bold text-lg text-[#34236F] font-serif">Resumen de tu turno</h3>
                 </div>
 
-                <div className="space-y-3 text-xs sm:text-sm text-[#FFF8EE]/80">
-                  <div className="flex justify-between py-2 border-b border-white/10">
-                    <span className="text-[#FFF8EE]/50">Tratamiento</span>
-                    <strong className="text-[#FFF8EE] font-serif">{selectedServicio?.nombre}</strong>
+                <div className="space-y-3 text-xs sm:text-sm text-[#34236F]/90">
+                  <div className="flex justify-between py-2 border-b border-neutral-200/60">
+                    <span className="text-neutral-500">Tratamiento</span>
+                    <strong className="text-[#34236F] font-serif">{selectedServicio?.nombre}</strong>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-white/10">
-                    <span className="text-[#FFF8EE]/50">Fecha</span>
-                    <strong className="text-[#FFF8EE] font-mono">{fecha}</strong>
+                  <div className="flex justify-between py-2 border-b border-neutral-200/60">
+                    <span className="text-neutral-500">Fecha</span>
+                    <strong className="text-[#34236F] font-mono">{fecha}</strong>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-white/10">
-                    <span className="text-[#FFF8EE]/50">Horario</span>
+                  <div className="flex justify-between py-2 border-b border-neutral-200/60">
+                    <span className="text-neutral-500">Horario</span>
                     <strong className="text-[#C5A059] font-mono">
                       {selectedHora} a {horaFinCalculada} hs ({selectedServicio?.duracion_minutos} min)
                     </strong>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-white/10">
-                    <span className="text-[#FFF8EE]/50 flex items-center gap-1">
+                  <div className="flex justify-between py-2 border-b border-neutral-200/60">
+                    <span className="text-neutral-500 flex items-center gap-1">
                       <MapPin size={13} className="text-[#C5A059]" /> Ubicación
                     </span>
-                    <span className="text-[#FFF8EE] text-right">Comisionado Indart 2822, San Justo</span>
+                    <span className="text-[#34236F] text-right">Comisionado Indart 2822, San Justo</span>
                   </div>
                   <div className="flex justify-between py-2">
-                    <span className="text-[#FFF8EE]/50">Tu saldo actual</span>
-                    <strong className={sesionesServicioActual > 0 ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
+                    <span className="text-neutral-500">Tu saldo actual</span>
+                    <strong className={sesionesServicioActual > 0 ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'}>
                       {sesionesServicioActual} {sesionesServicioActual === 1 ? 'sesión disponible' : 'sesiones disponibles'}
                     </strong>
                   </div>
@@ -384,42 +374,40 @@ export const BookingFunnel = () => {
                   size="lg"
                   disabled={loading}
                   onClick={handleConfirm}
-                  className="w-full !bg-gradient-to-r !from-[#C5A059] !to-[#E5C788] !text-[#150720] font-bold text-sm shadow-lg shadow-[#C5A059]/25 cursor-pointer py-4"
+                  className="w-full !bg-[#C5A059] hover:!bg-[#B38E4C] !text-white font-bold text-sm shadow-md shadow-[#C5A059]/25 cursor-pointer py-4 rounded-xl"
                 />
               ) : (
                 <div className="space-y-3">
-                  <Callout variant="warning" title="Saldo insuficiente">
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
                     No contás con sesiones activas en tu billetera para este tratamiento. Adquirí tu paquete en la tienda para poder confirmar.
-                  </Callout>
+                  </div>
                   <Link to="/tienda">
                     <Button
                       variant="solid"
                       size="lg"
                       onClick={() => haptics.selection()}
-                      className="w-full !bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] font-bold text-sm flex items-center justify-center gap-2 py-4"
+                      className="w-full !bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold text-sm flex items-center justify-center gap-2 py-4 rounded-xl"
                     >
                       <ShoppingBag size={16} /> Adquirir Paquete en la Tienda
                     </Button>
                   </Link>
                 </div>
               )}
-            </Card>
+            </div>
           </motion.div>
         )}
 
         {step === 4 && (
           <motion.div key="step4" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="text-center">
-            <Card variant="elevated" className="p-8 sm:p-12 bg-[#190826]/95 border-[#C5A059]/30 rounded-3xl max-w-lg mx-auto space-y-6">
-              <AnimateIn>
-                <div className="w-20 h-20 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                  <CheckCircle2 size={42} />
-                </div>
-              </AnimateIn>
+            <div className="bg-white p-8 sm:p-12 border border-neutral-100 shadow-soft rounded-3xl max-w-lg mx-auto space-y-6">
+              <div className="w-20 h-20 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                <CheckCircle2 size={42} />
+              </div>
 
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-[#FFF8EE] font-serif mb-2">¡Turno Confirmado!</h2>
-                <p className="text-xs sm:text-sm text-[#FFF8EE]/70 leading-relaxed">
-                  Te esperamos el <strong className="text-[#FFF8EE]">{fecha}</strong> a las <strong className="text-[#C5A059]">{selectedHora} hs</strong> para tu sesión de <strong className="text-[#FFF8EE] font-serif">{selectedServicio?.nombre}</strong>.
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#34236F] font-serif mb-2">¡Turno Confirmado!</h2>
+                <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                  Te esperamos el <strong className="text-[#34236F]">{fecha}</strong> a las <strong className="text-[#C5A059]">{selectedHora} hs</strong> para tu sesión de <strong className="text-[#34236F] font-serif">{selectedServicio?.nombre}</strong>.
                 </p>
               </div>
 
@@ -434,7 +422,7 @@ export const BookingFunnel = () => {
                   <Button
                     variant="glow"
                     size="lg"
-                    className="w-full !bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] font-bold text-xs sm:text-sm shadow-md shadow-[#C5A059]/20"
+                    className="w-full !bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold text-xs sm:text-sm shadow-md shadow-[#C5A059]/20 rounded-xl"
                   >
                     <Calendar size={16} className="mr-2" /> Añadir a mi Google Calendar
                   </Button>
@@ -449,7 +437,7 @@ export const BookingFunnel = () => {
                     haptics.light();
                     navigate('/mi-cuenta');
                   }}
-                  className="flex-1 border-white/20 text-[#FFF8EE] hover:bg-white/10 text-xs"
+                  className="flex-1 border-neutral-200 text-[#34236F] hover:bg-neutral-50 text-xs rounded-xl"
                 >
                   Ver mis turnos en Mi Cuenta
                 </Button>
@@ -462,12 +450,12 @@ export const BookingFunnel = () => {
                     setFecha('');
                     setSelectedHora('');
                   }}
-                  className="flex-1 text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5 text-xs"
+                  className="flex-1 text-neutral-500 hover:text-[#34236F] hover:bg-neutral-50 text-xs rounded-xl"
                 >
                   Agendar otro turno
                 </Button>
               </div>
-            </Card>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

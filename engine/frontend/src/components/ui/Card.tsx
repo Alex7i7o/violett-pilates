@@ -9,7 +9,7 @@ const Card = React.forwardRef<HTMLDivElement, HTMLMotionProps<"div">>(
       ref={ref}
       /* Inherits variants from parent */
       className={cn(
-        "rounded-2xl border border-primary-light bg-card text-foreground shadow-soft overflow-hidden",
+        "rounded-2xl border border-primary-light bg-white text-foreground shadow-soft overflow-hidden",
         className
       )}
       {...props}

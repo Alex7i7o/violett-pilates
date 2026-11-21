@@ -4,8 +4,6 @@ import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Card,
-  CardTitle,
   Badge,
   Button,
   Modal,
@@ -143,7 +141,7 @@ export const ClientDashboard = () => {
     return (
       <div className="w-full space-y-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-32 bg-white/5 border border-white/10 rounded-2xl animate-pulse"></div>
+          <div key={i} className="h-32 bg-white rounded-2xl border border-neutral-100 shadow-soft animate-pulse"></div>
         ))}
       </div>
     );
@@ -155,12 +153,12 @@ export const ClientDashboard = () => {
       <section>
         <div className="flex items-center justify-between gap-3 mb-6 px-1 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] rounded-xl shadow-sm">
+            <div className="p-2.5 bg-[#F9F6ED] border border-[#C5A059]/30 text-[#C5A059] rounded-xl shadow-xs">
               <Calendar size={22} />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-[#FFF8EE] font-serif tracking-tight">Mis Turnos</h2>
-              <p className="text-xs text-[#FFF8EE]/60">Gestioná tus próximas visitas o reprogramá si lo necesitás</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#34236F] font-serif tracking-tight">Mis Turnos</h2>
+              <p className="text-xs text-neutral-500">Gestioná tus próximas visitas o reprogramá si lo necesitás</p>
             </div>
           </div>
 
@@ -173,7 +171,7 @@ export const ClientDashboard = () => {
                   haptics.selection();
                   setShowHistory(!showHistory);
                 }}
-                className="text-xs border-white/15 text-[#FFF8EE]/80 hover:bg-white/5"
+                className="text-xs border-neutral-200 text-[#34236F] hover:bg-neutral-50 rounded-xl"
               >
                 <History size={13} className="mr-1.5" />
                 {showHistory ? 'Ver próximos' : `Historial (${historialTurnos.length})`}
@@ -184,7 +182,7 @@ export const ClientDashboard = () => {
                 variant="glow"
                 size="sm"
                 onClick={() => haptics.light()}
-                className="text-xs !bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] font-bold"
+                className="text-xs !bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold rounded-xl"
               >
                 <Plus size={14} className="mr-1" /> Nuevo Turno
               </Button>
@@ -194,41 +192,36 @@ export const ClientDashboard = () => {
 
         {!showHistory ? (
           proximosTurnos.length === 0 ? (
-            <EmptyState
-              title="No tenés próximos turnos agendados"
-              description="Elegí un tratamiento y reservá tu horario en segundos."
-              icon={<Calendar size={28} className="text-[#C5A059]" />}
-              action={
-                <Link to="/">
-                  <Button variant="glow" size="md" className="!bg-[#C5A059] !text-[#150720] font-bold text-xs">
-                    <Sparkles size={14} className="mr-1.5" /> Reservar un turno ahora
-                  </Button>
-                </Link>
-              }
-              className="border-[#C5A059]/25 bg-[#190826]/70 rounded-2xl p-8"
-            />
+            <div className="bg-white rounded-2xl p-8 text-center border border-neutral-100 shadow-soft">
+              <p className="text-neutral-700 font-semibold mb-1">No tenés próximos turnos agendados</p>
+              <p className="text-xs text-neutral-400 mb-5">Elegí un tratamiento y reservá tu horario en segundos.</p>
+              <Link to="/">
+                <Button variant="glow" size="md" className="!bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold text-xs rounded-xl">
+                  <Sparkles size={14} className="mr-1.5" /> Reservar un turno ahora
+                </Button>
+              </Link>
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {proximosTurnos.map(turno => (
-                <Card
+                <div
                   key={turno.id}
-                  variant="elevated"
-                  className="bg-[#190826]/90 border border-[#C5A059]/25 p-6 rounded-2xl flex flex-col justify-between gap-4"
+                  className="bg-white border border-neutral-100 shadow-soft p-6 rounded-2xl flex flex-col justify-between gap-4"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-3">
-                      <Badge variant="success" size="sm" dot>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
                         Confirmado
-                      </Badge>
-                      <span className="text-xs font-mono text-[#FFF8EE]/60">
+                      </span>
+                      <span className="text-xs font-mono text-neutral-400">
                         {turno.servicio_detalle?.duracion_minutos || 60} min
                       </span>
                     </div>
-                    <CardTitle className="text-lg font-bold text-[#FFF8EE] font-serif mb-2">
+                    <h3 className="text-lg font-bold text-[#34236F] font-serif mb-2">
                       {turno.servicio_detalle?.nombre || 'Tratamiento Estético'}
-                    </CardTitle>
-                    <div className="space-y-1.5 text-xs text-[#FFF8EE]/70">
-                      <p className="flex items-center gap-2 font-medium text-[#FFF8EE]">
+                    </h3>
+                    <div className="space-y-1.5 text-xs text-neutral-600">
+                      <p className="flex items-center gap-2 font-medium text-[#34236F]">
                         <Calendar size={14} className="text-[#C5A059]" />
                         {turno.fecha}
                       </p>
@@ -240,7 +233,7 @@ export const ClientDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-2 pt-3 border-t border-neutral-100">
                     <Button
                       variant="outline"
                       size="sm"
@@ -250,7 +243,7 @@ export const ClientDashboard = () => {
                         setNewFecha(turno.fecha);
                         setNewHora('');
                       }}
-                      className="flex-1 text-xs border-[#C5A059]/30 text-[#FFF8EE] hover:bg-[#C5A059]/10"
+                      className="flex-1 text-xs border-neutral-200 text-[#34236F] hover:border-[#C5A059] rounded-xl"
                     >
                       <CalendarClock size={13} className="mr-1.5" /> Reprogramar
                     </Button>
@@ -261,39 +254,38 @@ export const ClientDashboard = () => {
                         haptics.warning();
                         setTurnoToCancel(turno);
                       }}
-                      className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                      className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl"
                     >
                       <XCircle size={13} className="mr-1" /> Cancelar
                     </Button>
                   </div>
-                </Card>
+                </div>
               ))}
             </div>
           )
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {historialTurnos.map(turno => {
-              const badgeVariant =
+              const badgeStyle =
                 turno.estado === 'ASISTIO'
-                  ? 'success'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : turno.estado === 'CANCELADA'
-                  ? 'secondary'
-                  : 'warning';
+                  ? 'bg-neutral-100 text-neutral-500 border-neutral-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200';
               return (
-                <Card
+                <div
                   key={turno.id}
-                  variant="default"
-                  className="bg-[#190826]/60 border border-white/10 p-5 rounded-2xl flex items-center justify-between gap-4"
+                  className="bg-white border border-neutral-100 p-5 rounded-2xl flex items-center justify-between gap-4 shadow-2xs"
                 >
                   <div>
-                    <h4 className="font-bold text-sm text-[#FFF8EE] font-serif">
+                    <h4 className="font-bold text-sm text-[#34236F] font-serif">
                       {turno.servicio_detalle?.nombre || 'Tratamiento'}
                     </h4>
-                    <p className="text-xs text-[#FFF8EE]/50 mt-0.5 font-mono">
+                    <p className="text-xs text-neutral-400 mt-0.5 font-mono">
                       {turno.fecha} • {String(turno.hora_inicio || '').slice(0, 5)} hs
                     </p>
                   </div>
-                  <Badge variant={badgeVariant as any} size="sm">
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${badgeStyle}`}>
                     {turno.estado === 'ASISTIO'
                       ? 'Asistió'
                       : turno.estado === 'NO_ASISTIO'
@@ -301,8 +293,8 @@ export const ClientDashboard = () => {
                       : turno.estado === 'CANCELADA'
                       ? 'Cancelado'
                       : turno.estado}
-                  </Badge>
-                </Card>
+                  </span>
+                </div>
               );
             })}
           </div>
@@ -313,30 +305,26 @@ export const ClientDashboard = () => {
       <section>
         <div className="flex items-center justify-between gap-3 mb-6 px-1">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] rounded-xl shadow-sm">
+            <div className="p-2.5 bg-[#F9F6ED] border border-[#C5A059]/30 text-[#C5A059] rounded-xl shadow-xs">
               <WalletCards size={22} />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-[#FFF8EE] font-serif tracking-tight">Mi Billetera</h2>
-              <p className="text-xs text-[#FFF8EE]/60">Tus paquetes de sesiones adquiridos y su saldo disponible</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-[#34236F] font-serif tracking-tight">Mi Billetera</h2>
+              <p className="text-xs text-neutral-500">Tus paquetes de sesiones adquiridos y su saldo disponible</p>
             </div>
           </div>
         </div>
 
         {billeteras.length === 0 ? (
-          <EmptyState
-            title="No tenés paquetes activos en tu billetera"
-            description="Adquirí sesiones con descuento en la tienda y usalas cuando quieras."
-            icon={<WalletCards size={28} className="text-[#C5A059]" />}
-            action={
-              <Link to="/tienda">
-                <Button variant="glow" size="md" className="!bg-[#C5A059] !text-[#150720] font-bold text-xs">
-                  Ir a la Tienda de Paquetes
-                </Button>
-              </Link>
-            }
-            className="border-[#C5A059]/25 bg-[#190826]/70 rounded-2xl p-8"
-          />
+          <div className="bg-white border border-neutral-100 rounded-2xl p-8 text-center shadow-soft">
+            <p className="text-neutral-600 font-semibold mb-1">No tenés paquetes activos en tu billetera</p>
+            <p className="text-xs text-neutral-400 mb-5">Adquirí sesiones con descuento en la tienda y usalas cuando quieras.</p>
+            <Link to="/tienda">
+              <Button variant="glow" size="md" className="!bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold text-xs rounded-xl">
+                Ir a la Tienda de Paquetes
+              </Button>
+            </Link>
+          </div>
         ) : (
           <motion.div
             variants={containerVariants}
@@ -358,23 +346,23 @@ export const ClientDashboard = () => {
                   key={bill.id}
                   className={`p-6 rounded-2xl relative overflow-hidden transition-all flex flex-col justify-between border ${
                     isInactive
-                      ? 'bg-white/5 text-[#FFF8EE]/40 border-white/10'
-                      : 'bg-[#190826]/90 shadow-md border-[#C5A059]/25 text-[#FFF8EE]'
+                      ? 'bg-neutral-50 text-neutral-400 border-neutral-200'
+                      : 'bg-white shadow-soft border-neutral-100 text-[#34236F]'
                   }`}
                 >
                   <div>
                     <div className="flex justify-between items-start mb-5">
                       <div>
-                        <h3 className={`font-bold text-lg leading-tight mb-1 font-serif ${isInactive ? 'text-[#FFF8EE]/50' : 'text-[#FFF8EE]'}`}>
+                        <h3 className={`font-bold text-lg leading-tight mb-1 font-serif ${isInactive ? 'text-neutral-400' : 'text-[#34236F]'}`}>
                           {bill.servicio_detalle?.nombre || 'Servicio'}
                         </h3>
                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                           {isVencido ? (
-                            <Badge variant="error" size="sm"><Clock size={11} className="mr-1" /> Vencido</Badge>
+                            <span className="text-rose-500 flex items-center gap-1"><Clock size={11} /> Vencido</span>
                           ) : isAgotado ? (
-                            <Badge variant="warning" size="sm"><CheckCircle size={11} className="mr-1" /> Agotado</Badge>
+                            <span className="text-amber-500 flex items-center gap-1"><CheckCircle size={11} /> Agotado</span>
                           ) : (
-                            <Badge variant="success" size="sm" dot><CheckCircle size={11} className="mr-1" /> Activo</Badge>
+                            <span className="text-emerald-600 flex items-center gap-1 font-semibold"><CheckCircle size={11} /> Activo</span>
                           )}
                         </div>
                       </div>
@@ -387,7 +375,7 @@ export const ClientDashboard = () => {
                             haptics.selection();
                             navigate(`/?servicio_id=${bill.servicio}`);
                           }}
-                          className="!bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] text-xs font-bold"
+                          className="!bg-[#F9F6ED] !text-[#C5A059] hover:!bg-[#C5A059] hover:!text-white border border-[#C5A059]/40 text-xs font-bold rounded-full px-3.5"
                         >
                           Agendar turno
                         </Button>
@@ -396,29 +384,29 @@ export const ClientDashboard = () => {
 
                     <div className="mb-5">
                       <div className="flex justify-between text-xs mb-1.5 font-medium">
-                        <span className={isInactive ? 'text-[#FFF8EE]/40' : 'text-[#FFF8EE]/70'}>
+                        <span className={isInactive ? 'text-neutral-400' : 'text-neutral-600'}>
                           <strong className={`text-base font-mono ${isInactive ? '' : 'text-[#C5A059]'}`}>{bill.sesiones_restantes}</strong> restantes
                         </span>
-                        <span className="text-[#FFF8EE]/50 font-mono text-[11px] self-end">de {bill.sesiones_totales} totales</span>
+                        <span className="text-neutral-400 font-mono text-[11px] self-end">de {bill.sesiones_totales} totales</span>
                       </div>
-                      <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${progress}%` }}
                           transition={{ duration: 0.8 }}
-                          className={`h-full rounded-full ${isInactive ? 'bg-white/20' : 'bg-gradient-to-r from-[#C5A059] to-[#E5C788]'}`}
+                          className={`h-full rounded-full ${isInactive ? 'bg-neutral-300' : 'bg-gradient-to-r from-[#C5A059] to-[#E5C788]'}`}
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between text-[11px] font-mono text-[#FFF8EE]/50 bg-white/5 p-3 rounded-xl border border-white/5">
+                  <div className="flex justify-between text-[11px] font-mono text-neutral-400 bg-neutral-50 p-3 rounded-xl border border-neutral-100">
                     <div>
-                      <p className="uppercase tracking-wider text-[9px] mb-0.5 opacity-60">Compra</p>
+                      <p className="uppercase tracking-wider text-[9px] mb-0.5 opacity-70">Compra</p>
                       <p>{bill.fecha_compra}</p>
                     </div>
                     <div className="text-right">
-                      <p className="uppercase tracking-wider text-[9px] mb-0.5 opacity-60">Vence</p>
+                      <p className="uppercase tracking-wider text-[9px] mb-0.5 opacity-70">Vence</p>
                       <p>{bill.fecha_vencimiento}</p>
                     </div>
                   </div>
@@ -435,16 +423,16 @@ export const ClientDashboard = () => {
         onClose={() => setTurnoToReschedule(null)}
         title="Reprogramar Turno"
         description={turnoToReschedule ? `Turno actual: ${turnoToReschedule.fecha} a las ${String(turnoToReschedule.hora_inicio || '').slice(0, 5)} hs` : ''}
-        className="bg-[#190826] border border-[#C5A059]/30 text-[#FFF8EE]"
+        className="bg-white border border-neutral-200 text-[#34236F]"
       >
         <div className="space-y-5">
-          <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 text-xs text-[#FFF8EE]/80">
-            <p className="font-bold text-[#FFF8EE] text-sm font-serif">{turnoToReschedule?.servicio_detalle?.nombre}</p>
-            <p className="text-[#C5A059] mt-0.5">Se actualizará en tiempo real con Google Calendar.</p>
+          <div className="p-3.5 rounded-xl bg-[#F9F6ED] border border-[#C5A059]/30 text-xs text-[#34236F]">
+            <p className="font-bold text-sm font-serif">{turnoToReschedule?.servicio_detalle?.nombre}</p>
+            <p className="text-[#C5A059] font-medium mt-0.5">Se actualizará en tiempo real con Google Calendar.</p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-1.5">Nueva Fecha</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] mb-1.5">Nueva Fecha</label>
             <input
               type="date"
               min={todayStr}
@@ -454,48 +442,47 @@ export const ClientDashboard = () => {
                 setNewFecha(e.target.value);
                 setNewHora('');
               }}
-              className="w-full p-3 rounded-xl bg-white/5 border border-white/15 text-[#FFF8EE] text-sm focus:border-[#C5A059] outline-none"
+              className="w-full p-3 rounded-xl bg-white border border-neutral-200 text-[#34236F] text-sm focus:border-[#C5A059] outline-none"
             />
           </div>
 
           {newFecha && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-2">Nuevo Horario</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#34236F] mb-2">Nuevo Horario</label>
               {loadingHorarios ? (
-                <p className="text-xs text-[#FFF8EE]/60 py-2">Consultando disponibilidad en Google Calendar...</p>
+                <p className="text-xs text-neutral-500 py-2">Consultando disponibilidad en Google Calendar...</p>
               ) : horariosDisponibles.length === 0 ? (
-                <p className="text-xs text-amber-300 py-2">No hay horarios libres en esta fecha.</p>
+                <p className="text-xs text-amber-700 py-2">No hay horarios libres en esta fecha.</p>
               ) : (
                 <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                   {horariosDisponibles.map(h => (
-                    <Button
+                    <button
                       key={h}
-                      variant={newHora === h ? "glow" : "outline"}
-                      size="sm"
+                      type="button"
                       onClick={() => {
                         haptics.selection();
                         setNewHora(h);
                       }}
-                      className={`text-xs rounded-xl ${
+                      className={`px-3.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                         newHora === h
-                          ? '!bg-[#C5A059] !text-[#150720] !border-[#C5A059]'
-                          : 'border-white/20 text-[#FFF8EE]'
+                          ? 'bg-[#C5A059] text-white border-[#C5A059]'
+                          : 'border-neutral-200 text-[#34236F] hover:border-[#C5A059]'
                       }`}
                     >
                       {h} hs
-                    </Button>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           )}
 
-          <div className="flex gap-3 pt-3 border-t border-white/10">
+          <div className="flex gap-3 pt-3 border-t border-neutral-100">
             <Button
               variant="outline"
               size="md"
               onClick={() => setTurnoToReschedule(null)}
-              className="flex-1 text-xs border-white/20 text-[#FFF8EE]"
+              className="flex-1 text-xs border-neutral-200 text-neutral-600 rounded-xl"
             >
               Volver
             </Button>
@@ -504,7 +491,7 @@ export const ClientDashboard = () => {
               size="md"
               disabled={!newFecha || !newHora || rescheduling}
               onClick={handleConfirmReschedule}
-              className="flex-1 text-xs !bg-[#C5A059] !text-[#150720] font-bold"
+              className="flex-1 text-xs !bg-[#C5A059] !text-white hover:!bg-[#B38E4C] font-bold rounded-xl"
             >
               {rescheduling ? 'Guardando...' : 'Confirmar Cambio'}
             </Button>
