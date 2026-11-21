@@ -177,10 +177,10 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '20/min',
-        'user': '100/min',
-        'reserva': '10/min',
-        'auth': '5/min',
+        'anon': '60/min' if DEBUG else '20/min',
+        'user': '200/min' if DEBUG else '100/min',
+        'reserva': '60/min' if DEBUG else '10/min',
+        'auth': '60/min' if DEBUG else '5/min',
         'webhook': '200/min'
     }
 }

@@ -135,37 +135,37 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
   if (isRegisterMode) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 py-12">
-        <Card className="w-full max-w-md shadow-glass max-h-[95dvh] overflow-y-auto hide-scrollbar">
-          <CardHeader className="text-center pb-2">
-            <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
-            <CardTitle className="text-2xl text-primary-main">Crear mi cuenta</CardTitle>
+      <div className="h-[100dvh] max-h-[100dvh] overflow-hidden flex items-center justify-center p-3 sm:p-4">
+        <Card className="w-full max-w-md shadow-glass max-h-[92dvh] overflow-y-auto hide-scrollbar bg-white">
+          <CardHeader className="text-center p-4 pb-2">
+            <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-14 sm:h-16 mx-auto mb-1 object-contain drop-shadow-md" />
+            <CardTitle className="text-xl sm:text-2xl text-primary-main">Crear mi cuenta</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-1">
             <form 
               onInvalid={(e) => {
                 e.preventDefault();
                 const t = typeof toast !== 'undefined' ? toast : (window as any).toast;
                 if(t) t.error('Por favor, completa todos los campos requeridos.');
               }}
-              onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              onSubmit={handleRegister} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-semibold text-foreground">Nombre</label>
-                  <input type="text" required maxLength={50} value={nombre} onChange={e=>setNombre(e.target.value)} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                  <label className="text-xs sm:text-sm font-semibold text-foreground">Nombre</label>
+                  <input type="text" required maxLength={50} value={nombre} onChange={e=>setNombre(e.target.value)} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main" />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-foreground">Apellido</label>
-                  <input type="text" required maxLength={50} value={apellido} onChange={e=>setApellido(e.target.value)} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                  <label className="text-xs sm:text-sm font-semibold text-foreground">Apellido</label>
+                  <input type="text" required maxLength={50} value={apellido} onChange={e=>setApellido(e.target.value)} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main" />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Email</label>
-                <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                <label className="text-xs sm:text-sm font-semibold text-foreground">Email</label>
+                <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main" />
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Contraseña</label>
-                <div className="relative mt-1">
+                <label className="text-xs sm:text-sm font-semibold text-foreground">Contraseña</label>
+                <div className="relative mt-0.5">
                   <input 
                     type={showPassword ? "text" : "password"} 
                     required 
@@ -175,26 +175,26 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                     onBlur={() => setIsRegisterPasswordFocused(false)}
                     minLength={8} 
                     placeholder="Mínimo 8 caracteres" 
-                    className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" 
+                    className="w-full p-2 text-sm rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" 
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 <PasswordRequirements password={password} isFocused={isRegisterPasswordFocused} />
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Teléfono (WhatsApp)</label>
-                <input type="text" required maxLength={30} value={telefono} onChange={e=>setTelefono(e.target.value)} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                <label className="text-xs sm:text-sm font-semibold text-foreground">Teléfono (WhatsApp)</label>
+                <input type="text" required maxLength={30} value={telefono} onChange={e=>setTelefono(e.target.value)} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-semibold text-foreground">Fecha de Nacimiento</label>
-                  <input type="date" required value={fechaNacimiento} onChange={e=>setFechaNacimiento(e.target.value)} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main bg-white" />
+                  <label className="text-xs sm:text-sm font-semibold text-foreground">Fecha de Nacimiento</label>
+                  <input type="date" required value={fechaNacimiento} onChange={e=>setFechaNacimiento(e.target.value)} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main bg-white" />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-foreground">Sexo</label>
-                  <select required value={sexo} onChange={e=>setSexo(e.target.value)} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
+                  <label className="text-xs sm:text-sm font-semibold text-foreground">Sexo</label>
+                  <select required value={sexo} onChange={e=>setSexo(e.target.value)} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main bg-white">
                     <option value="">Seleccionar...</option>
                     <option value="F">Femenino</option>
                     <option value="M">Masculino</option>
@@ -204,43 +204,43 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-foreground">Contacto de Emergencia</label>
-                <input type="text" maxLength={50} value={contacto} onChange={e=>setContacto(e.target.value)} placeholder="Ej: Mamá (1145...)" className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+                <label className="text-xs sm:text-sm font-semibold text-foreground">Contacto de Emergencia</label>
+                <input type="text" maxLength={50} value={contacto} onChange={e=>setContacto(e.target.value)} placeholder="Ej: Mamá (1145...)" className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main" />
               </div>
               <div>
-                <label className="text-sm font-semibold text-foreground">Notas Médicas o Lesiones</label>
-                <textarea maxLength={300} value={notas} onChange={e=>setNotas(e.target.value)} rows={2} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main"></textarea>
+                <label className="text-xs sm:text-sm font-semibold text-foreground">Notas Médicas o Lesiones</label>
+                <textarea maxLength={300} value={notas} onChange={e=>setNotas(e.target.value)} rows={2} className="w-full p-2 text-sm rounded-xl border border-primary-light mt-0.5 focus:outline-none focus:ring-2 focus:ring-primary-main"></textarea>
               </div>
 
-              <div className="flex items-start mt-4 mb-4">
-                <input type="checkbox" id="terms" required className="mt-1 mr-2 cursor-pointer accent-primary-main" />
+              <div className="flex items-start my-2">
+                <input type="checkbox" id="terms" required className="mt-0.5 mr-2 cursor-pointer accent-primary-main" />
                 <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer text-left">
                   Acepto los <Link to="/terminos" target="_blank" className="text-violett-600 underline hover:text-primary-main">Términos y Condiciones</Link> y la <Link to="/privacidad" target="_blank" className="text-violett-600 underline hover:text-primary-main">Política de Privacidad</Link>.
                 </label>
               </div>
-              {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-              <div className="flex justify-center w-full"><FeedbackButton status={status} type="submit" className="w-full py-6 text-base" initialText="Comenzar en Violett Pilates" successText="¡Bienvenido!" /></div>
+              {error && <p className="text-red-500 text-xs sm:text-sm text-center font-medium">{error}</p>}
+              <div className="flex justify-center w-full">
+                <FeedbackButton status={status} type="submit" className="w-full py-3 text-sm rounded-xl font-semibold" initialText={isEstetica ? "Comenzar en Violett Estética" : "Comenzar en Violett Pilates"} successText="¡Bienvenido!" />
+              </div>
           </form>
 
-          
-
           {!isAdminMode && (
-            <div className="mt-4 text-center">
+            <div className="mt-3 text-center">
               <button 
                 type="button"
                 onClick={toggleRegisterMode}
-                className="text-sm text-violett-700 hover:text-primary-main font-bold underline transition-colors"
+                className="text-xs sm:text-sm text-violett-700 hover:text-primary-main font-bold underline transition-colors"
               >
                 &larr; Volver al Inicio de Sesión
               </button>
             </div>
           )}
 
-          <div className="mt-6 text-center border-t border-gray-100 pt-4">
+          <div className="mt-3 text-center border-t border-gray-100 pt-2.5">
             <button 
               type="button"
               onClick={toggleAdminMode}
-              className="text-sm text-gray-500 hover:text-primary-hover transition-colors font-medium underline"
+              className="text-xs sm:text-sm text-gray-500 hover:text-primary-hover transition-colors font-medium underline"
             >
               {isAdminMode ? 'Volver a acceso de alumnas' : 'Acceso Staff / Panel de Negocio'}
             </button>
@@ -253,15 +253,15 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
   return (
     
-      <div className="min-h-screen flex items-center justify-center p-4 py-12">
+      <div className="h-[100dvh] max-h-[100dvh] overflow-hidden flex items-center justify-center p-3 sm:p-4">
         {showInstallBanner && (
-          <div className="fixed top-0 left-0 right-0 bg-primary-main text-white p-4 shadow-lg z-50 flex items-center justify-between">
+          <div className="fixed top-0 left-0 right-0 bg-primary-main text-white p-3 shadow-lg z-50 flex items-center justify-between">
             <div>
-              <p className="font-bold text-sm">¡Instalá la App!</p>
+              <p className="font-bold text-xs sm:text-sm">¡Instalá la App!</p>
               <p className="text-xs opacity-90">{isIOS ? "Tocá compartir y luego 'Agregar a Inicio'" : "Para una experiencia más rápida."}</p>
             </div>
             {!isIOS && (
-              <button onClick={promptInstall} className="bg-white text-primary-main px-4 py-2 rounded-lg text-sm font-bold shadow-sm">
+              <button onClick={promptInstall} className="bg-white text-primary-main px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold shadow-sm">
                 Instalar
               </button>
             )}
@@ -270,23 +270,23 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
             </button>
           </div>
         )}
-        <Card className="w-full max-w-md shadow-glass">
-        <CardHeader className="text-center pb-2">
-          <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-20 sm:h-24 mx-auto mb-2 object-contain drop-shadow-md" />
-          <CardTitle className="text-2xl text-primary-main">{config?.copywriting?.hero_title || 'Bienvenido'}</CardTitle>
-          <p className="text-muted text-sm">{config?.copywriting?.hero_subtitle}</p>
+        <Card className="w-full max-w-sm sm:max-w-md shadow-glass bg-white my-auto">
+        <CardHeader className="text-center p-4 pb-1 sm:p-5 sm:pb-1">
+          <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-12 sm:h-14 mx-auto mb-1 object-contain drop-shadow-md" />
+          <CardTitle className="text-xl sm:text-2xl text-primary-main font-serif">{config?.copywriting?.hero_title || 'Bienvenido'}</CardTitle>
+          <p className="text-muted text-xs sm:text-sm">{config?.copywriting?.hero_subtitle}</p>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+        <CardContent className="p-4 sm:p-6 pt-1 sm:pt-2">
+          <form onSubmit={handleLogin} className="space-y-2.5 sm:space-y-3">
             <div>
-              <label className="text-sm font-semibold text-foreground">
+              <label className="text-xs sm:text-sm font-semibold text-foreground">
                 {isAdminMode ? 'Email corporativo' : (isEstetica ? 'Email' : 'Email de alumna')}
               </label>
-              <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2.5 rounded-xl border border-primary-light mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main" />
+              <input type="email" required value={email} onChange={e=>setEmail(e.target.value.toLowerCase())} maxLength={50} className="w-full p-2 sm:p-2.5 text-sm rounded-xl border border-primary-light mt-0.5 sm:mt-1 focus:outline-none focus:ring-2 focus:ring-primary-main bg-white" />
             </div>
             <div>
-              <label className="text-sm font-semibold text-foreground">Contraseña</label>
-              <div className="relative mt-1">
+              <label className="text-xs sm:text-sm font-semibold text-foreground">Contraseña</label>
+              <div className="relative mt-0.5 sm:mt-1">
                 <input 
                   type={showPassword ? "text" : "password"} 
                   required 
@@ -295,10 +295,10 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                   onFocus={() => setIsLoginPasswordFocused(true)}
                   onBlur={() => setIsLoginPasswordFocused(false)}
                   minLength={8} 
-                  className="w-full p-2.5 rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main" 
+                  className="w-full p-2 sm:p-2.5 text-sm rounded-xl border border-primary-light focus:outline-none focus:ring-2 focus:ring-primary-main bg-white" 
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               <AnimatePresence>
@@ -308,38 +308,38 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="mt-1.5 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-2"
+                    className="mt-1 text-xs text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200/80 flex items-center gap-1.5"
                   >
                     <span className="text-primary-main font-bold">ℹ</span>
-                    <span>Tu contraseña contiene mínimo 8 caracteres (mayúsculas, números o caracteres especiales).</span>
+                    <span>Tu contraseña contiene mínimo 8 caracteres.</span>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-              <div className="mt-2 text-right">
-                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-violett-500 hover:text-primary-main underline">
-                  ¿Olvidé mi contraseña?
-                </button>
-              </div>
+            <div className="mt-1 text-right">
+              <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-violett-500 hover:text-primary-main underline">
+                ¿Olvidé mi contraseña?
+              </button>
+            </div>
 
-            {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
-            <div className="flex justify-center w-full">
-              <FeedbackButton status={status} type="submit" className={`w-full py-6 text-base ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} initialText="Ingresar" successText="¡Bienvenido!" />
+            {error && <p className="text-red-500 text-xs sm:text-sm text-center font-medium">{error}</p>}
+            <div className="flex justify-center w-full pt-1">
+              <FeedbackButton status={status} type="submit" className={`w-full py-2.5 sm:py-3 text-sm sm:text-base rounded-xl font-semibold ${isAdminMode ? 'bg-slate-900 hover:bg-slate-800 text-white' : ''}`} initialText="Ingresar" successText="¡Bienvenido!" />
             </div>
           </form>
 
           {!isAdminMode && (
-            <div className="mt-4 text-center">
-              <button type="button" onClick={toggleRegisterMode} className="text-sm text-violett-700 hover:text-primary-main font-bold underline transition-colors">
+            <div className="mt-2.5 sm:mt-3 text-center">
+              <button type="button" onClick={toggleRegisterMode} className="text-xs sm:text-sm text-violett-700 hover:text-primary-main font-bold underline transition-colors">
                 Registrarme
               </button>
             </div>
           )}
 
-          <div className="mt-6 text-center border-t border-gray-100 pt-4">
-            <button type="button" onClick={toggleAdminMode} className="text-sm text-gray-500 hover:text-primary-hover transition-colors font-medium underline">
-              {isAdminMode ? 'Volver a acceso de alumnas' : 'Acceso Staff / Panel de Negocio'}
+          <div className="mt-3 sm:mt-4 text-center border-t border-gray-100 pt-2 sm:pt-2.5">
+            <button type="button" onClick={toggleAdminMode} className="text-xs sm:text-sm text-gray-500 hover:text-primary-hover transition-colors font-medium underline">
+              {isAdminMode ? 'Volver a acceso de clientes' : 'Acceso Staff / Panel de Negocio'}
             </button>
           </div>
         </CardContent>

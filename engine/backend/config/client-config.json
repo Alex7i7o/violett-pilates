@@ -1,86 +1,37 @@
 {
-  "client_id": "violett_pilates",
-  "business_name": "Violett Pilates",
-  "domain": "pilates.violett.com.ar",
+  "client_id": "violett_estetica",
+  "business_name": "Violett Est\u00e9tica",
+  "domain": "estetica.violett.com.ar",
   "theme": {
-    "primary_main": "#34236F",
-    "primary_hover": "#2A1C5A",
-    "primary_light": "#F4EBF1",
-    "text_foreground": "#2B1A53",
+    "primary_main": "#C5A059",
+    "primary_hover": "#B38E4C",
+    "primary_light": "#F9F6ED",
+    "text_foreground": "#34236F",
     "border_radius": "1rem"
   },
   "features": {
     "online_payments": true,
     "class_packs": false,
     "client_registration": true,
-    "whatsapp_reminders": false,
+    "whatsapp_reminders": true,
     "google_login": true,
     "webpush": true
   },
   "copywriting": {
-    "hero_title": "Bienvenida a Violett Pilates",
-    "hero_subtitle": "Reserva tus clases y gestiona tus planes",
+    "hero_title": "Realza tu belleza natural",
+    "hero_subtitle": "Reserva tu turno de est\u00e9tica online",
     "cta_login": "Ingresar al Portal"
   },
   "active_plugins": [
     "auth",
-    "profesores",
-    "membresias",
-    "recurrencias",
-    "resenas",
+    "estetica_servicios",
+    "estetica_paquetes",
+    "estetica_agenda",
     "pagos",
-    "webpush",
+    "resenas",
     "comunicaciones",
     "analitica",
-    "fichas_medicas",
-    "asistente"
+    "webpush"
   ],
-  "contact_phone": "5491164142172",
-  "plugin_config": {
-    "asistente": {
-      "nombre_asistente": "Violett",
-      "telefono_estudio": "5491164142172",
-      "telefono_duena": "5491157691786",
-      "reglas_operativas": {
-        "max_cupo_por_turno": 3,
-        "horas_limite_cancelacion": 2,
-        "estructura_sesion": "55 minutos de clase + 5 minutos de ritual de descompresión",
-        "direccion": "Gral. Guido 1573, Ramos Mejía",
-        "alias_transferencia": "VIOLETT.PILATES",
-        "titular_transferencia": "Débora Zárate (Deby)",
-        "nombre_duena": "Deby"
-      },
-      "estilo_comunicacion": {
-        "icono_sello": "✦",
-        "tratar_de": "vos",
-        "formato_horario": "18:00 hs"
-      },
-      "modos_activos": {
-        "atencion_alumnas": true,
-        "gestion_profesores": true,
-        "asistente_duena": true,
-        "llenado_proactivo_camillas": true
-      },
-      "staff_telefonos": [
-        {
-          "id": "staff_deby_1",
-          "nombre": "Débora Zárate (Principal)",
-          "telefono": "5491157691786",
-          "rol": "DUENA",
-          "activo": true,
-          "recibe_alertas": true,
-          "notas": "Línea oficial de la dueña"
-        },
-        {
-          "id": "staff_alex_2",
-          "nombre": "Alex Agüero (Staff/Admin)",
-          "telefono": "5491162051543",
-          "rol": "DUENA",
-          "activo": true,
-          "recibe_alertas": true,
-          "notas": "Línea de administración y desarrollo"
-        }
-      ]
-    }
-  }
+  "contact_phone": "5491164142172"
 }
