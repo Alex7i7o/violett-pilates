@@ -190,6 +190,148 @@ class WhatsAppClient:
             print(f'[WHATSAPP EXCEPTION] {e}', flush=True)
             logger.error(f'[WHATSAPP TEXT EXCEPTION] {e}')
             return False
+
+    def send_interactive_buttons(self, to_number, body_text, buttons_list, header_text="", footer_text=""):
+        """
+        Envía un mensaje interactivo con botones de respuesta rápida (Reply Buttons) nativos de Meta Cloud API.
+        Máximo 3 botones permitidos por WhatsApp.
+        buttons_list: lista de dicts [{'id': 'btn_1', 'title': 'Mantener'}, ...]
+        """
+        try:
+            from plugins.asistente.backend.services.formatter import sanitizar_para_whatsapp
+            body_text = sanitizar_para_whatsapp(body_text)
+        except Exception:
+            pass
+
+        if not self.is_configured:
+            btn_titles = [b.get('title', '') for b in buttons_list]
+            print(f"\n[WHATSAPP SIMULATOR INTERACTIVE] A {to_number}: '{body_text}'", flush=True)
+            print(f"-> Botones interactivos: {btn_titles}\n", flush=True)
+            from backend_core.hooks import registry
+            registry.execute('wpp_enviado_tracker', {})
+            return True
+
+        if not to_number or not buttons_list:
+            return False
+
+        phone = str(to_number).replace('+', '').replace('-', '').replace(' ', '')
+        headers = {
+            'Authorization': f'Bearer {self.token}',
+            'Content-Type': 'application/json'
+        }
+
+        # Formatear botones (máximo 3, título max 20 caracteres)
+        meta_buttons = []
+        for i, b in enumerate(buttons_list[:3]):
+            btn_id = str(b.get('id', f'btn_{i}'))[:256]
+            btn_title = str(b.get('title', f'Opción {i+1}'))[:20]
+            meta_buttons.append({
+                "type": "reply",
+                "reply": {
+                    "id": btn_id,
+                    "title": btn_title
+                }
+            })
+
+        interactive_data = {
+            "type": "button",
+            "body": {"text": body_text},
+            "action": {"buttons": meta_buttons}
+        }
+        if header_text:
+            interactive_data["header"] = {"type": "text", "text": str(header_text)[:60]}
+        if footer_text:
+            interactive_data["footer"] = {"text": str(footer_text)[:60]}
+
+        payload = {
+            'messaging_product': 'whatsapp',
+            'recipient_type': 'individual',
+            'to': phone,
+            'type': 'interactive',
+            'interactive': interactive_data
+        }
+
+        try:
+            print(f'[WHATSAPP ENVIANDO BOTONES INTERACTIVOS] Destino: {phone}', flush=True)
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
+            if response.status_code in [200, 201]:
+                print(f'[WHATSAPP BOTONES ENVIADOS EXITOSAMENTE] Status: {response.status_code}', flush=True)
+                from backend_core.hooks import registry
+                registry.execute('wpp_enviado_tracker', {})
+
+                # Registrar wamid
+                try:
+                    res_json = response.json()
+                    msgs_list = res_json.get('messages', [])
+                    if msgs_list:
+                        meta_wamid = msgs_list[0].get('id')
+                        if meta_wamid:
+                            from plugins.asistente.backend.models import ConversacionWhatsApp
+                            clean_to = str(phone).replace('+', '').replace('-', '').replace(' ', '')
+                            conv = ConversacionWhatsApp.objects.filter(telefono=clean_to).first()
+                            if conv:
+                                wamid_map = conv.metadata.setdefault('sent_wamid_map', {})
+                                wamid_map[meta_wamid] = body_text[:350]
+                                conv.save(update_fields=['metadata'])
+                except Exception:
+                    pass
+
+                return True
+            else:
+                print(f'[WHATSAPP ERROR META BOTONES] Status: {response.status_code} - {response.text}. Fallback a texto...', flush=True)
+                # Fallback a texto si Meta rechaza el tipo interactivo
+                return self.send_text_message(to_number, body_text)
+        except Exception as e:
+            print(f'[WHATSAPP EXCEPTION BOTONES] {e}. Fallback a texto...', flush=True)
+            return self.send_text_message(to_number, body_text)
+
+    def send_location(self, to_number, latitude=-34.646875, longitude=-58.563722, name="Violett Pilates", address="Gral. Guido 1573, Ramos Mejía"):
+        """
+        Envía un pin nativo de ubicación geográfica interactiva de Meta Cloud API (Google Maps pin directo en WhatsApp).
+        """
+        if not self.is_configured:
+            print(f"\n[WHATSAPP SIMULATOR LOCATION] A {to_number}: {name} ({address}) [{latitude}, {longitude}]\n", flush=True)
+            from backend_core.hooks import registry
+            registry.execute('wpp_enviado_tracker', {})
+            return True
+
+        if not to_number:
+            return False
+
+        phone = str(to_number).replace('+', '').replace('-', '').replace(' ', '')
+        headers = {
+            'Authorization': f'Bearer {self.token}',
+            'Content-Type': 'application/json'
+        }
+
+        payload = {
+            'messaging_product': 'whatsapp',
+            'recipient_type': 'individual',
+            'to': phone,
+            'type': 'location',
+            'location': {
+                'latitude': float(latitude),
+                'longitude': float(longitude),
+                'name': str(name),
+                'address': str(address)
+            }
+        }
+
+        try:
+            print(f'[WHATSAPP ENVIANDO UBICACION GPS] Destino: {phone}', flush=True)
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
+            if response.status_code in [200, 201]:
+                print(f'[WHATSAPP UBICACION ENVIADA EXITOSAMENTE] Status: {response.status_code}', flush=True)
+                from backend_core.hooks import registry
+                registry.execute('wpp_enviado_tracker', {})
+                return True
+            else:
+                print(f'[WHATSAPP ERROR META UBICACION] {response.status_code} - {response.text}', flush=True)
+                return self.send_text_message(to_number, f"📍 *{name}*\nDirección: {address}")
+        except Exception as e:
+            print(f'[WHATSAPP EXCEPTION UBICACION] {e}', flush=True)
+            return self.send_text_message(to_number, f"📍 *{name}*\nDirección: {address}")
+
 def _registrar_log_saliente(phone, usuario, texto, agente="notificaciones_sistema"):
     try:
         from plugins.asistente.backend.models import ConversacionWhatsApp, MensajeWhatsAppLog

@@ -6,13 +6,76 @@ from ..config_loader import get_asistente_config
 
 logger = logging.getLogger(__name__)
 
-def procesar_mensaje_entrante_async(data: dict):
-    """
-    Despacha el procesamiento del mensaje en un thread secundario
-    para que la vista webhook devuelva HTTP 200 a Meta inmediatamente (<500ms).
-    """
+# Buffer en memoria para Message Debouncing (agrupación de ráfagas de mensajes de WhatsApp)
+DEBOUNCE_BUFFERS = {}  # clean_phone -> {'texts': [...], 'timer': Timer, 'data': dict}
+DEBOUNCE_LOCK = threading.Lock()
+DEBOUNCE_WINDOW_SECONDS = 2.5
+
+def _flush_debounced_message(clean_phone: str):
+    with DEBOUNCE_LOCK:
+        entry = DEBOUNCE_BUFFERS.pop(clean_phone, None)
+
+    if not entry:
+        return
+
+    texts = [t for t in entry.get('texts', []) if t and t.strip()]
+    if not texts:
+        return
+
+    merged_text = "\n".join(texts)
+    data = dict(entry.get('data', {}))
+    data['text'] = merged_text
+
+    if len(texts) > 1:
+        logger.info(f"[MESSAGE DEBOUNCER] Agrupados {len(texts)} mensajes de {clean_phone} en una sola interacción.")
+        print(f"[MESSAGE DEBOUNCER] Agrupados {len(texts)} mensajes de {clean_phone} en una sola llamada:\n'{merged_text}'", flush=True)
+
     thread = threading.Thread(target=_ejecutar_ciclo_agente, args=(data,), daemon=True)
     thread.start()
+
+def procesar_mensaje_entrante_async(data: dict):
+    """
+    Despacha el procesamiento del mensaje en un thread secundario.
+    Aplica Message Debouncing (ventana de 2.5s) para mensajes de texto consecutivos,
+    evitando disparar múltiples flujos paralelos y respuestas superpuestas cuando el usuario escribe en ráfagas.
+    Los mensajes de audio o interactivos (botones) se procesan de inmediato.
+    """
+    phone = data.get('phone', '')
+    clean_phone = phone.replace('+', '').replace(' ', '').replace('-', '')
+    es_audio = data.get('es_audio', False)
+    raw_m = data.get('raw_msg', {})
+    msg_type = raw_m.get('type') if isinstance(raw_m, dict) else ''
+
+    # Audio, imagen o botón interactivo: procesar inmediatamente sin buffer
+    if es_audio or msg_type in ['interactive', 'image', 'audio', 'voice']:
+        thread = threading.Thread(target=_ejecutar_ciclo_agente, args=(data,), daemon=True)
+        thread.start()
+        return
+
+    text = data.get('text', '').strip()
+    if not text:
+        return
+
+    with DEBOUNCE_LOCK:
+        if clean_phone in DEBOUNCE_BUFFERS:
+            entry = DEBOUNCE_BUFFERS[clean_phone]
+            old_timer = entry.get('timer')
+            if old_timer:
+                old_timer.cancel()
+            entry['texts'].append(text)
+            if data.get('quoted_wamid'):
+                entry['data']['quoted_wamid'] = data.get('quoted_wamid')
+                entry['data']['raw_msg'] = data.get('raw_msg')
+        else:
+            DEBOUNCE_BUFFERS[clean_phone] = {
+                'texts': [text],
+                'data': dict(data),
+                'timer': None
+            }
+
+        timer = threading.Timer(DEBOUNCE_WINDOW_SECONDS, _flush_debounced_message, args=[clean_phone])
+        DEBOUNCE_BUFFERS[clean_phone]['timer'] = timer
+        timer.start()
 
 def _ejecutar_ciclo_agente(data: dict):
     from ..models import ConversacionWhatsApp, MensajeWhatsAppLog
@@ -151,29 +214,11 @@ def _ejecutar_ciclo_agente(data: dict):
         logger.info(f"[ASISTENTE] Conversación con {clean_phone} en ESPERANDO_HUMANO. No se genera respuesta automática.")
         return
 
-    # 5.1 Enviar mensaje inmediato de cortesía ("Ya te digo...") para que la usuaria
-    # sepa que estamos procesando su consulta y nunca sienta que se le clavó el visto.
-    ack_enviado = False
-    if not es_audio:
-        try:
-            if conversacion.rol_detectado == 'DUENA':
-                msg_ack = "¡Dale! ✦ Ya te digo, dame un segundito..."
-            else:
-                msg_ack = "¡Dale! ✦ Ya te digo, dame un segundito que me fijo..."
-            client_ack = WhatsAppClient()
-            client_ack.send_text_message(clean_phone, msg_ack)
-            MensajeWhatsAppLog.objects.create(
-                conversacion=conversacion,
-                direccion='SALIENTE',
-                agente_responsable='asistente_espera_activa',
-                texto=msg_ack
-            )
-            ack_enviado = True
-        except Exception as e_ack:
-            logger.warning(f"[ASISTENTE] No se pudo enviar acuse inmediato a {clean_phone}: {e_ack}")
-    else:
-        # En caso de audio, audio_service ya envió el acuse inmediato al recibir el mensaje de voz
-        ack_enviado = True
+    # 5.1 Estado de acuse previo:
+    # Para audios, audio_service ya envió el acuse inmediato al recibir la nota de voz.
+    # Para textos, el orquestador (builder.py) gestiona un temporizador inteligente que SOLO
+    # envía acuse si la consulta demora más de 2.5s, evitando spam en respuestas rápidas o saludos.
+    ack_enviado = bool(es_audio)
 
     # 6. Ejecutar Orquestador LangGraph (o simulador de tools)
     try:

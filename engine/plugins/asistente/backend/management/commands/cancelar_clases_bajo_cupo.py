@@ -151,7 +151,14 @@ class Command(BaseCommand):
 
             if not dry_run:
                 try:
-                    client.send_text_message(clean_duena, msg_duena)
+                    botones_duena = [
+                        {"id": f"cancelar_{turno.id}", "title": "CANCELAR"},
+                        {"id": f"mantener_{turno.id}", "title": "MANTENER"}
+                    ]
+                    if hasattr(client, 'send_interactive_buttons'):
+                        client.send_interactive_buttons(clean_duena, msg_duena, botones_duena, header_text="Violett Pilates ✦ Consulta Agenda")
+                    else:
+                        client.send_text_message(clean_duena, msg_duena)
 
                     MensajeWhatsAppLog.objects.create(
                         conversacion=conversacion_duena,

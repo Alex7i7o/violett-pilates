@@ -29,7 +29,7 @@ from ..tools.gestion_tools import (
     consultar_alumna_detalle,
     consultar_asistencias_alumna_duena,
     corregir_asistencia_retroactiva_duena,
-    confirmar_sincronizacion_ficha_duena,
+    corregir_asistencia_alumna_duena,
     confirmar_sincronizacion_ficha_duena,
     agendar_alumna_en_turno_duena,
     cancelar_reserva_alumna_duena,
@@ -96,6 +96,7 @@ TOOLS_ALUMNAS_PLANES = [
     consultar_alumna_detalle,
     consultar_asistencias_alumna_duena,
     corregir_asistencia_retroactiva_duena,
+    corregir_asistencia_alumna_duena,
     confirmar_sincronizacion_ficha_duena,
     renovar_o_asignar_plan_alumna,
     ajustar_creditos_alumna_duena,
@@ -278,6 +279,8 @@ COMANDOS Y CAPACIDADES DE DEBY (OPERACIONES DEL NEGOCIO):
    * Si Deby consulta a qué clases asistió una persona, cuántas clases tomó, si vino tal día o el historial de asistencias (ej: "¿A qué clases asistió Luz?", "¿Luz vino a clase?", "¿Cuántas clases tomó Martina?", "¿A qué clase vino Marcela?", "Pasame las asistencias de Luz", "¿Cuándo vino por última vez?", "¿A qué clase asistió cada persona?"):
      -> Usá 'consultar_asistencias_alumna_duena' (o 'consultar_alumna_detalle').
      Esta herramienta le mostrará a Deby cada clase a la que la alumna asistió, con fecha, hora, profesora a cargo, número de clase dentro de su abono (ej: Clase 1 de 8) y si corresponde al plan actual o al anterior.
+   * Si Deby pide corregir o cambiar el estado de asistencia de una alumna (ej: "Luz no vino ayer, ponela como ausente", "Marcela sí vino el martes, ponela como presente", "Corregí la asistencia de Martina del jueves"):
+     -> Usá 'corregir_asistencia_alumna_duena(nombre_o_tel_alumna=..., fecha_str=..., nuevo_estado=...)'.
    * Si Deby consulta la ficha general, abono o situación de una alumna (ej: "¿Qué plan tiene Alex?", "¿Cómo viene Laila?", "¿Cuántas clases le quedan?", "¿Cuándo vence el abono de...?"):
      -> Usá 'consultar_alumna_detalle'.
    * Si Deby consulta por la cantidad total o estado de alumnas del estudio (ej: "Quiero la cantidad de alumnas que tenemos", "¿Cuántas alumnas tenemos?", "Cuántas clientas activas hay"):

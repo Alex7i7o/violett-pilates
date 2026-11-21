@@ -127,6 +127,27 @@ class WhatsAppWebhookView(APIView):
                             # Fallback si el plugin asistente no esta activo
                             if not registry.listeners.get('whatsapp_mensaje_recibido'):
                                 client.send_text_message(phone_number, "¡Hola! ✦ Gracias por comunicarte con nosotros. En breve una recepcionista te responderá.")
+
+                        elif msg_type == 'interactive':
+                            interactive_obj = msg.get('interactive', {})
+                            button_reply = interactive_obj.get('button_reply', {})
+                            list_reply = interactive_obj.get('list_reply', {})
+                            text_body = button_reply.get('title') or list_reply.get('title') or button_reply.get('id') or ''
+                            logger.info(f"[WHATSAPP INTERACTIVE] Botón presionado por {phone_number}: '{text_body}' (id: {button_reply.get('id')})")
+
+                            # Marcar mensaje como leído de inmediato
+                            msg_id = msg.get('id')
+                            if msg_id:
+                                import threading
+                                threading.Thread(target=client.mark_as_read, args=(msg_id,), daemon=True).start()
+
+                            from backend_core.hooks import registry
+                            registry.execute('whatsapp_mensaje_recibido', {
+                                'phone': phone_number,
+                                'text': text_body,
+                                'quoted_wamid': quoted_wamid,
+                                'raw_msg': msg
+                            })
                             
             return HttpResponse('EVENT_RECEIVED', status=200)
             

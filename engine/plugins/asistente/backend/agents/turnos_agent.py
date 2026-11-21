@@ -5,7 +5,14 @@ from ..tools.turnos_tools import (
     reservar_camilla_turno,
     consultar_mis_reservas_alumna,
     cancelar_reserva_alumna,
-    reprogramar_reserva_alumna
+    reprogramar_reserva_alumna,
+    registrar_prospecto_o_clase_prueba,
+    anotar_lista_espera_alumna,
+    enviar_ubicacion_gps_estudio
+)
+from ..tools.finanzas_tools import (
+    obtener_planes_y_precios,
+    consultar_estado_plan_alumna
 )
 from ..tools.gestion_tools import derivar_a_atencion_humana
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
@@ -18,6 +25,11 @@ TURNOS_TOOLS = [
     consultar_mis_reservas_alumna,
     cancelar_reserva_alumna,
     reprogramar_reserva_alumna,
+    registrar_prospecto_o_clase_prueba,
+    anotar_lista_espera_alumna,
+    enviar_ubicacion_gps_estudio,
+    obtener_planes_y_precios,
+    consultar_estado_plan_alumna,
     derivar_a_atencion_humana
 ]
 
@@ -46,7 +58,16 @@ POLÍTICAS CLAVE DE TURNOS:
   * Si la alumna quiere agendarse en un turno nuevo pero su plan no tiene créditos libres, 'reservar_camilla_turno' le ofrecerá automáticamente cambiar alguna de sus clases ya agendadas a futuro por el nuevo horario.
   * Si la alumna responde eligiendo cuál cambiar (ej: "Cambiame la del miércoles", "Pasá la del 18", "Cambiame la primera", "Mové esa"), usá 'reprogramar_reserva_alumna(usuario_id="{usuario_id}", ...)'.
   * NUNCA le digas que no se puede mover o que tiene que hablar con Débora para un cambio de clase: ¡ejecutá 'reprogramar_reserva_alumna' directamente para que sea rápido y fácil!
-- Si no tiene créditos y tampoco tiene ninguna clase futura agendada: explicáselo con cariño y coméntale que puede consultar los planes para renovar.
+- Si no tiene créditos y tampoco tiene ninguna clase futura agendada: explicáselo con cariño y coméntale que puede consultar los planes para renovar (podés consultar planes y precios con 'obtener_planes_y_precios').
+- CONSULTAS MIXTAS (TURNOS + PRECIOS/PLANES):
+  * Si la persona pregunta por horarios y a la vez por precios, abonos o su saldo (ej: "qué horarios tenés y cuánto sale?", "¿cuántas clases me quedan y cuándo puedo ir?"):
+    Respondé ambas cosas en el mismo turno usando 'consultar_turnos_disponibles' junto con 'obtener_planes_y_precios' o 'consultar_estado_plan_alumna'.
+- CLASES LLENAS Y LISTA DE ESPERA:
+  * Si un turno solicitado está lleno (cupo 0) y la alumna quiere que le avisen si se libera una camilla:
+    Usá 'anotar_lista_espera_alumna' para registrarla en la lista de espera de esa clase.
+- PROSPECTOS O NUEVAS CLIENTAS (CLASE DE PRUEBA / REGISTRO):
+  * Si la persona es nueva, aún no está registrada como alumna o quiere coordinar su primera clase de prueba:
+    Usá 'registrar_prospecto_o_clase_prueba' para registrarla de forma ágil y cálida.
 - ATENCIÓN HUMANA / QUEJAS O RECLAMOS:
   * Si la alumna o clienta solicita explícitamente hablar con una persona humana, con Débora, con el staff, o si expresa una queja, reclamo o desacuerdo que requiere atención manual, ejecutá inmediatamente 'derivar_a_atencion_humana(motivo=...)'.
 

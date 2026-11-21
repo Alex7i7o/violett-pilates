@@ -2790,3 +2790,81 @@ def reactivar_ia_conversacion_duena(nombre_o_tel_contacto: str) -> str:
         return f"✦ ¡Listo Deby! Reactivé las respuestas automáticas de la IA para *{nombre_mostrar}* ({conv.telefono}) ✨."
     except Exception as e:
         return f"✦ Error reactivando la IA: {e}"
+
+
+@tool
+def corregir_asistencia_alumna_duena(nombre_o_tel_alumna: str, fecha_o_dia: str, hora_str: str, nuevo_estado: str = "PRESENTE", motivo: str = "Corrección manual de la dueña") -> str:
+    """
+    Comando para la dueña (Deby): corrige o cambia la asistencia de una alumna en una clase específica
+    (ej: si la profesora la marcó ausente por error y sí vino, o si figuraba presente y no vino).
+
+    Parámetros:
+    - nombre_o_tel_alumna: Nombre, apellido o teléfono de la alumna (ej: 'Luz Dobias', 'Norma Staino').
+    - fecha_o_dia: 'hoy', 'ayer' o día/fecha de la clase (ej: '20/11/2026', 'viernes').
+    - hora_str: Hora de la clase (ej: '19:00', '18', '19').
+    - nuevo_estado: 'PRESENTE' (o 'TOMADA') para marcar asistencia, o 'AUSENTE' para marcar inasistencia.
+    - motivo: Razón de la corrección (opcional).
+    """
+    alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
+    if err == "multiples":
+        return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, f"corregir su asistencia a {nuevo_estado}")
+    elif not alumna:
+        return f"✦ No encontré a ninguna alumna registrada como '{nombre_o_tel_alumna}' en Violett Pilates."
+
+    target_date = resolver_fecha(fecha_o_dia)
+    hora_clean = normalizar_hora_str(hora_str, fecha_o_dia)
+
+    try:
+        from core.models import Turno, Reserva
+        from core.services import registrar_log_movimiento
+
+        turnos = Turno.objects.filter(
+            fecha=target_date,
+            hora_inicio__startswith=hora_clean[:2]
+        ).select_related('clase')
+
+        if not turnos.exists():
+            return f"✦ No encontré una clase programada para el {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs."
+
+        turno = turnos.first()
+        reserva = Reserva.objects.filter(turno=turno, usuario=alumna).first()
+        if not reserva:
+            reserva = Reserva.objects.filter(turno=turno, nombre_temporal__icontains=alumna.nombre).first()
+
+        if not reserva:
+            return f"✦ {alumna.nombre} {alumna.apellido} no tiene una reserva registrada en la clase del {target_date.strftime('%d/%m/%Y')} a las {hora_clean} hs."
+
+        estado_anterior = reserva.estado
+        es_presente = any(k in nuevo_estado.lower() for k in ['presente', 'tomada', 'vino', 'asistio', 'asistió'])
+        nuevo_val = 'TOMADA' if es_presente else 'AUSENTE'
+
+        if estado_anterior == nuevo_val:
+            return f"✦ La reserva de {alumna.nombre} ya figura con estado *{nuevo_val}* en esa clase."
+
+        reserva.estado = nuevo_val
+        reserva.modificada_manualmente = True
+        reserva.motivo_modificacion = motivo
+        reserva.modificada_por = 'Débora (WhatsApp)'
+        reserva.fecha_modificacion = timezone.now()
+        reserva.save(update_fields=['estado', 'modificada_manualmente', 'motivo_modificacion', 'modificada_por', 'fecha_modificacion'])
+
+        registrar_log_movimiento(
+            usuario=alumna,
+            turno=turno,
+            tipo_movimiento='ESTADO_CAMBIADO',
+            reserva=reserva,
+            estado_anterior=estado_anterior,
+            estado_nuevo=nuevo_val,
+            realizado_por='Débora (WhatsApp)',
+            motivo=motivo
+        )
+
+        nombre_comp = f"{alumna.nombre} {alumna.apellido}".strip()
+        dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        dia_nom = dias_es[target_date.weekday()]
+        estado_label = "PRESENTE (Clase Tomada)" if nuevo_val == 'TOMADA' else "AUSENTE"
+
+        return f"✦ ¡Listo Deby! Corregí la asistencia de *{nombre_comp}* para la clase del *{dia_nom} {target_date.strftime('%d/%m')} a las {hora_clean} hs*:\n• Estado anterior: {estado_anterior}\n• Estado actualizado: *{estado_label}*\n• Motivo asentado: {motivo} ✨."
+    except Exception as e:
+        return f"✦ Error al corregir asistencia: {e}"
+

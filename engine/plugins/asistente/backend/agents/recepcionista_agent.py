@@ -2,12 +2,15 @@ import logging
 from langchain_core.messages import SystemMessage
 from ..config_loader import get_brand_persona, get_asistente_config
 from ..tools.gestion_tools import derivar_a_atencion_humana
+from ..tools.turnos_tools import registrar_prospecto_o_clase_prueba, enviar_ubicacion_gps_estudio
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
 logger = logging.getLogger(__name__)
 
 RECEPCIONISTA_TOOLS = [
-    derivar_a_atencion_humana
+    derivar_a_atencion_humana,
+    registrar_prospecto_o_clase_prueba,
+    enviar_ubicacion_gps_estudio
 ]
 
 def agente_recepcionista_node(state):

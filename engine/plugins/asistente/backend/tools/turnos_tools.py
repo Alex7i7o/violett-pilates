@@ -554,3 +554,196 @@ def reprogramar_reserva_alumna(usuario_id: str = "", fecha_origen: str = "", hor
     return f"""{saludo}Moví tu clase del *{dia_orig} {reserva_elegida.turno.fecha.strftime('%d/%m')} de las {reserva_elegida.turno.hora_inicio.strftime('%H:%M')} hs* al nuevo horario del *{dia_dest} {turno_destino.fecha.strftime('%d/%m')} a las {turno_destino.hora_inicio.strftime('%H:%M')} hs*{profe_txt}.
 
 ¡Ya quedó asegurado tu lugar en la camilla! ✨"""
+
+
+@tool
+def registrar_prospecto_o_clase_prueba(nombre_completo: str, fecha_o_dia: str, hora_str: str, telefono: str = "") -> str:
+    """
+    Registra y aparta una camilla de clase de prueba o primera clase para una persona interesada / prospecto nuevo que aún no tiene cuenta ni abono en la app.
+    Aparta la camilla en el turno correspondiente (máximo 3 camillas) y notifica a la dueña (Deby) por WhatsApp para el seguimiento comercial.
+
+    Parámetros:
+    - nombre_completo: Nombre y apellido de la persona (ej: 'Camila Gómez', 'Lucía').
+    - fecha_o_dia: 'hoy', 'mañana' o día/fecha deseada (ej: 'lunes', '24/11', 'mañana').
+    - hora_str: Hora deseada (ej: '10:00', '18:00', '19', '18:30').
+    - telefono: Teléfono de la interesada (opcional; si no se indica se extrae de la conversación activa).
+    """
+    target_date = resolver_fecha(fecha_o_dia)
+    target_time = resolver_hora(hora_str) if hora_str else None
+
+    qs = Turno.objects.filter(fecha=target_date, estado='PROGRAMADO').select_related('clase')
+    if target_time:
+        qs = qs.filter(hora_inicio__hour=target_time.hour, hora_inicio__minute=target_time.minute)
+
+    turno = qs.first()
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nom = dias_es[target_date.weekday()]
+
+    if not turno:
+        turnos_dia = Turno.objects.filter(fecha=target_date, estado='PROGRAMADO', cupo_actual__gt=0).select_related('clase').order_by('hora_inicio')
+        if turnos_dia.exists():
+            lista_horarios = []
+            for t_item in turnos_dia:
+                p_item = obtener_profesor_de_turno(t_item)
+                p_str = f" (Profe: {p_item.nombre})" if p_item and hasattr(p_item, 'nombre') else ""
+                lista_horarios.append(f"• {t_item.hora_inicio.strftime('%H:%M')} hs: {t_item.cupo_actual} camilla(s) libre(s){p_str}")
+            return f"✦ No encontré una clase programada exactamente a las {hora_str} hs para el {dia_nom} {target_date.strftime('%d/%m')}.\n\nLos horarios con camillas disponibles para ese día son:\n" + "\n".join(lista_horarios) + f"\n\n¿En cuál de estos te gustaría reservar tu camilla?"
+        else:
+            return f"✦ No hay turnos disponibles para el {dia_nom} {target_date.strftime('%d/%m/%Y')} en ese horario."
+
+    from .gestion_tools import get_conversacion_activa
+    conv = get_conversacion_activa()
+    tel_clean = telefono.replace('+', '').replace(' ', '').replace('-', '') if telefono else (conv.telefono if conv else "")
+
+    nom_limpio = nombre_completo.strip()
+    nombre_pila = nom_limpio.split()[0] if nom_limpio else "Visitante"
+
+    fecha_fmt = turno.fecha.strftime('%d/%m')
+    hora_clean = turno.hora_inicio.strftime('%H:%M')
+    prof_obj = obtener_profesor_de_turno(turno)
+    profe_str = f" con la profe {prof_obj.nombre}" if prof_obj and hasattr(prof_obj, 'nombre') else ""
+
+    with transaction.atomic():
+        t_locked = Turno.objects.select_for_update().get(id=turno.id)
+        if t_locked.cupo_actual <= 0:
+            return f"✦ Disculpá {nombre_pila}, justo se acaba de ocupar la última camilla libre de las {hora_clean} hs del {dia_nom} {fecha_fmt}. ¿Querés que miremos otro horario para tu clase de prueba?"
+
+        res = Reserva.objects.create(
+            turno=t_locked,
+            usuario=None,
+            nombre_temporal=nom_limpio,
+            telefono_temporal=tel_clean,
+            tipo_reserva='MANUAL_TEMPORAL',
+            es_recurrente=False,
+            estado='CONFIRMADA'
+        )
+        t_locked.cupo_actual = max(0, t_locked.cupo_actual - 1)
+        t_locked.save(update_fields=['cupo_actual'])
+
+    try:
+        from ..config_loader import obtener_telefonos_alertas_staff
+        telefonos_alertas = obtener_telefonos_alertas_staff()
+        if telefonos_alertas:
+            client = WhatsAppClient()
+            msg_duena = (
+                f"✦ *Nueva Reserva de Clase de Prueba (Prospecto)* ✦\n\n"
+                f"• *Interesada:* {nom_limpio}\n"
+                f"• *Teléfono:* +{tel_clean}\n"
+                f"• *Clase:* {dia_nom} {fecha_fmt} a las {hora_clean} hs ({turno.clase.nombre}{profe_str})\n"
+                f"• *Camilla apartada:* Quedan {t_locked.cupo_actual} libres."
+            )
+            for tel_staff in telefonos_alertas:
+                client.send_text_message(tel_staff, msg_duena)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando reserva de prueba a Deby: {ex_d}")
+
+    return f"""✦ ¡Bienvenida a Violett Pilates, {nombre_pila}! Ya te apartamos tu camilla de prueba para el *{dia_nom} {fecha_fmt} a las {hora_clean} hs*{profe_str} 🌸.
+
+📍 Te esperamos en *Gral. Guido 1573, Ramos Mejía*.
+💡 Te sugerimos venir con ropa cómoda y medias antideslizantes (tenemos vestuario para cambiarte).
+
+¡Cualquier duda avisanos por acá y te ayudamos con mucho gusto! ✨"""
+
+
+@tool
+def anotar_lista_espera_alumna(fecha_o_dia: str, hora_str: str, nombre_o_tel: str = "") -> str:
+    """
+    Anota a una alumna o interesada en la LISTA DE ESPERA para un turno que ya tiene sus 3 camillas ocupadas (sin cupo).
+    Si alguna alumna cancela o se libera una camilla en ese turno, el sistema y la administración podrán contactarla de inmediato.
+
+    Parámetros:
+    - fecha_o_dia: 'hoy', 'mañana' o nombre del día/fecha (ej: 'lunes', '24/11', 'viernes').
+    - hora_str: Hora de la clase llena (ej: '18:00', '19', '20:00').
+    - nombre_o_tel: Nombre o teléfono opcional si no está identificada.
+    """
+    target_date = resolver_fecha(fecha_o_dia)
+    target_time = resolver_hora(hora_str) if hora_str else None
+
+    qs = Turno.objects.filter(fecha=target_date, estado='PROGRAMADO').select_related('clase')
+    if target_time:
+        qs = qs.filter(hora_inicio__hour=target_time.hour, hora_inicio__minute=target_time.minute)
+
+    turno = qs.first()
+    if not turno:
+        return f"✦ No encontré una clase programada para el {fecha_o_dia} a las {hora_str} hs."
+
+    from .gestion_tools import get_conversacion_activa, buscar_usuario_por_telefono, get_ultima_alumna_activa
+    conv = get_conversacion_activa()
+    usuario = None
+    if conv and conv.usuario:
+        usuario = conv.usuario
+    elif conv and conv.telefono:
+        usuario = buscar_usuario_por_telefono(conv.telefono)
+    if not usuario:
+        usuario = get_ultima_alumna_activa()
+
+    tel_alumna = conv.telefono if conv else ""
+    nombre_alumna = f"{usuario.nombre} {usuario.apellido}".strip() if usuario else (nombre_o_tel or "Alumna en lista de espera")
+
+    dias_es = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+    dia_nom = dias_es[turno.fecha.weekday()]
+    fecha_fmt = turno.fecha.strftime('%d/%m')
+    hora_clean = turno.hora_inicio.strftime('%H:%M')
+
+    if conv:
+        esperas = conv.metadata.setdefault('lista_espera', [])
+        esperas.append({
+            'turno_id': str(turno.id),
+            'fecha': str(turno.fecha),
+            'hora': hora_clean,
+            'anotada_en': str(timezone.now())
+        })
+        conv.save(update_fields=['metadata'])
+
+    try:
+        from ..config_loader import obtener_telefonos_alertas_staff
+        telefonos_alertas = obtener_telefonos_alertas_staff()
+        if telefonos_alertas:
+            client = WhatsAppClient()
+            msg_duena = (
+                f"✦ *Nueva Alumna en Lista de Espera* ✦\n\n"
+                f"• *Alumna:* {nombre_alumna} (+{tel_alumna})\n"
+                f"• *Clase solicitada:* {dia_nom} {fecha_fmt} a las {hora_clean} hs ({turno.clase.nombre})\n"
+                f"• *Estado del turno:* Completo (0 camillas libres).\n"
+                f"Si se libera un lugar por cancelación, le avisaremos de inmediato."
+            )
+            for tel_staff in telefonos_alertas:
+                client.send_text_message(tel_staff, msg_duena)
+    except Exception as ex_d:
+        logger.warning(f"Error notificando lista de espera a Deby: {ex_d}")
+
+    nombre_pila = nombre_alumna.split()[0] if nombre_alumna else ""
+    saludo = f"¡Listo {nombre_pila}! ✦ " if nombre_pila else "✦ "
+
+    return f"""{saludo}Te anoté en la *lista de espera* para el *{dia_nom} {fecha_fmt} a las {hora_clean} hs* en {turno.clase.nombre} 🌸.
+
+Si alguna compañera cancela o se libera una camilla en ese bloque, te avisamos de inmediato por acá para que puedas sumarte ✨."""
+
+
+@tool
+def enviar_ubicacion_gps_estudio(telefono_destino: str = "") -> str:
+    """
+    Envía la ubicación geográfica oficial de Violett Pilates Boutique con pin interactivo de Google Maps directo a WhatsApp.
+    Usar cuando una alumna o persona interesada pregunte '¿Dónde quedan?', '¿Cuál es la dirección?', '¿Dónde están ubicados?' o '¿Cómo llego?'.
+    """
+    from .gestion_tools import get_conversacion_activa
+    conv = get_conversacion_activa()
+    phone = telefono_destino or (conv.telefono if conv else "")
+    if not phone:
+        return "📍 Violett Pilates Boutique queda en *Gral. Guido 1573, Ramos Mejía, Provincia de Buenos Aires*."
+
+    try:
+        client = WhatsAppClient()
+        client.send_location(
+            to_number=phone,
+            latitude=-34.646875,
+            longitude=-58.563722,
+            name="Violett Pilates Boutique",
+            address="Gral. Guido 1573, Ramos Mejía"
+        )
+    except Exception as e:
+        logger.warning(f"Error enviando ubicación GPS: {e}")
+
+    return "📍 *Violett Pilates Boutique*\n• Dirección: Gral. Guido 1573, Ramos Mejía\n¡Te envié también el pin interactivo en el mapa para que puedas abrirlo directo en Google Maps o Waze! 🌸"
+
+

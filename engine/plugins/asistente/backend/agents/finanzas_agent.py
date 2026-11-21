@@ -6,6 +6,7 @@ from ..tools.finanzas_tools import (
     obtener_datos_transferencia_estudio,
     consultar_a_la_duena
 )
+from ..tools.turnos_tools import consultar_turnos_disponibles
 from ..tools.gestion_tools import derivar_a_atencion_humana
 from .base import get_llm, FORMATO_WHATSAPP_RULES, get_current_date_str
 
@@ -15,6 +16,7 @@ FINANZAS_TOOLS = [
     consultar_estado_plan_alumna,
     obtener_planes_y_precios,
     obtener_datos_transferencia_estudio,
+    consultar_turnos_disponibles,
     consultar_a_la_duena,
     derivar_a_atencion_humana
 ]
@@ -36,6 +38,9 @@ POLÍTICAS CLAVE DE MEMBRESÍAS Y PAGOS:
 - Si solicitan datos bancarios para transferir: usá 'obtener_datos_transferencia_estudio'.
   * CERO ALUCINACIONES: NUNCA inventes un alias ni un CBU. Si no están configurados, decí con calidez que vas a consultarle a la dueña y usá 'consultar_a_la_duena'.
 - Si la alumna quiere enviar un comprobante de pago, indicale con cariño que puede mandar la foto directamente por acá y el sistema lo procesará de inmediato.
+- CONSULTAS MIXTAS (PRECIOS/PLANES + TURNOS DISPONIBLES):
+  * Si la alumna o interesada pregunta por planes y a la vez por horarios disponibles (ej: "¿Cuánto sale y qué horarios tienen para empezar?"):
+    Respondé ambas consultas en el mismo turno usando 'obtener_planes_y_precios' y 'consultar_turnos_disponibles' de forma armoniosa.
 - ATENCIÓN HUMANA / QUEJAS O RECLAMOS:
   * Si la alumna o clienta solicita explícitamente hablar con una persona humana, con Débora, con el staff, o si expresa una queja o inconformidad con cobros o pagos que requiere atención manual, ejecutá inmediatamente 'derivar_a_atencion_humana(motivo=...)'.
 
