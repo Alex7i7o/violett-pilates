@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "fireseed-ui/style.css";
 @source "../../plugins/**/*.tsx";
 
 @font-face {

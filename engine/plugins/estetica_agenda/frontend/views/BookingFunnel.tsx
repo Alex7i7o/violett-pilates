@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Sparkles, CheckCircle2, WalletCards, ArrowLeft, ShoppingBag } from 'lucide-react';
+import {
+  Stepper,
+  Card,
+  CardTitle,
+  CardDescription,
+  Badge,
+  Button,
+  FeedbackButton,
+  Callout,
+  EmptyState,
+  AnimateIn,
+  haptics
+} from 'fireseed-ui';
+import { Calendar, Clock, Sparkles, CheckCircle2, WalletCards, ArrowLeft, ShoppingBag, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -82,7 +95,6 @@ export const BookingFunnel = () => {
         hora_fin: horaFin || undefined,
       });
       toast.success('¡Turno agendado con éxito!');
-      // Refresh wallets count
       api.get('/billeteras/').then(res => setBilleteras(res.data || [])).catch(() => {});
       setStep(4);
     } catch (error: any) {
@@ -117,249 +129,345 @@ export const BookingFunnel = () => {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fCompact}T${hStartCompact}/${fCompact}T${hEndCompact}&details=${details}&location=${location}&ctz=America/Argentina/Buenos_Aires`;
   };
 
+  const stepperItems = [
+    { title: 'Tratamiento', description: 'Elegí el servicio' },
+    { title: 'Día y Hora', description: 'Agenda tu turno' },
+    { title: 'Confirmación', description: 'Revisa y reserva' },
+  ];
+
   return (
     <div className="w-full pb-20">
-      <div className="mb-8">
-        <span className="text-xs font-bold uppercase tracking-widest text-primary-main">
-          Paso {step} de 3
-        </span>
-        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 mt-1">
-          {step === 1
-            ? 'Elegí un tratamiento'
-            : step === 2
-            ? 'Elegí el día y horario'
-            : step === 3
-            ? 'Confirmá tu turno'
-            : '¡Turno Confirmado!'}
-        </h1>
+      {/* Interactive Stepper from Fireseed UI */}
+      <div className="mb-8 pt-2">
+        <Stepper
+          steps={stepperItems}
+          currentStep={step >= 4 ? 2 : step - 1}
+          onStepClick={(stepIndex) => {
+            if (stepIndex < step - 1 && step < 4) {
+              haptics.selection();
+              setStep(stepIndex + 1);
+            }
+          }}
+          className="max-w-xl mx-auto"
+        />
       </div>
 
       <AnimatePresence mode="wait">
         {step === 1 && (
-          <motion.div key="step1" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="grid gap-4 sm:grid-cols-2">
-            {servicios.map(srv => {
-              const disponibles = getSesionesDisponibles(srv.id);
-              return (
-                <button
-                  key={srv.id}
-                  onClick={() => {
-                    setSelectedServicio(srv);
-                    setSelectedHora('');
-                    setStep(2);
-                  }}
-                  className="text-left p-6 rounded-[1.75rem] bg-white border-2 border-neutral-100 hover:border-primary-main hover:shadow-md transition-all flex flex-col justify-between group"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-bold text-lg text-neutral-900 group-hover:text-primary-main transition-colors">
-                        {srv.nombre}
-                      </h3>
-                      {disponibles > 0 ? (
-                        <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                          <WalletCards size={12} /> {disponibles} disp.
-                        </span>
-                      ) : (
-                        <span className="shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500">
-                          Sin sesiones
-                        </span>
+          <motion.div key="step1" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#FFF8EE] font-serif">Tratamientos Disponibles</h1>
+                <p className="text-xs sm:text-sm text-[#FFF8EE]/60 mt-0.5">Seleccioná el procedimiento estético para tu sesión</p>
+              </div>
+              <Badge variant="glow" size="sm">Exclusivo Violett</Badge>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {servicios.map(srv => {
+                const disponibles = getSesionesDisponibles(srv.id);
+                return (
+                  <Card
+                    key={srv.id}
+                    variant="elevated"
+                    hoverable
+                    onClick={() => {
+                      haptics.light();
+                      setSelectedServicio(srv);
+                      setSelectedHora('');
+                      setStep(2);
+                    }}
+                    className="cursor-pointer border border-[#C5A059]/25 bg-[#190826]/80 hover:border-[#C5A059] transition-all group p-6 flex flex-col justify-between rounded-2xl"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <CardTitle className="text-lg font-bold text-[#FFF8EE] group-hover:text-[#C5A059] transition-colors font-serif">
+                          {srv.nombre}
+                        </CardTitle>
+                        {disponibles > 0 ? (
+                          <Badge variant="success" size="sm" dot>
+                            {disponibles} disp.
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" size="sm">
+                            Sin sesiones
+                          </Badge>
+                        )}
+                      </div>
+                      {srv.descripcion && (
+                        <CardDescription className="text-xs text-[#FFF8EE]/60 line-clamp-2 mb-4 leading-relaxed">
+                          {srv.descripcion}
+                        </CardDescription>
                       )}
                     </div>
-                    {srv.descripcion && (
-                      <p className="text-xs text-neutral-500 line-clamp-2 mb-3">{srv.descripcion}</p>
-                    )}
-                  </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-neutral-100 mt-2">
-                    <span className="text-xs font-medium text-neutral-500 flex items-center gap-1">
-                      <Clock size={14} className="text-primary-main" /> {srv.duracion_minutos} min
-                    </span>
-                    <span className="font-bold text-primary-main text-base">
-                      ${Number(srv.precio_base).toLocaleString('es-AR')}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex items-center justify-between pt-3 border-t border-white/10 mt-3">
+                      <span className="text-xs text-[#FFF8EE]/60 flex items-center gap-1.5 font-medium">
+                        <Clock size={13} className="text-[#C5A059]" /> {srv.duracion_minutos} min
+                      </span>
+                      <span className="font-bold text-[#C5A059] text-base font-mono">
+                        ${Number(srv.precio_base).toLocaleString('es-AR')}
+                      </span>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           </motion.div>
         )}
 
         {step === 2 && (
-          <motion.div key="step2" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 bg-white p-6 sm:p-8 rounded-[2rem] border border-neutral-100 shadow-xs">
-            <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b border-neutral-100">
-              <button
-                onClick={() => setStep(1)}
-                className="text-sm font-medium text-neutral-500 hover:text-neutral-900 flex items-center gap-1.5 transition-colors"
-              >
-                <ArrowLeft size={16} /> Cambiar tratamiento
-              </button>
-              <div className="text-right">
-                <p className="text-xs text-neutral-400 uppercase font-bold">Tratamiento seleccionado</p>
-                <p className="text-sm font-bold text-primary-main">{selectedServicio?.nombre} ({selectedServicio?.duracion_minutos} min)</p>
-              </div>
-            </div>
-
-            {sesionesServicioActual === 0 && (
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="text-xs text-amber-900">
-                  <p className="font-bold text-sm mb-0.5">No tenés sesiones activas para {selectedServicio?.nombre}</p>
-                  <p>Para confirmar la reserva necesitarás adquirir un paquete en la tienda.</p>
-                </div>
-                <Link
-                  to="/tienda-paquetes"
-                  className="shrink-0 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors flex items-center gap-1.5 self-start sm:self-center"
+          <motion.div key="step2" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+            <Card variant="elevated" className="p-6 sm:p-8 bg-[#190826]/90 border border-[#C5A059]/25 rounded-2xl space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b border-white/10">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    haptics.light();
+                    setStep(1);
+                  }}
+                  className="text-xs text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5"
                 >
-                  <ShoppingBag size={14} /> Ir a Paquetes
-                </Link>
+                  <ArrowLeft size={14} className="mr-1.5" /> Cambiar tratamiento
+                </Button>
+                <div className="text-right">
+                  <p className="text-[10px] text-[#C5A059] uppercase tracking-wider font-bold">Tratamiento seleccionado</p>
+                  <p className="text-sm font-bold text-[#FFF8EE] font-serif">{selectedServicio?.nombre} ({selectedServicio?.duracion_minutos} min)</p>
+                </div>
               </div>
-            )}
 
-            <div>
-              <label className="block text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-1.5">
-                <Calendar size={16} className="text-primary-main" /> Seleccioná la fecha
-              </label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={e => {
-                  setFecha(e.target.value);
-                  setSelectedHora('');
-                }}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full p-4 rounded-xl border border-neutral-200 focus:border-primary-main focus:ring-1 focus:ring-primary-main outline-none transition-all font-medium"
-              />
-            </div>
-
-            {fecha && (
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-1.5">
-                  <Clock size={16} className="text-primary-main" /> Horarios disponibles
-                </label>
-                {loading ? (
-                  <p className="text-sm text-neutral-500 py-4">Buscando horarios disponibles...</p>
-                ) : horarios.length === 0 ? (
-                  <div className="p-6 rounded-2xl bg-neutral-50 text-center text-sm text-neutral-500 border border-neutral-100">
-                    No hay horarios disponibles para esta fecha. Probá seleccionando otro día.
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {horarios.map(hora => (
-                      <button
-                        key={hora}
-                        onClick={() => {
-                          setSelectedHora(hora);
-                          setStep(3);
-                        }}
-                        className="px-6 py-3 rounded-full font-semibold text-sm border-2 border-primary-main/30 text-primary-main hover:bg-primary-main hover:border-primary-main hover:text-white transition-all active:scale-95"
+              {sesionesServicioActual === 0 && (
+                <Callout
+                  variant="warning"
+                  title={`No tenés sesiones activas para ${selectedServicio?.nombre}`}
+                  className="border-amber-500/30 bg-amber-500/10 text-amber-200"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1.5">
+                    <p className="text-xs text-[#FFF8EE]/80">Para confirmar la reserva necesitarás adquirir un paquete en la tienda.</p>
+                    <Link to="/tienda">
+                      <Button
+                        variant="solid"
+                        size="sm"
+                        onClick={() => haptics.selection()}
+                        className="!bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] text-xs font-bold shrink-0"
                       >
-                        {hora} hs
-                      </button>
-                    ))}
+                        <ShoppingBag size={13} className="mr-1.5" /> Ir a la Tienda
+                      </Button>
+                    </Link>
                   </div>
-                )}
+                </Callout>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-2 flex items-center gap-1.5">
+                  <Calendar size={14} className="text-[#C5A059]" /> Seleccioná la fecha
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={fecha}
+                    onChange={e => {
+                      haptics.light();
+                      setFecha(e.target.value);
+                      setSelectedHora('');
+                    }}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full p-4 rounded-xl bg-white/5 border border-white/15 text-[#FFF8EE] focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all font-medium text-sm"
+                  />
+                </div>
               </div>
-            )}
+
+              {fecha && (
+                <div className="pt-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-3 flex items-center gap-1.5">
+                    <Clock size={14} className="text-[#C5A059]" /> Horarios disponibles (Sincronizado con Google Calendar)
+                  </label>
+                  {loading ? (
+                    <div className="p-8 text-center text-xs text-[#FFF8EE]/60 flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin"></div>
+                      Buscando disponibilidad en tiempo real...
+                    </div>
+                  ) : horarios.length === 0 ? (
+                    <EmptyState
+                      title="Sin horarios disponibles"
+                      description="No hay turnos libres para esta fecha. Probá seleccionando otro día en el selector."
+                      icon={<Clock className="w-6 h-6 text-[#C5A059]" />}
+                      className="my-2 border-[#C5A059]/20 bg-white/5"
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-2.5">
+                      {horarios.map(hora => (
+                        <Button
+                          key={hora}
+                          variant={selectedHora === hora ? "glow" : "outline"}
+                          size="md"
+                          onClick={() => {
+                            haptics.selection();
+                            setSelectedHora(hora);
+                            setStep(3);
+                          }}
+                          className={`rounded-full px-5 py-2 text-xs font-semibold transition-all ${
+                            selectedHora === hora
+                              ? '!bg-[#C5A059] !text-[#150720] !border-[#C5A059] shadow-md shadow-[#C5A059]/25 font-bold'
+                              : 'border-[#C5A059]/30 text-[#FFF8EE] hover:border-[#C5A059] hover:bg-[#C5A059]/10'
+                          }`}
+                        >
+                          {hora} hs
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
           </motion.div>
         )}
 
         {step === 3 && (
-          <motion.div key="step3" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="bg-white p-6 sm:p-8 rounded-[2rem] border border-neutral-100 shadow-xs">
-            <button
-              onClick={() => setStep(2)}
-              className="text-sm font-medium text-neutral-500 hover:text-neutral-900 flex items-center gap-1.5 mb-6 transition-colors"
-            >
-              <ArrowLeft size={16} /> Cambiar fecha u horario
-            </button>
-
-            <div className="bg-neutral-50 p-6 rounded-2xl border border-neutral-100 mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles size={18} className="text-primary-main" />
-                <h3 className="font-bold text-lg text-neutral-900">Resumen de tu turno</h3>
-              </div>
-              <div className="space-y-3 text-sm text-neutral-600">
-                <div className="flex justify-between py-2 border-b border-neutral-200/60">
-                  <span className="text-neutral-500">Tratamiento</span>
-                  <strong className="text-neutral-900">{selectedServicio?.nombre}</strong>
-                </div>
-                <div className="flex justify-between py-2 border-b border-neutral-200/60">
-                  <span className="text-neutral-500">Fecha</span>
-                  <strong className="text-neutral-900">{fecha}</strong>
-                </div>
-                <div className="flex justify-between py-2 border-b border-neutral-200/60">
-                  <span className="text-neutral-500">Horario</span>
-                  <strong className="text-neutral-900">
-                    {selectedHora} a {horaFinCalculada} hs ({selectedServicio?.duracion_minutos} min)
-                  </strong>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-neutral-500">Tu saldo actual</span>
-                  <strong className={sesionesServicioActual > 0 ? 'text-emerald-600' : 'text-amber-600'}>
-                    {sesionesServicioActual} {sesionesServicioActual === 1 ? 'sesión disponible' : 'sesiones disponibles'}
-                  </strong>
-                </div>
-              </div>
-            </div>
-
-            {sesionesServicioActual > 0 ? (
-              <button
-                onClick={handleConfirm}
-                disabled={loading}
-                className="w-full py-4 rounded-2xl bg-primary-main text-white font-bold text-base hover:bg-primary-hover transition-colors disabled:opacity-50 shadow-md"
+          <motion.div key="step3" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+            <Card variant="glow" className="p-6 sm:p-8 bg-[#190826]/95 border-[#C5A059]/35 rounded-2xl space-y-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  haptics.light();
+                  setStep(2);
+                }}
+                className="text-xs text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5"
               >
-                {loading ? 'Agendando...' : 'CONFIRMAR Y AGENDAR (Usa 1 sesión)'}
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
-                  No contás con sesiones activas en tu billetera para este tratamiento. Adquirí tu paquete primero para poder reservar.
+                <ArrowLeft size={14} className="mr-1.5" /> Cambiar fecha u horario
+              </Button>
+
+              <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={18} className="text-[#C5A059]" />
+                  <h3 className="font-bold text-lg text-[#FFF8EE] font-serif">Resumen de tu turno</h3>
                 </div>
-                <Link
-                  to="/tienda-paquetes"
-                  className="w-full py-4 rounded-2xl bg-primary-main text-white font-bold text-base hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
-                >
-                  <ShoppingBag size={18} /> Adquirir Paquete en la Tienda
-                </Link>
+
+                <div className="space-y-3 text-xs sm:text-sm text-[#FFF8EE]/80">
+                  <div className="flex justify-between py-2 border-b border-white/10">
+                    <span className="text-[#FFF8EE]/50">Tratamiento</span>
+                    <strong className="text-[#FFF8EE] font-serif">{selectedServicio?.nombre}</strong>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-white/10">
+                    <span className="text-[#FFF8EE]/50">Fecha</span>
+                    <strong className="text-[#FFF8EE] font-mono">{fecha}</strong>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-white/10">
+                    <span className="text-[#FFF8EE]/50">Horario</span>
+                    <strong className="text-[#C5A059] font-mono">
+                      {selectedHora} a {horaFinCalculada} hs ({selectedServicio?.duracion_minutos} min)
+                    </strong>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-white/10">
+                    <span className="text-[#FFF8EE]/50 flex items-center gap-1">
+                      <MapPin size={13} className="text-[#C5A059]" /> Ubicación
+                    </span>
+                    <span className="text-[#FFF8EE] text-right">Comisionado Indart 2822, San Justo</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-[#FFF8EE]/50">Tu saldo actual</span>
+                    <strong className={sesionesServicioActual > 0 ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
+                      {sesionesServicioActual} {sesionesServicioActual === 1 ? 'sesión disponible' : 'sesiones disponibles'}
+                    </strong>
+                  </div>
+                </div>
               </div>
-            )}
+
+              {sesionesServicioActual > 0 ? (
+                <FeedbackButton
+                  initialText="CONFIRMAR Y AGENDAR (Usa 1 sesión)"
+                  loadingText="Sincronizando con Google Calendar..."
+                  successText="¡Turno Agendado con Éxito!"
+                  variant="solid"
+                  size="lg"
+                  disabled={loading}
+                  onClick={handleConfirm}
+                  className="w-full !bg-gradient-to-r !from-[#C5A059] !to-[#E5C788] !text-[#150720] font-bold text-sm shadow-lg shadow-[#C5A059]/25 cursor-pointer py-4"
+                />
+              ) : (
+                <div className="space-y-3">
+                  <Callout variant="warning" title="Saldo insuficiente">
+                    No contás con sesiones activas en tu billetera para este tratamiento. Adquirí tu paquete en la tienda para poder confirmar.
+                  </Callout>
+                  <Link to="/tienda">
+                    <Button
+                      variant="solid"
+                      size="lg"
+                      onClick={() => haptics.selection()}
+                      className="w-full !bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] font-bold text-sm flex items-center justify-center gap-2 py-4"
+                    >
+                      <ShoppingBag size={16} /> Adquirir Paquete en la Tienda
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </Card>
           </motion.div>
         )}
 
         {step === 4 && (
-          <motion.div key="step4" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="bg-white p-8 sm:p-12 rounded-[2rem] border border-neutral-100 text-center">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 size={42} />
-            </div>
-            <h2 className="text-2xl font-bold text-neutral-900 mb-2">¡Turno Confirmado!</h2>
-            <p className="text-neutral-500 mb-6">
-              Te esperamos el <strong>{fecha}</strong> a las <strong>{selectedHora} hs</strong> para tu sesión de <strong>{selectedServicio?.nombre}</strong>.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-              <a
-                href={buildGoogleCalendarUrl()}
-                target="_blank"
-                rel="noreferrer"
-                className="px-6 py-3.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-sm hover:bg-blue-100 transition-colors inline-flex items-center justify-center gap-2"
-              >
-                <Calendar size={17} /> Añadir a mi Google Calendar
-              </a>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => navigate('/mi-cuenta')}
-                className="px-6 py-3.5 rounded-xl bg-primary-main text-white font-bold text-sm hover:bg-primary-hover transition-colors"
-              >
-                Ver mis turnos en Mi Cuenta
-              </button>
-              <button
-                onClick={() => {
-                  setStep(1);
-                  setFecha('');
-                  setSelectedHora('');
-                }}
-                className="px-6 py-3.5 rounded-xl border border-neutral-200 text-neutral-700 font-semibold text-sm hover:bg-neutral-50 transition-colors"
-              >
-                Agendar otro turno
-              </button>
-            </div>
+          <motion.div key="step4" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="text-center">
+            <Card variant="elevated" className="p-8 sm:p-12 bg-[#190826]/95 border-[#C5A059]/30 rounded-3xl max-w-lg mx-auto space-y-6">
+              <AnimateIn>
+                <div className="w-20 h-20 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 size={42} />
+                </div>
+              </AnimateIn>
+
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#FFF8EE] font-serif mb-2">¡Turno Confirmado!</h2>
+                <p className="text-xs sm:text-sm text-[#FFF8EE]/70 leading-relaxed">
+                  Te esperamos el <strong className="text-[#FFF8EE]">{fecha}</strong> a las <strong className="text-[#C5A059]">{selectedHora} hs</strong> para tu sesión de <strong className="text-[#FFF8EE] font-serif">{selectedServicio?.nombre}</strong>.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <a
+                  href={buildGoogleCalendarUrl()}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => haptics.selection()}
+                  className="block"
+                >
+                  <Button
+                    variant="glow"
+                    size="lg"
+                    className="w-full !bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] font-bold text-xs sm:text-sm shadow-md shadow-[#C5A059]/20"
+                  >
+                    <Calendar size={16} className="mr-2" /> Añadir a mi Google Calendar
+                  </Button>
+                </a>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => {
+                    haptics.light();
+                    navigate('/mi-cuenta');
+                  }}
+                  className="flex-1 border-white/20 text-[#FFF8EE] hover:bg-white/10 text-xs"
+                >
+                  Ver mis turnos en Mi Cuenta
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={() => {
+                    haptics.light();
+                    setStep(1);
+                    setFecha('');
+                    setSelectedHora('');
+                  }}
+                  className="flex-1 text-[#FFF8EE]/70 hover:text-[#FFF8EE] hover:bg-white/5 text-xs"
+                >
+                  Agendar otro turno
+                </Button>
+              </div>
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>

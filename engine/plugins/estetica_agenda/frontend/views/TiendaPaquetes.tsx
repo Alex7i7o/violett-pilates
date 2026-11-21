@@ -3,7 +3,17 @@ import { api } from '@/lib/api';
 import { useClientConfig } from '@/context/ClientConfigContext';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Tag, ChevronDown, Copy, Check, X, MessageCircle } from 'lucide-react';
+import {
+  Card,
+  CardTitle,
+  CardDescription,
+  Badge,
+  Button,
+  Modal,
+  FeedbackButton,
+  haptics
+} from 'fireseed-ui';
+import { ShoppingBag, Tag, ChevronDown, Copy, Check, MessageCircle, Sparkles } from 'lucide-react';
 
 export const TiendaPaquetes = () => {
   const config = useClientConfig();
@@ -104,8 +114,8 @@ export const TiendaPaquetes = () => {
   if (loading) {
     return (
       <div className="w-full space-y-6">
-        <div className="h-40 bg-neutral-200 rounded-3xl animate-pulse"></div>
-        <div className="h-24 bg-neutral-200 rounded-3xl animate-pulse"></div>
+        <div className="h-40 bg-white/5 border border-white/10 rounded-2xl animate-pulse"></div>
+        <div className="h-24 bg-white/5 border border-white/10 rounded-2xl animate-pulse"></div>
       </div>
     );
   }
@@ -118,178 +128,198 @@ export const TiendaPaquetes = () => {
         animate="show"
         className="space-y-6"
       >
-        <motion.div variants={itemVariants} className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-sm border border-neutral-100">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-3 bg-primary-50 text-primary-main rounded-2xl">
-              <ShoppingBag size={24} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Armá tu paquete</h2>
-              <p className="text-sm text-neutral-500">Seleccioná un tratamiento y la cantidad de sesiones.</p>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-neutral-700 ml-1">Tratamiento</label>
-              <div className="relative">
-                <select
-                  value={selectedServicio}
-                  onChange={e => setSelectedServicio(e.target.value)}
-                  className="w-full p-4 pl-5 pr-12 rounded-2xl border-2 border-neutral-100 bg-neutral-50 outline-none focus:border-primary-main focus:bg-white transition-all appearance-none text-neutral-900 font-medium"
-                >
-                  {servicios.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre} (${parseFloat(s.precio_base).toLocaleString('es-AR')} por sesión)
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={20} />
+        <motion.div variants={itemVariants}>
+          <Card variant="elevated" className="bg-[#190826]/90 border border-[#C5A059]/25 p-6 sm:p-8 rounded-2xl space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] rounded-2xl shadow-sm">
+                <ShoppingBag size={24} />
+              </div>
+              <div>
+                <CardTitle className="text-xl sm:text-2xl font-bold text-[#FFF8EE] font-serif tracking-tight">
+                  Tienda de Paquetes
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-[#FFF8EE]/60 mt-0.5">
+                  Seleccioná un tratamiento estético y la cantidad de sesiones con descuento.
+                </CardDescription>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-neutral-700 ml-1">Cantidad de Sesiones</label>
-              <div className="relative">
-                <select
-                  value={selectedRegla}
-                  onChange={e => setSelectedRegla(e.target.value)}
-                  className="w-full p-4 pl-5 pr-12 rounded-2xl border-2 border-neutral-100 bg-neutral-50 outline-none focus:border-primary-main focus:bg-white transition-all appearance-none text-neutral-900 font-medium"
-                >
-                  {reglas.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.cantidad_sesiones} Sesión{r.cantidad_sesiones > 1 ? 'es' : ''}
-                      {parseFloat(r.descuento_porcentaje) > 0 ? ` (${parseFloat(r.descuento_porcentaje)}% OFF)` : ''}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" size={20} />
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] ml-1">
+                  Tratamiento
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedServicio}
+                    onChange={e => {
+                      haptics.selection();
+                      setSelectedServicio(e.target.value);
+                    }}
+                    className="w-full p-4 pl-5 pr-12 rounded-xl border border-white/15 bg-white/5 outline-none focus:border-[#C5A059] focus:bg-[#190826] transition-all appearance-none text-[#FFF8EE] font-medium text-sm"
+                  >
+                    {servicios.map(s => (
+                      <option key={s.id} value={s.id} className="bg-[#190826] text-[#FFF8EE]">
+                        {s.nombre} (${parseFloat(s.precio_base).toLocaleString('es-AR')} por sesión)
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[#C5A059] pointer-events-none" size={18} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] ml-1">
+                  Cantidad de Sesiones
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedRegla}
+                    onChange={e => {
+                      haptics.selection();
+                      setSelectedRegla(e.target.value);
+                    }}
+                    className="w-full p-4 pl-5 pr-12 rounded-xl border border-white/15 bg-white/5 outline-none focus:border-[#C5A059] focus:bg-[#190826] transition-all appearance-none text-[#FFF8EE] font-medium text-sm"
+                  >
+                    {reglas.map(r => (
+                      <option key={r.id} value={r.id} className="bg-[#190826] text-[#FFF8EE]">
+                        {r.cantidad_sesiones} Sesión{r.cantidad_sesiones > 1 ? 'es' : ''}
+                        {parseFloat(r.descuento_porcentaje) > 0 ? ` (${parseFloat(r.descuento_porcentaje)}% OFF)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[#C5A059] pointer-events-none" size={18} />
+                </div>
               </div>
             </div>
-          </div>
+          </Card>
         </motion.div>
       </motion.div>
 
-      {/* Floating Checkout Bar */}
+      {/* Floating Luxury Checkout Bar */}
       <AnimatePresence>
         {currentServicio && currentRegla && (
           <motion.div
-            initial={{ opacity: 0, y: 100 }}
+            initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed bottom-[4.5rem] sm:bottom-8 left-0 right-0 z-40 px-4 sm:px-0 pointer-events-none"
           >
             <div className="max-w-4xl mx-auto flex justify-center">
-              <div className="bg-neutral-900 text-white rounded-full shadow-2xl p-2 pl-6 pr-2 flex items-center justify-between w-full max-w-[90%] sm:max-w-md pointer-events-auto">
+              <div className="bg-[#150720]/95 backdrop-blur-xl border border-[#C5A059]/40 text-[#FFF8EE] rounded-full shadow-2xl p-2 pl-6 pr-2 flex items-center justify-between w-full max-w-[95%] sm:max-w-md pointer-events-auto">
                 <div className="flex flex-col mr-4">
-                  <span className="text-xs font-medium text-neutral-400">Total a abonar</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#FFF8EE]/60">Total a abonar</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold">${totalCalculado.toLocaleString('es-AR')}</span>
+                    <span className="text-lg sm:text-xl font-bold font-mono text-[#C5A059]">
+                      ${totalCalculado.toLocaleString('es-AR')}
+                    </span>
                     {porcentajeDescuento > 0 && (
-                      <span className="text-[10px] font-bold bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Tag size={10} /> {porcentajeDescuento}% OFF
-                      </span>
+                      <Badge variant="glow" size="sm" className="!text-[10px]">
+                        <Tag size={10} className="mr-0.5" /> {porcentajeDescuento}% OFF
+                      </Badge>
                     )}
                   </div>
                 </div>
 
-                <button
-                  onClick={handleBuy}
+                <Button
+                  variant="glow"
+                  size="md"
+                  onClick={() => {
+                    haptics.impact();
+                    handleBuy();
+                  }}
                   disabled={buying}
-                  className="px-6 py-3.5 bg-primary-main text-white font-bold text-sm rounded-full active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
+                  className="!bg-gradient-to-r !from-[#C5A059] !to-[#E5C788] !text-[#150720] font-bold text-xs rounded-full px-5 py-3 whitespace-nowrap shadow-md shadow-[#C5A059]/20"
                 >
                   {buying ? 'PROCESANDO...' : 'ADQUIRIR PAQUETE'}
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Modal Transferencia / Alias */}
-      <AnimatePresence>
+      {/* Modal Transferencia / Alias (FireSeed UI Modal) */}
+      <Modal
+        isOpen={Boolean(aliasModalInfo && currentServicio && currentRegla)}
+        onClose={() => setAliasModalInfo(null)}
+        title="Datos para Transferencia Bancaria"
+        description="Acreditación instantánea tras enviar el comprobante"
+        className="bg-[#190826] border border-[#C5A059]/30 text-[#FFF8EE]"
+      >
         {aliasModalInfo && currentServicio && currentRegla && (
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-neutral-900">Datos para Transferencia</h3>
-                <button onClick={() => setAliasModalInfo(null)} className="p-1 text-neutral-400 hover:text-neutral-700">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-primary-light/60 border border-primary-main/20 text-center">
-                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                  {currentRegla.cantidad_sesiones} sesión(es) • {currentServicio.nombre}
-                </p>
-                <p className="text-2xl font-black text-primary-main mt-1">
-                  ${totalCalculado.toLocaleString('es-AR')}
-                </p>
-              </div>
-
-              <div className="space-y-3 bg-neutral-50 p-4 rounded-2xl border border-neutral-100 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase text-neutral-400">Alias / CVU</p>
-                    <p className="font-bold text-neutral-900 select-all">
-                      {aliasModalInfo.alias || 'Consultar por WhatsApp'}
-                    </p>
-                  </div>
-                  {aliasModalInfo.alias && (
-                    <button
-                      onClick={() => handleCopyAlias(aliasModalInfo.alias)}
-                      className="p-2 rounded-xl bg-white border border-neutral-200 text-neutral-600 hover:text-primary-main"
-                      title="Copiar Alias"
-                    >
-                      {copiedAlias ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                    </button>
-                  )}
-                </div>
-
-                {aliasModalInfo.cbu && (
-                  <div>
-                    <p className="text-[11px] font-bold uppercase text-neutral-400">CBU</p>
-                    <p className="font-medium text-neutral-800 select-all">{aliasModalInfo.cbu}</p>
-                  </div>
-                )}
-
-                {aliasModalInfo.titular && (
-                  <div>
-                    <p className="text-[11px] font-bold uppercase text-neutral-400">Titular</p>
-                    <p className="font-medium text-neutral-800">{aliasModalInfo.titular}</p>
-                  </div>
-                )}
-              </div>
-
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Una vez realizada la transferencia, envianos el comprobante por WhatsApp para acreditar tus sesiones inmediatamente en tu billetera.
+          <div className="space-y-5">
+            <div className="p-4 rounded-xl bg-white/5 border border-[#C5A059]/25 text-center">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#FFF8EE]/70">
+                {currentRegla.cantidad_sesiones} sesión(es) • {currentServicio.nombre}
               </p>
+              <p className="text-2xl font-bold text-[#C5A059] font-mono mt-1">
+                ${totalCalculado.toLocaleString('es-AR')}
+              </p>
+            </div>
 
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setAliasModalInfo(null)}
-                  className="flex-1 py-3 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 hover:bg-neutral-50"
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleWhatsAppComprobante}
-                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center justify-center gap-1.5"
-                >
-                  <MessageCircle size={15} /> Enviar Comprobante
-                </button>
+            <div className="space-y-3 bg-white/5 p-4 rounded-xl border border-white/10 text-xs sm:text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">Alias / CVU</p>
+                  <p className="font-mono font-bold text-[#FFF8EE] select-all mt-0.5">
+                    {aliasModalInfo.alias || 'Consultar por WhatsApp'}
+                  </p>
+                </div>
+                {aliasModalInfo.alias && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyAlias(aliasModalInfo.alias)}
+                    className="border-white/20 text-[#FFF8EE] hover:bg-white/10"
+                    title="Copiar Alias"
+                  >
+                    {copiedAlias ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                  </Button>
+                )}
               </div>
-            </motion.div>
+
+              {aliasModalInfo.cbu && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">CBU</p>
+                  <p className="font-mono text-[#FFF8EE]/90 select-all mt-0.5">{aliasModalInfo.cbu}</p>
+                </div>
+              )}
+
+              {aliasModalInfo.titular && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A059]">Titular de la cuenta</p>
+                  <p className="text-[#FFF8EE] font-medium mt-0.5">{aliasModalInfo.titular}</p>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-[#FFF8EE]/60 leading-relaxed">
+              Una vez realizada la transferencia, envianos el comprobante por WhatsApp para acreditar tus sesiones inmediatamente en tu billetera.
+            </p>
+
+            <div className="flex gap-3 pt-2 border-t border-white/10">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setAliasModalInfo(null)}
+                className="flex-1 text-xs border-white/20 text-[#FFF8EE]"
+              >
+                Cerrar
+              </Button>
+              <Button
+                variant="glow"
+                size="md"
+                onClick={handleWhatsAppComprobante}
+                className="flex-1 text-xs !bg-emerald-600 hover:!bg-emerald-500 !text-white font-bold"
+              >
+                <MessageCircle size={15} className="mr-1.5" /> Enviar Comprobante
+              </Button>
+            </div>
           </div>
         )}
-      </AnimatePresence>
+      </Modal>
     </div>
   );
 };

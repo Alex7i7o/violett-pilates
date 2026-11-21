@@ -1,7 +1,18 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { Star } from 'lucide-react';
+import {
+  Card,
+  CardTitle,
+  CardDescription,
+  Button,
+  FeedbackButton,
+  StarRating,
+  Avatar,
+  EmptyState,
+  haptics
+} from 'fireseed-ui';
+import { Star, MessageSquareQuote } from 'lucide-react';
 
 export const ResenasClient = () => {
   const [resenas, setResenas] = useState<any[]>([]);
@@ -12,7 +23,7 @@ export const ResenasClient = () => {
 
   const fetchResenas = () => {
     api.get('/resenas/')
-      .then(res => setResenas(res.data))
+      .then(res => setResenas(res.data || []))
       .catch(() => toast.error('Error cargando reseñas'))
       .finally(() => setLoading(false));
   };
@@ -30,7 +41,7 @@ export const ResenasClient = () => {
       setMensaje('');
       setEstrellas(5);
       fetchResenas();
-    } catch (error) {
+    } catch {
       toast.error('Error al enviar la reseña');
     } finally {
       setSubmitting(false);
@@ -38,73 +49,121 @@ export const ResenasClient = () => {
   };
 
   return (
-    <div className="w-full">
-      <h1 className="text-2xl font-bold text-neutral-800 mb-8 flex items-center gap-2">
-        ⭐ Reseñas
-      </h1>
-
-      <div className="bg-neutral-50 p-6 rounded-2xl mb-8 border border-neutral-100">
-        <h2 className="font-bold text-lg mb-4 text-neutral-800">Dejanos tu opinión</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-600 mb-2">Calificación</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map(num => (
-                <button
-                  type="button"
-                  key={num}
-                  onClick={() => setEstrellas(num)}
-                  className={`p-2 rounded-full transition-colors ${estrellas >= num ? 'text-yellow-500' : 'text-neutral-300'}`}
-                >
-                  <Star fill={estrellas >= num ? "currentColor" : "none"} size={28} />
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-600 mb-2">Comentario (opcional)</label>
-            <textarea 
-              value={mensaje}
-              onChange={e => setMensaje(e.target.value)}
-              className="w-full p-3 rounded-xl border border-neutral-200 outline-none focus:border-primary-main h-24 resize-none"
-              placeholder="¿Qué te pareció nuestro servicio?"
-            ></textarea>
-          </div>
-          <button 
-            type="submit" 
-            disabled={submitting}
-            className="px-6 py-3 bg-neutral-800 text-white font-bold rounded-xl hover:bg-neutral-900 transition-colors disabled:opacity-50"
-          >
-            {submitting ? 'Enviando...' : 'Publicar Reseña'}
-          </button>
-        </form>
+    <div className="w-full pb-24 space-y-8">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#FFF8EE] font-serif mb-1">
+          Experiencias & Reseñas
+        </h1>
+        <p className="text-xs sm:text-sm text-[#FFF8EE]/60">
+          Tu testimonio nos impulsa a seguir brindándote la máxima excelencia estética.
+        </p>
       </div>
 
-      <h2 className="font-bold text-lg mb-4 text-neutral-800">Lo que dicen nuestras clientas</h2>
-      {loading ? (
-        <p className="text-neutral-500">Cargando...</p>
-      ) : resenas.length === 0 ? (
-        <p className="text-neutral-500">Aún no hay reseñas. ¡Sé la primera!</p>
-      ) : (
-        <div className="space-y-4">
-          {resenas.map(r => (
-            <div key={r.id} className="bg-white p-5 rounded-2xl border border-neutral-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-primary-100 text-primary-main rounded-full flex items-center justify-center font-bold text-lg">
-                  {r.usuario_detalle?.nombre?.[0] || 'A'}
-                </div>
-                <div>
-                  <p className="font-bold text-neutral-800">{r.usuario_detalle?.nombre} {r.usuario_detalle?.apellido}</p>
-                  <div className="flex gap-1 text-yellow-500">
-                    {[...Array(r.estrellas)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
-                  </div>
-                </div>
-              </div>
-              {r.mensaje && <p className="text-neutral-600 text-sm mt-3">{r.mensaje}</p>}
-            </div>
-          ))}
+      {/* Formulario de Reseña */}
+      <Card variant="elevated" className="bg-[#190826]/90 border border-[#C5A059]/25 p-6 sm:p-8 rounded-2xl">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2.5 bg-[#C5A059]/15 border border-[#C5A059]/30 text-[#C5A059] rounded-xl">
+            <MessageSquareQuote size={20} />
+          </div>
+          <div>
+            <CardTitle className="text-lg font-bold text-[#FFF8EE] font-serif">Dejanos tu opinión</CardTitle>
+            <CardDescription className="text-xs text-[#FFF8EE]/60">Compartí tu experiencia en Violett Estética</CardDescription>
+          </div>
         </div>
-      )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-2">
+              Calificación general
+            </label>
+            <StarRating
+              value={estrellas}
+              onChange={val => {
+                haptics.selection();
+                setEstrellas(val);
+              }}
+              size="lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#C5A059] mb-2">
+              Tu Comentario
+            </label>
+            <textarea
+              value={mensaje}
+              onChange={e => setMensaje(e.target.value)}
+              className="w-full p-4 rounded-xl bg-white/5 border border-white/15 text-[#FFF8EE] placeholder:text-[#FFF8EE]/30 outline-none focus:border-[#C5A059] h-28 resize-none text-sm transition-all"
+              placeholder="¿Qué te pareció el tratamiento, la atención y el espacio?"
+            ></textarea>
+          </div>
+
+          <Button
+            type="submit"
+            variant="glow"
+            size="md"
+            disabled={submitting}
+            className="!bg-[#C5A059] !text-[#150720] hover:!bg-[#B38E4C] font-bold text-xs px-6 py-3 rounded-full"
+          >
+            {submitting ? 'Enviando...' : 'Publicar Reseña'}
+          </Button>
+        </form>
+      </Card>
+
+      {/* Listado de Reseñas */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-[#FFF8EE] font-serif">Lo que dicen nuestras clientas</h2>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="h-24 bg-white/5 border border-white/10 rounded-2xl animate-pulse"></div>
+            ))}
+          </div>
+        ) : resenas.length === 0 ? (
+          <EmptyState
+            title="Aún no hay reseñas publicadas"
+            description="¡Sé la primera en compartir tu experiencia en Violett Estética!"
+            icon={<Star size={24} className="text-[#C5A059]" />}
+            className="border-[#C5A059]/20 bg-[#190826]/70 rounded-2xl p-8"
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {resenas.map(r => {
+              const fullName = `${r.usuario_detalle?.nombre || ''} ${r.usuario_detalle?.apellido || ''}`.trim() || 'Clienta';
+              return (
+                <Card
+                  key={r.id}
+                  variant="default"
+                  className="bg-[#190826]/80 border border-[#C5A059]/20 p-5 rounded-2xl flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={fullName}
+                          size="md"
+                          className="bg-[#C5A059]/20 text-[#C5A059] border border-[#C5A059]/30 font-bold"
+                        />
+                        <div>
+                          <p className="font-bold text-sm text-[#FFF8EE] font-serif">{fullName}</p>
+                          <StarRating value={r.estrellas} readOnly size="sm" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {r.mensaje && (
+                      <p className="text-xs text-[#FFF8EE]/80 leading-relaxed italic bg-white/5 p-3 rounded-xl border border-white/5 mt-2">
+                        "{r.mensaje}"
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
