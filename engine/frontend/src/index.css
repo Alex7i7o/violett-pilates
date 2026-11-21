@@ -221,11 +221,13 @@ h2, h3, h4, h5, h6 {
 
 /* Day-of-week header (LU, MA, MI, JU, VI, SÁ, DO) */
 .estetica-calendar .grid-cols-7:not(.gap-1) div,
+.estetica-calendar .grid-cols-7 > div:not(.relative),
 .estetica-calendar .text-tech-periwinkle {
   color: #C5A059 !important;
   font-weight: 700 !important;
   font-size: 0.75rem !important;
   text-align: center !important;
+  opacity: 1 !important;
 }
 
 /* Grid layout for 7 columns */
@@ -269,16 +271,28 @@ h2, h3, h4, h5, h6 {
   color: #C5A059 !important;
 }
 
-/* Selected day */
+/* Selected day - Solid Gold Gradient with Bold White Number */
+.estetica-calendar button.bg-accent-main,
+.estetica-calendar button[class*="bg-accent-main"],
 .estetica-calendar .grid-cols-7 button.bg-accent-main,
-.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"] {
+.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"],
+.estetica-datepicker button.bg-accent-main,
+.estetica-datepicker button[class*="bg-accent-main"] {
   background: linear-gradient(135deg, #C5A059 0%, #B38E4C 100%) !important;
-  box-shadow: 0 4px 14px rgba(197, 160, 89, 0.4) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(197, 160, 89, 0.45) !important;
 }
 
-.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"] span {
+.estetica-calendar button.bg-accent-main *,
+.estetica-calendar button[class*="bg-accent-main"] *,
+.estetica-calendar .grid-cols-7 button.bg-accent-main span,
+.estetica-calendar .grid-cols-7 button[class*="bg-accent-main"] span,
+.estetica-datepicker button.bg-accent-main *,
+.estetica-datepicker button[class*="bg-accent-main"] * {
   color: #FFFFFF !important;
   font-weight: 700 !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* Today cell indicator */

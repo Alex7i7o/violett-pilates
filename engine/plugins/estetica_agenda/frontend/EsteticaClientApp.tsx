@@ -12,9 +12,9 @@ import { LogOut, Calendar, Wallet, Store, Star, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 
 const esteticaThemeTokens = {
-  primaryMain: "#C5A059",
+  primaryMain: "#34236F",
   primarySurface: "#FFFFFF",
-  primaryHover: "#B38E4C",
+  primaryHover: "#2A1C5A",
   primaryLight: "#F9F6ED",
   accentMain: "#C5A059",
   accentHover: "#B38E4C",
