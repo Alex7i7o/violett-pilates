@@ -46,7 +46,9 @@ export default defineConfig({
       '@tanstack/react-query': resolvePkg('@tanstack/react-query'),
       'axios': resolvePkg('axios'),
       'recharts': resolvePkg('recharts'),
-      'react-is': resolvePkg('react-is')
+      'react-is': resolvePkg('react-is'),
+      'fireseed-ui/style.css': path.resolve(resolvePkg('fireseed-ui'), 'dist/style.css'),
+      'fireseed-ui': resolvePkg('fireseed-ui')
     }
   },
   test: {
