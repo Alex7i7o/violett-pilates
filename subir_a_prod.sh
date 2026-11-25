@@ -1,7 +1,22 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 SERVER_IP="187.77.43.144"
+
+# Capturador de errores local: si cualquier paso falla, se frena y muestra el cartel de error (NUNCA el de éxito)
+error_handler() {
+  local exit_code=$?
+  local line_no=$1
+  echo ""
+  echo "=================================================="
+  echo "❌ ERROR CRÍTICO: EL DESPLIEGUE NO PUDO COMPLETARSE"
+  echo "Fallo en la línea: $line_no (Código de salida: $exit_code)"
+  echo "Revisá los logs arriba para ver el error exacto."
+  echo "=================================================="
+  exit $exit_code
+}
+trap 'error_handler $LINENO' ERR
 
 echo "======================================"
 echo "🚀 INICIANDO DESPLIEGUE A PRODUCCIÓN"
@@ -16,14 +31,24 @@ scp ViolettPilates-Deploy.zip root@$SERVER_IP:/root/
 echo "🔄 3. Desplegando en servidor..."
 ssh root@$SERVER_IP << 'ENDSSH'
   set -e
-  echo "--- Deteniendo contenedores actuales..."
-  cd /root/ViolettPilates && docker compose down --remove-orphans || true
+  set -o pipefail
+
+  # Capturador de errores remoto: si falla cualquier compilación o migración en el VPS
+  remote_error_handler() {
+    local exit_code=$?
+    echo ""
+    echo "=================================================="
+    echo "❌ ERROR EN EL VPS: Falló una tarea en el servidor"
+    echo "=================================================="
+    exit $exit_code
+  }
+  trap 'remote_error_handler' ERR
 
   echo "--- Limpiando código fuente viejo para evitar archivos huérfanos..."
   rm -rf /root/ViolettPilates/*
 
   echo "--- Descomprimiendo código fuente nuevo..."
-  unzip -o /root/ViolettPilates-Deploy.zip -d /root/ViolettPilates
+  unzip -q -o /root/ViolettPilates-Deploy.zip -d /root/ViolettPilates
   cd /root/ViolettPilates
 
   echo "--- Construyendo frontend Pilates (separado, sin caché)..."
@@ -42,14 +67,22 @@ ssh root@$SERVER_IP << 'ENDSSH'
   sleep 10
 
   echo "--- Aplicando migraciones Pilates..."
-  docker compose exec backend_pilates python manage.py migrate --noinput
+  docker compose exec -T backend_pilates python manage.py migrate --noinput
 
   echo "--- Aplicando migraciones Estética..."
-  docker compose exec backend_estetica python manage.py migrate --noinput
+  docker compose exec -T backend_estetica python manage.py migrate --noinput
 
-  echo "--- ¡Despliegue completado!"
+  echo "--- Verificando estado activo de los contenedores..."
+  if ! docker compose ps | grep -q "Up"; then
+    echo "❌ Error: Ningún contenedor quedó en estado 'Up'."
+    exit 1
+  fi
+
+  echo "--- ¡Servicios y contenedores activos correctamente en el servidor!"
 ENDSSH
 
+echo ""
 echo "======================================"
 echo "✅ ¡DESPLIEGUE COMPLETADO CON ÉXITO!"
+echo "Todos los servicios están en línea."
 echo "======================================"
