@@ -338,8 +338,10 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str, ack_enviado: bo
         mensajes_db = list(conversacion.mensajes.order_by('-created_at')[1:7])
         historial_langchain = []
         for m in reversed(mensajes_db):
-            # Los avisos de espera y errores técnicos no aportan contexto
+            # Los avisos de espera, errores técnicos y llamadas a tools crudas no aportan contexto
             if m.agente_responsable in ('asistente_espera_activa', 'fallback_error', 'notificacion_duena'):
+                continue
+            if any(bad in getattr(m, 'texto', '') for bad in ['call:default_api:', 'default_api:']):
                 continue
             if m.direccion == 'ENTRANTE':
                 txt = m.texto.replace("🎤 [Audio]: ", "").strip()
@@ -411,6 +413,27 @@ def ejecutar_grafo_asistente(conversacion, mensaje_usuario: str, ack_enviado: bo
             # El modelo no devolvió texto (respuesta vacía/bloqueada): usamos el simulador para no dejar a la persona sin respuesta
             logger.warning("[ASISTENTE] El LLM devolvió una respuesta vacía. Usando respuesta de respaldo.")
             return _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
+
+        # Blindaje anti-alucinación: Si el LLM emitió código o pseudollamadas crudas (glitch de Gemini 'call:default_api:...')
+        if any(bad in respuesta_final for bad in ['call:default_api:', 'default_api:']):
+            logger.warning(f"[ASISTENTE] Interceptada llamada a tool cruda en texto plano: '{respuesta_final[:80]}'. Ejecutando recuperación...")
+            if conversacion.rol_detectado == 'DUENA' and any(k in mensaje_usuario.lower() for k in ['cancel', 'baja', 'sacar', 'borrar']):
+                try:
+                    from ..tools.gestion_tools import cancelar_o_eliminar_clase_agenda_duena
+                    resp_recup = cancelar_o_eliminar_clase_agenda_duena(
+                        fecha_str=mensaje_usuario,
+                        hora_str=mensaje_usuario,
+                        motivo="Cancelación solicitada por Deby",
+                        cancelar_futuras_recurrentes=False
+                    )
+                    respuesta_final = resp_recup
+                    tools_usadas.append('cancelar_o_eliminar_clase_agenda_duena')
+                except Exception as ex_c:
+                    logger.warning(f"[ASISTENTE RECUPERACION ERROR] {ex_c}")
+                    respuesta_final = "✦ ¡Recibido Deby! Ya gestiono la cancelación del turno en la agenda ✨."
+            else:
+                sim_res, _, _ = _ejecutar_modo_simulacion(conversacion, mensaje_usuario, usuario_id, nombre_user)
+                respuesta_final = sim_res
 
         try:
             from ..services.formatter import sanitizar_para_whatsapp

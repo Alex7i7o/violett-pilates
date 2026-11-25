@@ -119,7 +119,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
             from langchain_google_genai import ChatGoogleGenerativeAI
             raw_model = os.environ.get('GEMINI_MODEL', '').strip()
             if not raw_model:
-                model_name = 'gemini-2.5-flash-lite'
+                model_name = 'gemini-2.5-flash'
             else:
                 model_name = raw_model
             gemini_kwargs = dict(
@@ -135,7 +135,7 @@ def get_llm(tools: Optional[List] = None, temperature: float = 0.3, max_tokens: 
 
             # Fallbacks multimodelo de Gemini ordenados por costo/eficiencia
             # gemini-3.8-flash como salvavidas definitivo al final si los demás fallan
-            for alt_gem in ['gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
+            for alt_gem in ['gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3.8-flash']:
                 if alt_gem != model_name:
                     try:
                         all_fallbacks.append(ChatGoogleGenerativeAI(
