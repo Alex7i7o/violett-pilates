@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from core.models import Reserva, Turno
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
@@ -30,7 +31,49 @@ class SuscripcionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
     def perform_update(self, serializer):
+        clases_restantes_req = self.request.data.get('clases_restantes')
         instance = serializer.save()
+
+        # Si el usuario modificó manualmente los créditos en la interfaz, recalculamos el delta
+        # para que las reconciliaciones matemáticas posteriores respeten su decisión.
+        if clases_restantes_req is not None:
+            try:
+                nuevo_restantes = max(0, int(clases_restantes_req))
+                now = timezone.localtime()
+                today = now.date()
+                now_time = now.time()
+                qs_base = Reserva.objects.filter(usuario=instance.usuario).filter(
+                    Q(consumo_suscripcion__suscripcion=instance) |
+                    (
+                        Q(consumo_suscripcion__isnull=True) &
+                        Q(turno__fecha__gte=instance.fecha_inicio, turno__fecha__lte=instance.fecha_vencimiento)
+                    )
+                )
+                clases_pendientes = qs_base.filter(
+                    estado='CONFIRMADA',
+                    turno__fecha__lte=instance.fecha_vencimiento
+                ).filter(
+                    Q(turno__fecha__gt=today) |
+                    Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
+                ).count()
+                clases_tomadas = qs_base.filter(
+                    estado__in=['TOMADA', 'AUSENTE'],
+                    turno__fecha__lte=instance.fecha_vencimiento
+                ).count()
+
+                clases_base = instance.plan.cantidad_clases
+                nuevo_ajuste = nuevo_restantes + (clases_tomadas + clases_pendientes) - clases_base
+                instance.ajuste_creditos = nuevo_ajuste
+                instance.clases_restantes = nuevo_restantes
+                if nuevo_restantes > 0 and instance.estado == 'AGOTADO':
+                    instance.estado = 'ACTIVO'
+                elif nuevo_restantes == 0 and instance.estado == 'ACTIVO':
+                    instance.estado = 'AGOTADO'
+                instance.save(update_fields=['ajuste_creditos', 'clases_restantes', 'estado'])
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Error recalculando ajuste_creditos en SuscripcionViewSet: {e}")
+
         if instance.estado in ['ACTIVO', 'AGOTADO'] and instance.clases_restantes > 0:
             if instance.estado == 'AGOTADO':
                 instance.estado = 'ACTIVO'
@@ -87,10 +130,12 @@ class AsignarPlanView(APIView):
         Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).update(estado='VENCIDO')
 
         # Create new subscription
+        ajuste_inicial = clases_a_cargar - plan.cantidad_clases
         nueva_suscripcion = Suscripcion.objects.create(
             usuario=usuario,
             plan=plan,
             clases_restantes=clases_a_cargar,
+            ajuste_creditos=ajuste_inicial,
             fecha_inicio=today,
             fecha_vencimiento=fecha_vencimiento,
             estado='ACTIVO' if clases_a_cargar > 0 else 'AGOTADO'
@@ -296,10 +341,12 @@ class ReactivarPlanView(APIView):
         Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).update(estado='VENCIDO')
 
         # Crear nueva suscripción activa
+        ajuste_inicial = clases_a_cargar - plan.cantidad_clases
         nueva_suscripcion = Suscripcion.objects.create(
             usuario=usuario,
             plan=plan,
             clases_restantes=clases_a_cargar,
+            ajuste_creditos=ajuste_inicial,
             fecha_inicio=today,
             fecha_vencimiento=fecha_vencimiento,
             estado='ACTIVO'

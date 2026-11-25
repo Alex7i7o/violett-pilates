@@ -30,6 +30,7 @@ class Suscripcion(models.Model):
     fecha_inicio = models.DateField()
     fecha_vencimiento = models.DateField()
     clases_restantes = models.IntegerField()
+    ajuste_creditos = models.IntegerField(default=0)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='ACTIVO')
     
     class Meta:

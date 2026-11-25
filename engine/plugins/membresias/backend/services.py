@@ -58,7 +58,9 @@ def calcular_metricas_suscripcion(suscripcion: Suscripcion, usuario=None):
         turno__fecha__lte=suscripcion.fecha_vencimiento
     ).count()
 
-    clases_totales = suscripcion.plan.cantidad_clases
+    clases_totales_base = suscripcion.plan.cantidad_clases
+    ajuste = getattr(suscripcion, 'ajuste_creditos', 0) or 0
+    clases_totales = max(0, clases_totales_base + ajuste)
     creditos_reales = max(0, clases_totales - (clases_tomadas + clases_pendientes))
     clases_pendientes_efectivas = min(clases_pendientes, max(0, clases_totales - clases_tomadas))
 

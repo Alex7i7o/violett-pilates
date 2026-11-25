@@ -782,28 +782,13 @@ def sincronizar_clases_desde_ficha(usuario, ciclos_o_clases, realizado_por="Déb
     # Reconciliación matemática de créditos
     try:
         from plugins.membresias.backend.models import Suscripcion, ReservaMembresia
+        from plugins.membresias.backend.services import calcular_metricas_suscripcion
         sub_activa = Suscripcion.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'AGOTADO']).order_by('-fecha_inicio').first()
         if sub_activa:
             for r in Reserva.objects.filter(usuario=usuario, turno__fecha__gte=sub_activa.fecha_inicio, turno__fecha__lte=sub_activa.fecha_vencimiento):
                 ReservaMembresia.objects.get_or_create(reserva=r, defaults={'suscripcion': sub_activa})
 
-            clases_totales = sub_activa.plan.cantidad_clases
-            clases_tomadas = Reserva.objects.filter(
-                usuario=usuario,
-                estado__in=['TOMADA', 'AUSENTE'],
-                turno__fecha__gte=sub_activa.fecha_inicio,
-                turno__fecha__lte=sub_activa.fecha_vencimiento
-            ).count()
-            clases_pendientes = Reserva.objects.filter(
-                usuario=usuario,
-                estado='CONFIRMADA',
-                turno__fecha__gt=today,
-                turno__fecha__lte=sub_activa.fecha_vencimiento
-            ).count()
-
-            sub_activa.clases_restantes = max(0, clases_totales - (clases_tomadas + clases_pendientes))
-            sub_activa.estado = 'AGOTADO' if sub_activa.clases_restantes == 0 else 'ACTIVO'
-            sub_activa.save(update_fields=['clases_restantes', 'estado'])
+            calcular_metricas_suscripcion(sub_activa, usuario=usuario)
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Error al reconciliar créditos post sincronización: {e}")

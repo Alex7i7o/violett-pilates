@@ -463,7 +463,13 @@ def consultar_alumna_detalle(nombre_o_tel: str) -> str:
     sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO']).select_related('plan').first()
     
     if sub:
-        info_plan = f"• Plan actual: {sub.plan.nombre}\n• Créditos restantes: {sub.clases_restantes}\n• Vence: {sub.fecha_vencimiento.strftime('%d/%m/%Y')}\n• Estado: {sub.estado}"
+        try:
+            from plugins.membresias.backend.services import calcular_metricas_suscripcion
+            metricas = calcular_metricas_suscripcion(sub, usuario=alumna)
+            sub.refresh_from_db()
+            info_plan = f"• Plan actual: {sub.plan.nombre}\n• Créditos disponibles: {metricas['clases_restantes']}\n• Clases agendadas por tomar: {metricas['clases_pendientes']}\n• Clases tomadas: {metricas['clases_tomadas']}\n• Vence: {sub.fecha_vencimiento.strftime('%d/%m/%Y')}\n• Estado: {sub.estado}"
+        except Exception:
+            info_plan = f"• Plan actual: {sub.plan.nombre}\n• Créditos restantes: {sub.clases_restantes}\n• Vence: {sub.fecha_vencimiento.strftime('%d/%m/%Y')}\n• Estado: {sub.estado}"
     else:
         info_plan = "• Plan actual: Sin plan activo actualmente."
 
@@ -1171,39 +1177,80 @@ def obtener_metricas_alumnas_duena(filtro: str = "") -> str:
 
 
 @tool
-def ajustar_creditos_alumna_duena(nombre_o_tel_alumna: str, cantidad_creditos: int = 1, motivo: str = "Ajuste manual de la dueña") -> str:
+def ajustar_creditos_alumna_duena(nombre_o_tel_alumna: str, cantidad_creditos: int = 1, motivo: str = "Ajuste manual de la dueña", creditos_exactos: int = None) -> str:
     """
     Comando exclusivo para la dueña (Deby): suma o resta clases individuales al abono de una alumna puntual
-    (ej: para regalarle una clase de cortesía, compensación, o descontar una clase).
+    (ej: para regalarle una clase de cortesía, compensación, descontar clases o fijar un saldo exacto).
     Parámetros:
     - nombre_o_tel_alumna: Nombre, apellido o teléfono de la alumna.
-    - cantidad_creditos: Número positivo para sumar clases (ej: 1, 2) o negativo para restar (ej: -1).
+    - cantidad_creditos: Número positivo para sumar clases (ej: 1, 2) o negativo para restar (ej: -1, -2).
     - motivo: Razón del ajuste (opcional).
+    - creditos_exactos: Número exacto de créditos disponibles que deben quedarle (opcional, ej: 2). Si se pasa, fija los créditos directamente a ese número.
     """
     alumna, matches, err = buscar_alumna_flexible(nombre_o_tel_alumna)
     if err == "multiples":
-        accion_desc = f"sumarle {cantidad_creditos} clase(s)" if cantidad_creditos > 0 else f"restarle {abs(cantidad_creditos)} clase(s)"
+        accion_desc = f"fijar en {creditos_exactos} crédito(s)" if creditos_exactos is not None else (f"sumarle {cantidad_creditos} clase(s)" if cantidad_creditos > 0 else f"restarle {abs(cantidad_creditos)} clase(s)")
         return formatear_opciones_human_in_the_loop(nombre_o_tel_alumna, matches, accion_desc)
     elif not alumna:
         return f"✦ No encontré a ninguna alumna registrada con '{nombre_o_tel_alumna}' en Violett Pilates."
 
     try:
         from plugins.membresias.backend.models import Suscripcion
+        from core.models import Reserva
         sub = Suscripcion.objects.filter(usuario=alumna, estado__in=['ACTIVO', 'AGOTADO', 'VENCIDO']).order_by('-fecha_inicio').first()
         if not sub:
             sub = Suscripcion.objects.filter(usuario=alumna).order_by('-fecha_inicio').first()
         if not sub:
             return f"✦ {alumna.nombre} {alumna.apellido} no tiene ningún abono registrado en este momento para ajustarle clases."
 
-        sub.clases_restantes = max(0, sub.clases_restantes + cantidad_creditos)
+        # Calcular reservas tomadas y pendientes actuales de este ciclo
+        now = timezone.localtime()
+        today = now.date()
+        now_time = now.time()
+        qs_base = Reserva.objects.filter(usuario=alumna).filter(
+            Q(consumo_suscripcion__suscripcion=sub) |
+            (
+                Q(consumo_suscripcion__isnull=True) &
+                Q(turno__fecha__gte=sub.fecha_inicio, turno__fecha__lte=sub.fecha_vencimiento)
+            )
+        )
+        clases_pendientes = qs_base.filter(
+            estado='CONFIRMADA',
+            turno__fecha__lte=sub.fecha_vencimiento
+        ).filter(
+            Q(turno__fecha__gt=today) |
+            Q(turno__fecha=today, turno__hora_inicio__gte=now_time)
+        ).count()
+        clases_tomadas = qs_base.filter(
+            estado__in=['TOMADA', 'AUSENTE'],
+            turno__fecha__lte=sub.fecha_vencimiento
+        ).count()
+
+        clases_base = sub.plan.cantidad_clases
+
+        if creditos_exactos is not None:
+            nuevo_restantes = max(0, int(creditos_exactos))
+            sub.ajuste_creditos = nuevo_restantes + (clases_tomadas + clases_pendientes) - clases_base
+            sub.clases_restantes = nuevo_restantes
+            operacion = f"fijé en {nuevo_restantes}"
+        else:
+            ajuste_actual = getattr(sub, 'ajuste_creditos', 0) or 0
+            sub.ajuste_creditos = ajuste_actual + cantidad_creditos
+            clases_totales = max(0, clases_base + sub.ajuste_creditos)
+            sub.clases_restantes = max(0, clases_totales - (clases_tomadas + clases_pendientes))
+            operacion = f"sumé {cantidad_creditos}" if cantidad_creditos > 0 else f"resté {abs(cantidad_creditos)}"
+
         if sub.clases_restantes > 0 and sub.estado in ['AGOTADO', 'VENCIDO']:
             sub.estado = 'ACTIVO'
+        elif sub.clases_restantes == 0 and sub.estado == 'ACTIVO':
+            sub.estado = 'AGOTADO'
+
         if sub.fecha_vencimiento and sub.fecha_vencimiento < timezone.localdate():
             sub.fecha_vencimiento = timezone.localdate() + datetime.timedelta(days=30)
-        sub.save()
+
+        sub.save(update_fields=['ajuste_creditos', 'clases_restantes', 'estado', 'fecha_vencimiento'])
 
         nombre_completo = f"{alumna.nombre} {alumna.apellido}".strip()
-        operacion = f"sumé {cantidad_creditos}" if cantidad_creditos > 0 else f"resté {abs(cantidad_creditos)}"
         return f"✦ ¡Listo Deby! Le {operacion} clase(s) a {nombre_completo}. Ahora tiene {sub.clases_restantes} clase(s) disponibles en su {sub.plan.nombre} (Vence el {sub.fecha_vencimiento.strftime('%d/%m/%Y')})."
     except Exception as e:
         return f"✦ Ocurrió un error al actualizar los créditos: {e}"
