@@ -20,13 +20,16 @@ export function ClientLayout() {
     { path: '/perfil', label: 'Perfil', icon: UserIcon },
   ];
 
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const logoIcon = isEstetica ? `${baseUrl}logo-estetica-icon.png` : `${baseUrl}logo-icon.png`;
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background">
       <InstallAppModal />
       <header className="hidden md:flex bg-white/60 backdrop-blur-[20px] saturate-[180%] border-b border-primary-light/40 shadow-sm sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-12 object-contain drop-shadow-sm" />
+            <img src={logoIcon} alt="Violett" className="h-12 object-contain drop-shadow-sm" />
             <div className="flex flex-col justify-center">
                <span className="font-bold text-lg text-primary-main tracking-tight leading-tight">{isEstetica ? 'Panel de Pacientes' : 'Panel de Alumnas'}</span>
                <span className="text-xs font-semibold text-violett-400 uppercase tracking-widest leading-none">{isEstetica ? 'Violett Estética' : 'Violett Pilates'}</span>

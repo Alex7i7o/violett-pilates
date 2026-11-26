@@ -117,6 +117,10 @@ export function AdminLayout() {
   // Secondary items for the "More" menu
   const secondaryItems = allNavItems.slice(3);
 
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const logoFull = isEstetica ? `${baseUrl}logo-estetica-full.png` : `${baseUrl}logo-full.png`;
+  const logoIcon = isEstetica ? `${baseUrl}logo-estetica-icon.png` : `${baseUrl}logo-icon.png`;
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background font-sans">
       
@@ -124,7 +128,7 @@ export function AdminLayout() {
       <aside className="hidden lg:flex w-64 shrink-0 bg-card border-r border-primary-light flex-col fixed top-0 bottom-0 overflow-y-auto custom-scrollbar z-50">
         <div className="p-6 pb-2">
           <div className="flex flex-col items-center mb-4 mt-2">
-            <img src={isEstetica ? "/logo-estetica-full.png" : "/logo-full.png"} alt="Violett" className="h-20 object-contain mx-auto" />
+            <img src={logoFull} alt="Violett" className="h-20 object-contain mx-auto" />
             <span className="font-bold text-lg text-primary-main tracking-tight">Panel de Negocio</span>
           </div>
           <h2 className="text-sm font-semibold text-muted uppercase tracking-wider mt-4">Panel de Negocio</h2>
@@ -154,7 +158,7 @@ export function AdminLayout() {
         </nav>
         
         <div className="flex-1 flex flex-col justify-end items-center pb-8 opacity-20 pointer-events-none">
-          <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett Isotipo" className="w-40 h-40 object-contain drop-shadow-lg" />
+          <img src={logoIcon} alt="Violett Isotipo" className="w-40 h-40 object-contain drop-shadow-lg" />
         </div>
 
         <div className="p-4 border-t border-primary-light flex flex-col gap-1.5">
@@ -183,7 +187,7 @@ export function AdminLayout() {
         {/* Mobile Header */}
         <header className="lg:hidden flex items-center justify-between px-4 py-4 bg-white/80 backdrop-blur-[20px] saturate-[180%] border-b border-primary-light/40 sticky top-0 z-40">
           <div className="flex items-center gap-2">
-            <img src={isEstetica ? "/logo-estetica-icon.png" : "/logo-icon.png"} alt="Violett" className="h-8 object-contain" />
+            <img src={logoIcon} alt="Violett" className="h-8 object-contain" />
             <span className="font-bold text-base text-primary-main tracking-tight">Panel de Negocio</span>
           </div>
           <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-bold shadow-sm">A</div>

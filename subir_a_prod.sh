@@ -72,9 +72,17 @@ ssh root@$SERVER_IP << 'ENDSSH'
   echo "--- Aplicando migraciones Estética..."
   docker compose exec -T backend_estetica python manage.py migrate --noinput
 
+  echo "--- Reiniciando backend y proxy Nginx para refrescar resolución DNS e IPs..."
+  docker compose restart backend_pilates backend_estetica nginx_proxy
+  sleep 4
+
   echo "--- Verificando estado activo de los contenedores..."
-  if ! docker compose ps | grep -q "Up"; then
-    echo "❌ Error: Ningún contenedor quedó en estado 'Up'."
+  if ! docker compose ps backend_pilates | grep -q "Up"; then
+    echo "❌ Error: El contenedor backend_pilates no quedó en estado 'Up'."
+    exit 1
+  fi
+  if ! docker compose ps nginx_proxy | grep -q "Up"; then
+    echo "❌ Error: El contenedor nginx_proxy no quedó en estado 'Up'."
     exit 1
   fi
 
